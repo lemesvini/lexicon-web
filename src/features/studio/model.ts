@@ -1,0 +1,232 @@
+// Editor state model for the Studio.
+//
+// The exported artifact is a plain `Lesson` (see @/lib/lessons) — the same shape
+// the presenter reads. But while editing we need stable identities for slides
+// and blocks so React keys survive reordering and so we never key on array
+// index. We keep those keys OUT of the lesson shape by wrapping each slide and
+// block in an editor node that carries a client-only `key`. `toLesson` strips
+// them back out on export; `fromLesson` assigns fresh ones on load.
+
+import type { Lesson, LessonBlock, LessonSlide } from "@/lib/lessons";
+
+export type EditorBlock = { key: string; data: LessonBlock };
+
+export type EditorSlide = {
+  key: string;
+  /** Everything on a slide except its blocks (which are wrapped separately). */
+  meta: Omit<LessonSlide, "blocks">;
+  blocks: EditorBlock[];
+};
+
+export type EditorLesson = {
+  /** Everything on a lesson except its slides. */
+  meta: Omit<Lesson, "slides">;
+  slides: EditorSlide[];
+};
+
+let counter = 0;
+/** Stable client-only id. crypto.randomUUID when available, counter fallback. */
+export function newKey(prefix: string): string {
+  counter += 1;
+  const rand =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID().slice(0, 8)
+      : String(counter);
+  return `${prefix}_${counter}_${rand}`;
+}
+
+// ── Block factories ────────────────────────────────────────────────────────
+// Per-block factories live with their block definitions in @/features/blocks
+// (`createBlock`). This module stays framework-free so the serialization can be
+// lifted into the shared content-schema package later.
+
+export function wrapBlock(data: LessonBlock): EditorBlock {
+  return { key: newKey("block"), data };
+}
+
+// ── Slide + lesson factories ─────────────────────────────────────────────────
+
+export function createSlide(): EditorSlide {
+  return {
+    key: newKey("slide"),
+    meta: { id: "", stage: "", duration: "", goal: "", teacherNotes: [] },
+    blocks: [],
+  };
+}
+
+export function createLesson(): EditorLesson {
+  return {
+    meta: {
+      id: "",
+      unit: "",
+      module: "",
+      title: "",
+      context: "",
+      minorCanDo: "",
+      grammarFocus: [],
+      classPlan: [],
+    },
+    slides: [createSlide()],
+  };
+}
+
+// ── (de)serialization ────────────────────────────────────────────────────────
+
+export function fromLesson(lesson: Lesson): EditorLesson {
+  // Tolerate lessons missing any field (hand-authored, or exported before this
+  // shape settled) — every field is coerced so the editor's inputs stay
+  // controlled and nothing downstream reads an `undefined`.
+  return {
+    meta: {
+      id: lesson.id ?? "",
+      unit: lesson.unit ?? "",
+      module: lesson.module ?? "",
+      title: lesson.title ?? "",
+      context: lesson.context ?? "",
+      minorCanDo: lesson.minorCanDo ?? "",
+      grammarFocus: lesson.grammarFocus ?? [],
+      classPlan: lesson.classPlan ?? [],
+    },
+    slides: (lesson.slides ?? []).map((slide) => ({
+      key: newKey("slide"),
+      meta: {
+        id: slide.id ?? "",
+        stage: slide.stage ?? "",
+        duration: slide.duration ?? "",
+        goal: slide.goal ?? "",
+        layout: slide.layout,
+        hideStage: slide.hideStage,
+        teacherNotes: slide.teacherNotes ?? [],
+      },
+      blocks: (slide.blocks ?? []).map(wrapBlock),
+    })),
+  };
+}
+
+/**
+ * Drop empty strings / empty arrays so the JSON stays clean — but never drop a
+ * key listed in `keep`. Required fields must survive even when empty, or the
+ * exported document stops matching the `Lesson` contract its consumers rely on.
+ */
+function prune<T extends Record<string, unknown>>(obj: T, keep: string[] = []): T {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (!keep.includes(k)) {
+      if (v === "" || v === undefined || v === null) continue;
+      if (Array.isArray(v) && v.length === 0) continue;
+    }
+    out[k] = v;
+  }
+  return out as T;
+}
+
+function serializeBlock(block: LessonBlock): LessonBlock {
+  switch (block.type) {
+    case "text":
+      return prune(block, ["type", "body"]);
+    case "callout":
+      return prune(block, ["type", "title", "body"]);
+    case "list":
+      return prune(
+        { ...block, items: block.items.filter((i) => i.trim() !== "") },
+        ["type", "style", "items"],
+      );
+    case "table":
+      return prune(
+        {
+          ...block,
+          columns: block.columns.map((c) => ({ title: c.title, rows: c.rows })),
+        },
+        ["type", "columns"],
+      );
+    case "dialog":
+      return prune(
+        {
+          ...block,
+          lines: block.lines.filter(
+            (l) => l.speaker.trim() !== "" || l.text.trim() !== "",
+          ),
+        },
+        ["type", "lines"],
+      );
+    case "image":
+      return prune(block, ["type", "path"]);
+  }
+}
+
+export function toLesson(editor: EditorLesson): Lesson {
+  const m = editor.meta;
+  return {
+    // Lesson-level fields are all required by the `Lesson` type; emit every one
+    // (arrays included, even when empty) in the source document's field order.
+    id: m.id,
+    unit: m.unit,
+    module: m.module,
+    title: m.title,
+    context: m.context,
+    minorCanDo: m.minorCanDo,
+    grammarFocus: m.grammarFocus.filter((g) => g.trim() !== ""),
+    classPlan: m.classPlan.filter(
+      (s) =>
+        s.stage.trim() !== "" ||
+        s.duration.trim() !== "" ||
+        s.goal.trim() !== "",
+    ),
+    slides: editor.slides.map((slide) => {
+      const sm = slide.meta;
+      return {
+        ...(prune(
+          {
+            id: sm.id,
+            stage: sm.stage,
+            duration: sm.duration,
+            goal: sm.goal,
+            // Only emit `layout` when it differs from the "column" default, so
+            // untouched slides stay byte-for-byte the same in the export.
+            layout: sm.layout === "row" ? "row" : undefined,
+            hideStage: sm.hideStage ? true : undefined,
+            teacherNotes: (sm.teacherNotes ?? []).filter(
+              (n) => n.trim() !== "",
+            ),
+          },
+          ["id", "stage", "duration", "goal"],
+        ) as Omit<LessonSlide, "blocks">),
+        blocks: slide.blocks.map((b) => serializeBlock(b.data)),
+      };
+    }),
+  };
+}
+
+/**
+ * Best-effort parse of an unknown JSON string into a Lesson. Throws on anything
+ * that clearly isn't a lesson; fills in missing arrays so partial docs load.
+ */
+export function parseLesson(json: string): Lesson {
+  const raw = JSON.parse(json) as Partial<Lesson>;
+  if (typeof raw !== "object" || raw === null) {
+    throw new Error("Not a JSON object");
+  }
+  if (!Array.isArray(raw.slides)) {
+    throw new Error("Missing `slides` array");
+  }
+  return {
+    id: raw.id ?? "",
+    unit: raw.unit ?? "",
+    module: raw.module ?? "",
+    title: raw.title ?? "",
+    context: raw.context ?? "",
+    minorCanDo: raw.minorCanDo ?? "",
+    grammarFocus: raw.grammarFocus ?? [],
+    classPlan: raw.classPlan ?? [],
+    slides: raw.slides.map((s) => ({
+      id: s.id ?? "",
+      stage: s.stage ?? "",
+      duration: s.duration ?? "",
+      goal: s.goal ?? "",
+      layout: s.layout,
+      hideStage: s.hideStage,
+      blocks: Array.isArray(s.blocks) ? s.blocks : [],
+      teacherNotes: s.teacherNotes,
+    })),
+  };
+}

@@ -1,0 +1,134 @@
+{
+  "id": "Situation Two",
+  "unit": "Unit One - Introductions",
+  "module": "Module One",
+  "context": "Blablabla",
+  "minorCanDo": "What they want",
+  "grammarFocus": [
+    "Grammar hmmmm"
+  ],
+  "slides": [
+    {
+      "id": "1",
+      "stage": "WarmUp",
+      "duration": "10",
+      "goal": "Present the situation",
+      "teacherNotes": [
+        "This is a teacher's note"
+      ],
+      "blocks": [
+        {
+          "type": "text",
+          "label": "Oh my god",
+          "body": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis sed hendrerit purus. Nulla non cursus nisl. Nunc gravida, nunc et dictum condimentum, tortor nunc commodo turpis, ut volutpat urna quam sed tortor. Curabitur et justo in ipsum luctus iaculis aliquam in purus. Ut nec erat at urna sodales congue ut pulvinar odio. Ut vitae scelerisque dolor. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.",
+          "note": "Yey"
+        }
+      ]
+    },
+    {
+      "stage": "Vocab",
+      "blocks": [
+        {
+          "type": "list",
+          "label": "Oh my god",
+          "style": "bullet",
+          "items": [
+            "really",
+            "crazy",
+            "really",
+            "yes"
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "Dialog",
+      "teacherNotes": [
+        "wtf right "
+      ],
+      "blocks": [
+        {
+          "type": "dialog",
+          "label": "they talkin",
+          "lines": [
+            {
+              "speaker": "1",
+              "text": "twwo"
+            },
+            {
+              "speaker": "2",
+              "text": "onee"
+            },
+            {
+              "speaker": "1",
+              "text": "how are you"
+            },
+            {
+              "speaker": "2",
+              "text": "fucking great, u?"
+            },
+            {
+              "speaker": "1",
+              "text": "on god same bro"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "Table né ",
+      "blocks": [
+        {
+          "type": "table",
+          "columns": [
+            {
+              "title": "Hey there",
+              "rows": [
+                "this is amazing"
+              ]
+            },
+            {
+              "title": "what the fuck",
+              "rows": [
+                "really"
+              ]
+            },
+            {
+              "title": "as many as I want? wow",
+              "rows": [
+                "..."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "wtf is a callout",
+      "blocks": [
+        {
+          "type": "callout",
+          "icon": "💡",
+          "color": "blue_bg",
+          "title": "title né",
+          "body": "alsdfkjalsdkfjals;dfjkasl;dfkjasdl;kfhjaskjdfhaisudfhaiusdhfaisdfhujaiksjdfh"
+        }
+      ]
+    },
+    {
+      "stage": "teacher ",
+      "teacherNotes": [
+        "aaaaaa"
+      ],
+      "blocks": [
+        {
+          "type": "text",
+          "label": "teste",
+          "body": "testestasetasdfasf",
+          "audience": "teacher",
+          "note": "asdfasdfa"
+        }
+      ]
+    }
+  ]
+}
