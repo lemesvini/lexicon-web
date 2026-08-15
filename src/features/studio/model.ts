@@ -151,6 +151,22 @@ function serializeBlock(block: LessonBlock): LessonBlock {
       );
     case "image":
       return prune(block, ["type", "path"]);
+    // Exercise blocks. Two things are deliberate here:
+    //
+    // `id` is in every keep-list — it is what stored answers are keyed by, so
+    // losing it to a prune would orphan every submission for that question.
+    //
+    // Empty options are NOT filtered out, unlike list items and dialog lines.
+    // `answer` is an index into this array, so dropping an empty option in the
+    // middle would silently repoint the key at the wrong one. A blank option is
+    // an authoring mistake the editor already flags; a wrong answer key is one
+    // nobody would ever see.
+    case "finish-sentence":
+      return prune(block, ["type", "id", "sentence", "options"]);
+    case "choose-description":
+      return prune(block, ["type", "id", "text", "options"]);
+    case "long-answer":
+      return prune(block, ["type", "id", "question"]);
   }
 }
 

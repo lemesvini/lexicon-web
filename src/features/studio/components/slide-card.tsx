@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import type { LessonBlock, LessonSlide } from "@/lib/lessons";
 import { cn } from "@/lib/utils";
-import type { BlockType } from "@/features/blocks";
+import { BLOCK_REGISTRY, type BlockType } from "@/features/blocks";
 import type { EditorSlide } from "../model";
 import type { StudioController } from "../use-studio-lesson";
 import { AddBlockMenu } from "./add-block-menu";
@@ -67,11 +67,20 @@ export function SlideCard({
   index,
   total,
   studio,
+  teacherContent = true,
+  blockTypes,
 }: {
   slide: EditorSlide;
   index: number;
   total: number;
   studio: StudioController;
+  /** Which block types this editor offers; defaults to all of them. */
+  blockTypes?: BlockType[];
+  /** Whether this document can carry the teacher's half: per-slide notes, blocks
+   *  marked teacher-only, and the class-planning fields (duration, goal). All of
+   *  it is stripped on write to a student document, so a student-facing editor
+   *  shouldn't offer it in the first place. */
+  teacherContent?: boolean;
 }) {
   const { key, meta, blocks } = slide;
   const setMeta = (patch: Partial<Omit<LessonSlide, "blocks">>) =>
@@ -109,21 +118,25 @@ export function SlideCard({
                 className="w-28 bg-transparent font-mono text-xs outline-none placeholder:text-muted-foreground/50 focus:rounded-sm focus:ring-2 focus:ring-ring/30"
               />
             </label>
-            <label className="inline-flex items-center gap-1.5">
-              <span className="text-xs">⏱</span>
-              <input
-                value={meta.duration}
-                onChange={(e) => setMeta({ duration: e.target.value })}
-                placeholder="10 min"
-                className="w-16 bg-transparent outline-none placeholder:text-muted-foreground/50 focus:rounded-sm focus:ring-2 focus:ring-ring/30"
-              />
-            </label>
-            <input
-              value={meta.goal}
-              onChange={(e) => setMeta({ goal: e.target.value })}
-              placeholder="Goal of this slide…"
-              className="min-w-40 flex-1 bg-transparent italic outline-none placeholder:not-italic placeholder:text-muted-foreground/50 focus:rounded-sm focus:ring-2 focus:ring-ring/30"
-            />
+            {teacherContent && (
+              <>
+                <label className="inline-flex items-center gap-1.5">
+                  <span className="text-xs">⏱</span>
+                  <input
+                    value={meta.duration}
+                    onChange={(e) => setMeta({ duration: e.target.value })}
+                    placeholder="10 min"
+                    className="w-16 bg-transparent outline-none placeholder:text-muted-foreground/50 focus:rounded-sm focus:ring-2 focus:ring-ring/30"
+                  />
+                </label>
+                <input
+                  value={meta.goal}
+                  onChange={(e) => setMeta({ goal: e.target.value })}
+                  placeholder="Goal of this slide…"
+                  className="min-w-40 flex-1 bg-transparent italic outline-none placeholder:not-italic placeholder:text-muted-foreground/50 focus:rounded-sm focus:ring-2 focus:ring-ring/30"
+                />
+              </>
+            )}
           </div>
         </div>
 
@@ -169,7 +182,10 @@ export function SlideCard({
             <Trash2Icon />
           </IconAction>
           <span className="ml-1">
-            <AddBlockMenu onAdd={(type) => studio.addBlock(key, type)} />
+            <AddBlockMenu
+              onAdd={(type) => studio.addBlock(key, type)}
+              blockTypes={blockTypes}
+            />
           </span>
         </div>
       </header>
@@ -177,7 +193,10 @@ export function SlideCard({
       {/* Blocks */}
       <div className="space-y-1 px-3 py-3">
         {blocks.length === 0 ? (
-          <EmptySlide onAdd={(type) => studio.addBlock(key, type)} />
+          <EmptySlide
+            onAdd={(type) => studio.addBlock(key, type)}
+            firstType={blockTypes?.[0]}
+          />
         ) : (
           blocks.map((block, i) => (
             <BlockEditor
@@ -185,6 +204,7 @@ export function SlideCard({
               block={block.data}
               isFirst={i === 0}
               isLast={i === blocks.length - 1}
+              teacherContent={teacherContent}
               onChange={(data: LessonBlock) =>
                 studio.updateBlock(key, block.key, data)
               }
@@ -196,17 +216,28 @@ export function SlideCard({
         )}
       </div>
 
-      <div className="px-5 pb-5">
-        <TeacherNotes
-          notes={meta.teacherNotes ?? []}
-          onChange={(notes) => setMeta({ teacherNotes: notes })}
-        />
-      </div>
+      {teacherContent && (
+        <div className="px-5 pb-5">
+          <TeacherNotes
+            notes={meta.teacherNotes ?? []}
+            onChange={(notes) => setMeta({ teacherNotes: notes })}
+          />
+        </div>
+      )}
     </section>
   );
 }
 
-function EmptySlide({ onAdd }: { onAdd: (type: BlockType) => void }) {
+function EmptySlide({
+  onAdd,
+  firstType = "text",
+}: {
+  onAdd: (type: BlockType) => void;
+  /** The type the shortcut button adds — the first the editor offers, since
+   *  "text" isn't on the palette in a homework. */
+  firstType?: BlockType;
+}) {
+  const label = BLOCK_REGISTRY[firstType].meta.label;
   return (
     <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-8 text-center">
       <p className="text-sm text-muted-foreground">No blocks yet</p>
@@ -217,10 +248,10 @@ function EmptySlide({ onAdd }: { onAdd: (type: BlockType) => void }) {
       </div>
       <button
         type="button"
-        onClick={() => onAdd("text")}
+        onClick={() => onAdd(firstType)}
         className="mt-1 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent text-muted-foreground"
       >
-        Add a text block
+        Add a {label.toLowerCase()} block
       </button>
     </div>
   );

@@ -7,10 +7,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BLOCK_METAS, type BlockType } from "@/features/blocks";
+import { BLOCK_ORDER, blockMetas, type BlockType } from "@/features/blocks";
 
 /** The "+" affordance in a slide's top-right corner. Adds a block to that slide. */
-export function AddBlockMenu({ onAdd }: { onAdd: (type: BlockType) => void }) {
+export function AddBlockMenu({
+  onAdd,
+  blockTypes = BLOCK_ORDER,
+}: {
+  onAdd: (type: BlockType) => void;
+  blockTypes?: BlockType[];
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -26,7 +32,7 @@ export function AddBlockMenu({ onAdd }: { onAdd: (type: BlockType) => void }) {
       <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuLabel>Add block</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {BLOCK_METAS.map((b) => {
+        {blockMetas(blockTypes).map((b) => {
           const Icon = b.icon;
           return (
             <DropdownMenuItem key={b.type} onSelect={() => onAdd(b.type)}>

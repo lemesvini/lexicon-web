@@ -5,6 +5,7 @@
 
 export type {
   Audience,
+  BlockAnswerProps,
   BlockDefinition,
   BlockEditorProps,
   BlockMeta,
@@ -16,9 +17,13 @@ export {
   BLOCK_REGISTRY,
   BLOCK_METAS,
   BLOCK_ORDER,
+  EXERCISE_BLOCK_ORDER,
+  blockMetas,
   createBlock,
   isTeacherOnly,
 } from "./registry";
+
+export { newBlockId } from "./block-id";
 
 export { SlideView, BlockView } from "./slide-view";
 export { renderInline } from "./inline-md";

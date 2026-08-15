@@ -64,13 +64,78 @@ export type ImageBlock = {
   wallpaper?: boolean;
 };
 
+// ── Exercise blocks ─────────────────────────────────────────────────────────
+// Blocks a student answers rather than reads. Only homework uses them.
+//
+// Two things set them apart from every block above:
+//
+//   `id` is required and stable. A submission is a map from block id to answer
+//   (see supabase/migrations/0005_homework_exercises.sql), so keying by position
+//   would scramble every answer already given the first time a question moves.
+//
+//   `answer` is optional in the TYPE but always present in the teacher's copy.
+//   It is optional because the student's copy genuinely does not have it: the
+//   `student_homework` view strips it on the way out, so the shape they receive
+//   is this one minus the key.
+
+/** Marks the gap in a `finish-sentence` prompt. */
+export const SENTENCE_BLANK = "___";
+
+/** A sentence with one word missing, chosen from a few options. */
+export type FinishSentenceBlock = {
+  type: "finish-sentence";
+  id: string;
+  label?: string;
+  /** The sentence, with `___` where the missing word goes. */
+  sentence: string;
+  options: string[];
+  /** Index into `options`. Absent in the student's copy. */
+  answer?: number;
+  note?: string;
+};
+
+/** A passage, and a set of descriptions of it — one of them right. */
+export type ChooseDescriptionBlock = {
+  type: "choose-description";
+  id: string;
+  label?: string;
+  /** The passage the student reads, in English. */
+  text: string;
+  /** The descriptions to choose between, in the student's own language. */
+  options: string[];
+  /** Index into `options`. Absent in the student's copy. */
+  answer?: number;
+  note?: string;
+};
+
+/** A question answered in the student's own words. Marked by hand. */
+export type LongAnswerBlock = {
+  type: "long-answer";
+  id: string;
+  label?: string;
+  question: string;
+  /** Guidance on the expected shape, e.g. "3–5 sentences". */
+  hint?: string;
+  note?: string;
+};
+
+export type ExerciseBlock =
+  | FinishSentenceBlock
+  | ChooseDescriptionBlock
+  | LongAnswerBlock;
+
 export type LessonBlock =
   | TextBlock
   | ListBlock
   | CalloutBlock
   | TableBlock
   | DialogBlock
-  | ImageBlock;
+  | ImageBlock
+  | ExerciseBlock;
+
+/** What a student's answer to one block looks like: an option index for the
+ *  objective blocks, free text for the written one. */
+export type AnswerValue = number | string;
 
 export type LessonSlide = {
   id: string;

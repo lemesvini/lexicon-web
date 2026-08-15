@@ -7,56 +7,51 @@ import {
   CopyIcon,
   DownloadIcon,
   FileJsonIcon,
-  FilePlusIcon,
-  FolderOpenIcon,
   Loader2Icon,
-  UploadIcon,
 } from "lucide-react";
-import type { Lesson } from "@/lib/lessons";
-import { getLesson } from "@/lib/lessons";
-import { saveLessonToCloud } from "@/lib/lessons-cloud";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { situations } from "@/features/homepage/data/situations";
-import { copyLesson, downloadLesson } from "../export";
-import { parseLesson } from "../model";
 
+import type { Lesson } from "@/lib/lessons";
+import { Button } from "@/components/ui/button";
+import { copyLesson, downloadLesson } from "../export";
+
+/**
+ * The editor's top bar, shared by all three kinds of document.
+ *
+ * What every kind gets: back to the library, the JSON drawer, copy, save,
+ * export. What differs — where a document is opened from, whether it can be
+ * published, what it is called — arrives through `children` and `label`, so the
+ * three editors share this chrome instead of each growing their own.
+ *
+ * Saving is a prop rather than a fixed call to the cloud, but the idle → saving
+ * → saved cycle stays here: it is the same three states with the same timing in
+ * every editor, and it is the sort of thing that drifts if copied.
+ */
 export function StudioToolbar({
   document,
-  onLoad,
-  onNew,
+  label,
+  onSave,
+  saveLabel = "Save to cloud",
+  canSave = true,
   onToggleRaw,
   rawOpen,
+  children,
 }: {
   document: Lesson;
-  onLoad: (lesson: Lesson) => void;
-  onNew: () => void;
+  /** What this editor is working on, e.g. "Presentation". */
+  label: string;
+  onSave: () => Promise<void>;
+  saveLabel?: string;
+  /** False while the document is missing whatever the save needs (an id, say). */
+  canSave?: boolean;
   onToggleRaw: () => void;
   rawOpen: boolean;
+  /** Kind-specific actions, rendered before the shared ones. */
+  children?: React.ReactNode;
 }) {
-  const fileRef = React.useRef<HTMLInputElement>(null);
   const [copied, setCopied] = React.useState(false);
   const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">(
     "idle",
   );
-
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    try {
-      onLoad(parseLesson(await file.text()));
-    } catch (err) {
-      alert(`Could not import file: ${(err as Error).message}`);
-    }
-  };
 
   const handleCopy = async () => {
     if (await copyLesson(document)) {
@@ -65,81 +60,38 @@ export function StudioToolbar({
     }
   };
 
-  const handleSaveToCloud = async () => {
+  const handleSave = async () => {
     setSaveState("saving");
     try {
-      await saveLessonToCloud(document);
+      await onSave();
       setSaveState("saved");
       window.setTimeout(() => setSaveState("idle"), 1500);
     } catch (err) {
       setSaveState("idle");
-      alert(`Could not save to cloud: ${(err as Error).message}`);
+      alert(`Could not save: ${(err as Error).message}`);
     }
   };
 
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b bg-background/90 px-4 py-2.5 backdrop-blur">
       <Button variant="ghost" size="sm" asChild>
-        <Link to="/">
+        <Link to="/studio">
           <ArrowLeftIcon />
-          Back
+          Library
         </Link>
       </Button>
 
-      <div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 items-baseline gap-2">
-        <span className="font-display text-3xl text-primary leading-none">Studio</span>
+      <div className="pointer-events-none flex flex-col w-full absolute items-center ">
+        <span className="font-display text-2xl leading-none text-primary">
+          Studio
+        </span>
+        <span className="hidden text-sm text-muted-foreground sm:inline">
+          {label}
+        </span>
       </div>
 
       <div className="ml-auto flex items-center gap-1.5">
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json,.json"
-          onChange={handleFile}
-          className="hidden"
-        />
-
-        <Button variant="ghost" size="sm" onClick={onNew}>
-          <FilePlusIcon />
-          New
-        </Button>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm">
-              <FolderOpenIcon />
-              Open
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuLabel>Existing situations</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {situations.length === 0 && (
-              <DropdownMenuItem disabled>No situations found</DropdownMenuItem>
-            )}
-            {situations.map((s) => (
-              <DropdownMenuItem
-                key={s.id}
-                onSelect={() => {
-                  const full = getLesson(s.id);
-                  if (full) onLoad(full);
-                }}
-              >
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">{s.title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {s.module} · {s.unit}
-                  </span>
-                </div>
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => fileRef.current?.click()}>
-              <UploadIcon className="text-muted-foreground" />
-              Import JSON file…
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {children}
 
         <Button
           variant={rawOpen ? "secondary" : "ghost"}
@@ -158,8 +110,8 @@ export function StudioToolbar({
         <Button
           variant="outline"
           size="sm"
-          onClick={handleSaveToCloud}
-          disabled={saveState === "saving"}
+          onClick={handleSave}
+          disabled={saveState === "saving" || !canSave}
         >
           {saveState === "saving" ? (
             <Loader2Icon className="animate-spin" />
@@ -172,7 +124,7 @@ export function StudioToolbar({
             ? "Saving…"
             : saveState === "saved"
               ? "Saved"
-              : "Save to cloud"}
+              : saveLabel}
         </Button>
 
         <Button size="sm" onClick={() => downloadLesson(document)}>

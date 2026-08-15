@@ -41,6 +41,7 @@ export function BlockEditor({
   block,
   isFirst,
   isLast,
+  teacherContent = true,
   onChange,
   onMove,
   onDuplicate,
@@ -49,6 +50,9 @@ export function BlockEditor({
   block: LessonBlock;
   isFirst: boolean;
   isLast: boolean;
+  /** False in a student-facing document, where marking a block "Teacher" would
+   *  be offering something the save then silently strips. */
+  teacherContent?: boolean;
   onChange: (b: LessonBlock) => void;
   onMove: (dir: -1 | 1) => void;
   onDuplicate: () => void;
@@ -98,7 +102,7 @@ export function BlockEditor({
               Wallpaper
             </button>
           )}
-          {hasAudience(block) && (
+          {teacherContent && hasAudience(block) && (
             <button
               type="button"
               onClick={() =>

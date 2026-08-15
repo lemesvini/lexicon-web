@@ -2,8 +2,8 @@ import * as React from "react";
 import { FolderOpenIcon, RefreshCwIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "@/components/data-table";
+import { TableSkeleton } from "@/components/table-skeleton";
 import {
   cloudClassRow,
   localClassRow,
@@ -13,23 +13,6 @@ import { classesColumns } from "@/features/homepage/components/classes-columns";
 import { listCloudLessons, listCloudModules } from "@/lib/lessons-cloud";
 import { putLocalLesson } from "@/lib/lesson-store";
 import { parseLesson } from "@/features/studio/model";
-
-/** Placeholder that holds the table's shape while the library loads. */
-function TableSkeleton() {
-  return (
-    <div className="w-full space-y-4">
-      <div className="flex items-center gap-2">
-        <Skeleton className="h-6 w-full max-w-sm" />
-        <Skeleton className="ml-auto h-6 w-24" />
-      </div>
-      <div className="space-y-px overflow-hidden rounded-md border p-2">
-        {Array.from({ length: 5 }, (_, i) => (
-          <Skeleton key={i} className="h-10 w-full" />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 /**
  * The homepage's class library: every launchable class — from the shared cloud

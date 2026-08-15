@@ -6,7 +6,10 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // Edge Functions are Deno, not part of the Vite app: they use `Deno.*` and
+  // `npm:`/`jsr:` specifiers this config knows nothing about, and tsconfig.app
+  // doesn't compile them either.
+  globalIgnores(['dist', 'supabase/functions']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

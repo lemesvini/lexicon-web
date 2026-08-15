@@ -1,22 +1,26 @@
 import { PlusIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BLOCK_METAS, type BlockType } from "@/features/blocks";
+import { BLOCK_ORDER, blockMetas, type BlockType } from "@/features/blocks";
 import type { EditorSlide } from "../model";
 
 export function BlockPalette({
   slides,
   activeKey,
+  blockTypes = BLOCK_ORDER,
   onAddBlock,
   onAddSlide,
   onSelectSlide,
 }: {
   slides: EditorSlide[];
   activeKey: string | null;
+  /** Which block types this editor offers. Homework gets only the exercises. */
+  blockTypes?: BlockType[];
   onAddBlock: (type: BlockType) => void;
   onAddSlide: () => void;
   onSelectSlide: (key: string) => void;
 }) {
   const active = slides.find((s) => s.key === activeKey) ?? slides[0];
+  const metas = blockMetas(blockTypes);
 
   return (
     <aside className="sticky top-20 flex max-h-[calc(100svh-6rem)] w-64 shrink-0 flex-col gap-5 overflow-y-auto pb-8">
@@ -34,7 +38,7 @@ export function BlockPalette({
           </p>
         )}
         <div className="grid grid-cols-1 gap-1.5">
-          {BLOCK_METAS.map((b) => {
+          {metas.map((b) => {
             const Icon = b.icon;
             return (
               <button

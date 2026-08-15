@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import type { Lesson, LessonBlock, LessonSlide } from "@/lib/lessons";
-import { createBlock, type BlockType } from "@/features/blocks";
+import { createBlock, newBlockId, type BlockType } from "@/features/blocks";
 import {
   createLesson,
   createSlide,
@@ -10,6 +10,20 @@ import {
   type EditorLesson,
   type EditorSlide,
 } from "./model";
+
+/**
+ * Copies a block for duplication, minting a fresh `id` on the kinds that carry
+ * one.
+ *
+ * Exercise blocks are identified in a submission by that id, so a duplicate
+ * keeping the original's would make two questions share every answer ever given
+ * to either — and the copy is usually made precisely to edit it into a different
+ * question.
+ */
+function cloneBlock(block: LessonBlock): LessonBlock {
+  const copy = structuredClone(block);
+  return "id" in copy ? { ...copy, id: newBlockId() } : copy;
+}
 
 /** Move item at `index` by `dir` (-1 up, +1 down); returns a new array. */
 function move<T>(arr: T[], index: number, dir: -1 | 1): T[] {
@@ -74,7 +88,7 @@ export function useStudioLesson() {
       const copy: EditorSlide = {
         key: createSlide().key,
         meta: { ...src.meta, id: src.meta.id ? `${src.meta.id}-copy` : "" },
-        blocks: src.blocks.map((b) => wrapBlock(structuredClone(b.data))),
+        blocks: src.blocks.map((b) => wrapBlock(cloneBlock(b.data))),
       };
       const slides = l.slides.slice();
       slides.splice(i + 1, 0, copy);
@@ -129,7 +143,7 @@ export function useStudioLesson() {
       mapSlide(slideKey, (s) => {
         const i = s.blocks.findIndex((b) => b.key === blockKey);
         if (i === -1) return s;
-        const copy = wrapBlock(structuredClone(s.blocks[i].data));
+        const copy = wrapBlock(cloneBlock(s.blocks[i].data));
         const blocks = s.blocks.slice();
         blocks.splice(i + 1, 0, copy);
         return { ...s, blocks };
