@@ -47,6 +47,30 @@ export type DialogBlock = {
   lines: { speaker: string; text: string }[];
 };
 
+/**
+ * A cover: eyebrow, wordmark, and one huge headline on a flat brand colour.
+ *
+ * This is the presentation-only "big title" from docs/presenter.md, and it is
+ * drawn as type rather than uploaded as a wallpaper image on purpose. An image
+ * has one aspect ratio and every screen it is thrown at crops it; type is laid
+ * out per screen, so the same cover holds its proportions on a 16:9 projector, a
+ * 16:10 laptop and a phone in a student's material.
+ */
+export type TitleBlock = {
+  type: "title";
+  /** Small line above the headline, e.g. "Lesson One". */
+  eyebrow?: string;
+  /** The headline. Line breaks are kept — that is how the author says where it
+   *  wraps, since the type is sized to the longest line. */
+  title: string;
+  /** Optional quieter line beneath the headline. */
+  subtitle?: string;
+  /** Colour treatment: see TITLE_COLORS. Defaults to "jade". */
+  color?: "jade" | "forest" | "mist" | "clear";
+  /** Drop the "lexicon" wordmark from the top-right corner. */
+  hideWordmark?: boolean;
+};
+
 export type ImageBlock = {
   type: "image";
   label?: string;
@@ -131,6 +155,7 @@ export type LessonBlock =
   | TableBlock
   | DialogBlock
   | ImageBlock
+  | TitleBlock
   | ExerciseBlock;
 
 /** What a student's answer to one block looks like: an option index for the

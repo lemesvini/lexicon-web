@@ -6,6 +6,7 @@ import { calloutBlock } from "./callout";
 import { tableBlock } from "./table";
 import { dialogBlock } from "./dialog";
 import { imageBlock } from "./image";
+import { titleBlock } from "./title";
 import { finishSentenceBlock } from "./finish-sentence";
 import { chooseDescriptionBlock } from "./choose-description";
 import { longAnswerBlock } from "./long-answer";
@@ -17,6 +18,7 @@ type Registry = {
 };
 
 export const BLOCK_REGISTRY: Registry = {
+  title: titleBlock,
   text: textBlock,
   list: listBlock,
   callout: calloutBlock,
@@ -30,6 +32,7 @@ export const BLOCK_REGISTRY: Registry = {
 
 /** Palette order — how block types appear in the studio's add menus. */
 export const BLOCK_ORDER: BlockType[] = [
+  "title",
   "text",
   "list",
   "callout",

@@ -151,6 +151,8 @@ function serializeBlock(block: LessonBlock): LessonBlock {
       );
     case "image":
       return prune(block, ["type", "path"]);
+    case "title":
+      return prune(block, ["type", "title"]);
     // Exercise blocks. Two things are deliberate here:
     //
     // `id` is in every keep-list — it is what stored answers are keyed by, so

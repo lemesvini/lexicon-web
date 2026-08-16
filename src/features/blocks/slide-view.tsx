@@ -18,14 +18,24 @@ function isWallpaper(block: LessonBlock): boolean {
 }
 
 /**
+ * Blocks that own the whole slide instead of sitting in its column: the
+ * wallpaper image and the title cover. Both are lifted out of the flow and
+ * stacked edge-to-edge in the order they were authored — which is what lets a
+ * title (colour "clear") be laid over a wallpaper photo.
+ */
+function isFullBleed(block: LessonBlock): boolean {
+  return isWallpaper(block) || block.type === "title";
+}
+
+/**
  * Read-only render of a whole slide — the presenter's slide surface (both the
  * projected display and the teacher's control device). Teacher-only blocks are
  * shown only when `audience` is "teacher".
  *
  * A slide may declare `layout: "row"` to place its blocks side by side (e.g.
- * text next to an image) instead of stacked, and may carry one image block
- * flagged `wallpaper` which is lifted out of the flow and rendered as a
- * full-bleed background with the remaining blocks laid on top. Wallpaper mode
+ * text next to an image) instead of stacked, and may carry full-bleed blocks — a
+ * `wallpaper` image, a title cover — which are lifted out of the flow and
+ * stacked edge-to-edge with the remaining blocks laid on top. Full-bleed mode
  * anchors to the nearest positioned ancestor, so the surfaces that mount
  * `SlideView` (present / control routes) wrap it in a `relative` container.
  */
@@ -39,8 +49,8 @@ export function SlideView({
   const visible = slide.blocks.filter(
     (b) => audience === "teacher" || !isTeacherOnly(b),
   );
-  const wallpaper = visible.find(isWallpaper);
-  const blocks = visible.filter((b) => !isWallpaper(b));
+  const layers = visible.filter(isFullBleed);
+  const blocks = visible.filter((b) => !isFullBleed(b));
   const isRow = slide.layout === "row";
 
   const header = slide.hideStage ? null : (
@@ -67,15 +77,19 @@ export function SlideView({
     </div>
   );
 
-  if (wallpaper) {
+  if (layers.length > 0) {
     return (
       <div className="absolute inset-0 z-0 overflow-hidden">
-        <div className="absolute inset-0">
-          <BlockView block={wallpaper} audience={audience} />
-        </div>
-        <div className="relative z-10 mx-auto flex h-full w-full max-w-5xl flex-col justify-center gap-8 px-16 py-16">
-          {blockList}
-        </div>
+        {layers.map((layer, i) => (
+          <div key={i} className="absolute inset-0">
+            <BlockView block={layer} audience={audience} />
+          </div>
+        ))}
+        {blocks.length > 0 && (
+          <div className="relative z-10 mx-auto flex h-full w-full max-w-5xl flex-col justify-center gap-8 px-16 py-16">
+            {blockList}
+          </div>
+        )}
       </div>
     );
   }
