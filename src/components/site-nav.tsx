@@ -6,6 +6,7 @@ import {
   GraduationCapIcon,
   HandshakeIcon,
   KeyRoundIcon,
+  LayoutDashboardIcon,
   LibraryIcon,
   LogOutIcon,
   NotebookPenIcon,
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/command";
 
 type LinkTo =
+  | "/"
   | "/studio"
   | "/modules"
   | "/students"
@@ -57,6 +59,7 @@ const COLUMN = {
 const COMPUTER_QUERY = "(pointer: fine) and (hover: hover)";
 
 const ADMIN_LINKS: readonly NavLink[] = [
+  { label: "Dashboard", to: "/", icon: LayoutDashboardIcon },
   { label: "Studio", to: "/studio", icon: PaletteIcon },
   { label: "Modules", to: "/modules", icon: LibraryIcon },
   { label: "Students", to: "/students", icon: UsersIcon },
