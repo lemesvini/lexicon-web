@@ -72,7 +72,10 @@ function View({ block }: { block: TitleBlock }) {
       style={{ containerType: "size", background, color: foreground }}
     >
       <div className="flex h-full w-full flex-col justify-between px-[7cqw] py-[8cqh]">
-        <header className="flex items-start justify-between gap-[6cqw] leading-none">
+        {/* Baseline, not top: the eyebrow and the wordmark are different faces
+            at different sizes, so aligning their boxes leaves the two texts
+            sitting on visibly different lines. */}
+        <header className="flex items-baseline justify-between gap-[6cqw] leading-none">
           {/* Sans, not the display face: the wordmark and the headline are the
               only two things on a cover that should read as display type, and a
               third one competes with both. */}
