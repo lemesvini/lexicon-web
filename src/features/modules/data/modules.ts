@@ -77,6 +77,24 @@ export async function listModuleOverview(): Promise<{
   return { modules, lessons };
 }
 
+/**
+ * The names a lesson can be filed under, in curriculum order.
+ *
+ * Names rather than ids because that is what a lesson stores — `lessons.module`
+ * is matched against `modules.name`, with no foreign key between them.
+ */
+export async function listModuleNames(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("modules")
+    .select("name")
+    .eq("is_active", true)
+    .order("position", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => (row.name ?? "").trim()).filter(Boolean);
+}
+
 export async function createModule(
   name: string,
   position: number,

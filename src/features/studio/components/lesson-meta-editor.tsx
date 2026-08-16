@@ -2,6 +2,14 @@ import * as React from "react";
 import { XIcon } from "lucide-react";
 import type { Lesson } from "@/lib/lessons";
 import { AddRowButton, AutoTextarea, DeleteRowButton } from "@/features/blocks";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { listModuleNames } from "@/features/modules/data/modules";
 
 type Meta = Omit<Lesson, "slides">;
 type ClassPlanRow = Meta["classPlan"][number];
@@ -23,8 +31,96 @@ function Field({
   );
 }
 
-const inputClass =
-  "w-full rounded-md border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring/30";
+const fieldClass = "w-full rounded-md border bg-background px-3 py-1.5 text-sm";
+
+const inputClass = `${fieldClass} outline-none focus:ring-2 focus:ring-ring/30`;
+
+// Radix's Select has no concept of an empty value, so "no module" needs a
+// sentinel — one no real module could be called.
+const NO_MODULE_VALUE = "__none__";
+
+// Sits level with the plain inputs beside it: same box, no shadow, and the
+// trigger's fixed height overridden under the very same variant, so that
+// tailwind-merge sees the conflict and drops it.
+const triggerClass = `${fieldClass} data-[size=default]:h-auto shadow-none dark:bg-background dark:hover:bg-background`;
+
+/**
+ * The lesson's module, picked from the ones that exist rather than typed.
+ *
+ * A lesson is filed by module *name* — `lessons.module` matched against
+ * `modules.name`, no foreign key — so a typo here doesn't fail loudly, it files
+ * the lesson somewhere no student is looking. A picker is the fix.
+ *
+ * It fetches its own list instead of taking one as a prop: nothing else on this
+ * card needs the modules, and the editor's route already has a load of its own
+ * to worry about.
+ */
+function ModuleSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (module: string) => void;
+}) {
+  const [names, setNames] = React.useState<string[]>([]);
+  const [failed, setFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    listModuleNames()
+      .then((moduleNames) => {
+        if (!cancelled) setNames(moduleNames);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // If the list can't be loaded, the field stays what it always was: free text.
+  // A picker with nothing in it would make the lesson uneditable.
+  if (failed) {
+    return (
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Module One"
+        className={inputClass}
+      />
+    );
+  }
+
+  const current = value.trim();
+
+  // The lesson's own module is always an option, even when it isn't in the list
+  // — it may have been renamed elsewhere or deactivated, and it is still loading
+  // on first paint. Dropping it would let a save quietly re-file the lesson.
+  const options =
+    current && !names.includes(current) ? [current, ...names] : names;
+
+  return (
+    <Select
+      value={current || NO_MODULE_VALUE}
+      onValueChange={(next) =>
+        onChange(next === NO_MODULE_VALUE ? "" : next)
+      }
+    >
+      <SelectTrigger className={triggerClass}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={NO_MODULE_VALUE}>No module</SelectItem>
+        {options.map((name) => (
+          <SelectItem key={name} value={name}>
+            {name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 function GrammarTags({
   tags,
@@ -149,11 +245,9 @@ export function LessonMetaEditor({
           />
         </Field>
         <Field label="Module">
-          <input
+          <ModuleSelect
             value={meta.module}
-            onChange={(e) => onChange({ module: e.target.value })}
-            placeholder="Module One"
-            className={inputClass}
+            onChange={(module) => onChange({ module })}
           />
         </Field>
         <Field label="Unit">

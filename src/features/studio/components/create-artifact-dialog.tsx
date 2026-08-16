@@ -33,7 +33,7 @@ export function CreateArtifactDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>What are you making?</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="mb-4 text-sm text-muted-foreground">
             All three are built from the same blocks — they differ in who reads
             them.
           </DialogDescription>
