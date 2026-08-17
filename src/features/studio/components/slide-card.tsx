@@ -17,6 +17,7 @@ import type { EditorSlide } from "../model";
 import type { StudioController } from "../use-studio-lesson";
 import { AddBlockMenu } from "./add-block-menu";
 import { BlockEditor } from "./block-editor";
+import { SlidePreview } from "./slide-preview";
 import {
   AddRowButton,
   AutoTextarea,
@@ -68,6 +69,7 @@ export function SlideCard({
   total,
   studio,
   teacherContent = true,
+  preview = true,
   blockTypes,
 }: {
   slide: EditorSlide;
@@ -76,6 +78,8 @@ export function SlideCard({
   studio: StudioController;
   /** Which block types this editor offers; defaults to all of them. */
   blockTypes?: BlockType[];
+  /** Draw the slide as the room will see it, above the fields that build it. */
+  preview?: boolean;
   /** Whether this document can carry the teacher's half: per-slide notes, blocks
    *  marked teacher-only, and the class-planning fields (duration, goal). All of
    *  it is stripped on write to a student document, so a student-facing editor
@@ -189,6 +193,15 @@ export function SlideCard({
           </span>
         </div>
       </header>
+
+      {/* The slide itself, above the fields that build it — one picture of the
+          whole thing rather than one per block, because what an author is
+          checking is how the blocks land together on the stage. */}
+      {preview && (
+        <div className="px-5 pt-4">
+          <SlidePreview slide={slide} />
+        </div>
+      )}
 
       {/* Blocks */}
       <div className="space-y-1 px-3 py-3">

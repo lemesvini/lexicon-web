@@ -10,6 +10,25 @@ import { StudioToolbar } from "./studio-toolbar";
 import type { StudioController } from "../use-studio-lesson";
 
 /**
+ * Whether slide previews are drawn, remembered across documents and sessions.
+ *
+ * A preference about how to work, not about what is being worked on — an author
+ * who wants the pictures wants them in every deck they open, and one editing on
+ * a laptop who wants the compact list wants that everywhere too.
+ */
+const PREVIEW_KEY = "studio:slide-preview";
+
+function readPreviewPreference(): boolean {
+  try {
+    return window.localStorage.getItem(PREVIEW_KEY) !== "off";
+  } catch {
+    // Private mode, blocked storage — the preference is a nicety, not a reason
+    // to fail to open the editor.
+    return true;
+  }
+}
+
+/**
  * The editing surface, minus anything that depends on what is being edited.
  *
  * Slides, blocks, the two rails and the JSON drawer are identical for a
@@ -49,6 +68,18 @@ export function StudioCanvas({
 
   const [activeKey, setActiveKey] = React.useState<string | null>(null);
   const [rawOpen, setRawOpen] = React.useState(false);
+  const [preview, setPreview] = React.useState(readPreviewPreference);
+
+  const togglePreview = () =>
+    setPreview((on) => {
+      const next = !on;
+      try {
+        window.localStorage.setItem(PREVIEW_KEY, next ? "on" : "off");
+      } catch {
+        // Not being able to remember it is not a reason not to do it.
+      }
+      return next;
+    });
 
   // The active slide, derived so a deleted/stale key falls back to the first
   // slide without an effect. `setActiveKey` is only ever driven by user intent.
@@ -84,6 +115,8 @@ export function StudioCanvas({
         canSave={canSave}
         onToggleRaw={() => setRawOpen((v) => !v)}
         rawOpen={rawOpen}
+        onTogglePreview={togglePreview}
+        previewOn={preview}
       >
         {actions}
       </StudioToolbar>
@@ -115,6 +148,7 @@ export function StudioCanvas({
                 total={lesson.slides.length}
                 studio={studio}
                 teacherContent={teacherContent}
+                preview={preview}
                 blockTypes={blockTypes}
               />
             </div>

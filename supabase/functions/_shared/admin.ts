@@ -36,13 +36,37 @@ export function json(body: unknown, status = 200): Response {
   });
 }
 
-/** A service_role client: bypasses RLS, so only ever used after requireAdmin. */
+/**
+ * A service_role client: bypasses RLS, so only ever used after requireAdmin.
+ *
+ * Two key names, because there are two generations of them. A project on the new
+ * API keys has `SUPABASE_SECRET_KEY` (an `sb_secret_…` string); one still on the
+ * legacy JWT keys has `SUPABASE_SERVICE_ROLE_KEY`. Both are injected by the
+ * platform, but a project that has *disabled* its legacy keys keeps the old
+ * variable while it is no longer worth anything — so prefer the new name and
+ * fall back, rather than picking one and hoping.
+ *
+ * Throwing when neither is set matters more than it looks: without it the empty
+ * key sails on to `auth.getUser()` below, which fails the way a bad JWT does, and
+ * the caller gets told their *session* expired — a misdiagnosis that sends you
+ * looking at the browser instead of the project's keys.
+ */
 export function serviceClient(): SupabaseClient {
-  return createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
+  const key =
+    Deno.env.get("SUPABASE_SECRET_KEY") ??
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+    "";
+
+  if (!key) {
+    throw new HttpError(
+      500,
+      "This function has no service key. Check that the project's API keys are enabled (Project Settings → API Keys).",
+    );
+  }
+
+  return createClient(Deno.env.get("SUPABASE_URL") ?? "", key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 }
 
 /** What the caller turned out to be, once their JWT and profile check out. */
@@ -70,7 +94,18 @@ export async function requireStaff(req: Request): Promise<Caller> {
 
   const { data: userData, error: userError } = await service.auth.getUser(jwt);
   if (userError || !userData.user) {
-    throw new HttpError(401, "Invalid or expired session.");
+    // The gateway verifies the JWT before this function is ever invoked
+    // (`verify_jwt` is on for all four), so by the time we get here the token has
+    // already been checked once and passed. A failure now therefore says more
+    // about this end than about the caller — most often a service key that the
+    // project no longer honours — so the underlying reason is carried out rather
+    // than flattened into "your session expired", which it almost never is.
+    throw new HttpError(
+      401,
+      userError
+        ? `Could not verify the caller: ${userError.message}`
+        : "Invalid or expired session.",
+    );
   }
 
   const { data: profile, error: profileError } = await service

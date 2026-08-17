@@ -127,15 +127,11 @@ function Editor({
 }) {
   const color = block.color ?? "jade";
 
+  // No preview here: the studio draws one above every block's fields now (see
+  // `BlockPreview`), and this block's was the model for it. A second copy would
+  // just be the same cover twice.
   return (
     <div className="space-y-2">
-      {/* The cover as the room will see it. A title block is almost all layout,
-          so the preview is the editor's main affordance — the fields below only
-          exist to feed it. */}
-      <div className="overflow-hidden rounded-lg border">
-        <View block={block} />
-      </div>
-
       <div className="space-y-1.5">
         <input
           value={block.eyebrow ?? ""}

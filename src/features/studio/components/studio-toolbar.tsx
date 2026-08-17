@@ -6,6 +6,8 @@ import {
   CloudUploadIcon,
   CopyIcon,
   DownloadIcon,
+  EyeIcon,
+  EyeOffIcon,
   FileJsonIcon,
   Loader2Icon,
 } from "lucide-react";
@@ -34,6 +36,8 @@ export function StudioToolbar({
   canSave = true,
   onToggleRaw,
   rawOpen,
+  onTogglePreview,
+  previewOn,
   children,
 }: {
   document: Lesson;
@@ -45,6 +49,8 @@ export function StudioToolbar({
   canSave?: boolean;
   onToggleRaw: () => void;
   rawOpen: boolean;
+  onTogglePreview: () => void;
+  previewOn: boolean;
   /** Kind-specific actions, rendered before the shared ones. */
   children?: React.ReactNode;
 }) {
@@ -95,6 +101,20 @@ export function StudioToolbar({
 
       <div className="ml-auto flex items-center gap-1.5">
         {children}
+
+        <Button
+          variant={previewOn ? "secondary" : "ghost"}
+          size="sm"
+          onClick={onTogglePreview}
+          title={
+            previewOn
+              ? "Slide previews shown — click to hide them"
+              : "Slide previews hidden — click to show them"
+          }
+        >
+          {previewOn ? <EyeIcon /> : <EyeOffIcon />}
+          Preview
+        </Button>
 
         <Button
           variant={rawOpen ? "secondary" : "ghost"}

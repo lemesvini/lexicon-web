@@ -15,6 +15,8 @@ idempotent, so re-running one is safe.
 - `0004_student_materials_and_homework.sql` — what the student reads, and the views they read it through
 - `0005_homework_exercises.sql` — homework the student answers and the teacher corrects
 - `0006_teachers.sql` — the teacher role, and students belonging to the teacher who created them
+- `0007_groups_and_finances.sql` — what each student pays, and the groups they're taught in
+- `0008_group_weekdays.sql` — the days of the week a group meets, which the dashboard reads as today's classes
 
 ## 2. Check you're still an admin
 
