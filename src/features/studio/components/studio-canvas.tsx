@@ -5,13 +5,14 @@ import type { BlockType } from "@/features/blocks";
 import { BlockPalette } from "./block-palette";
 import { RawJsonDrawer } from "./raw-json-drawer";
 import { SlideCard } from "./slide-card";
+import { SlideOutline } from "./slide-outline";
 import { StudioToolbar } from "./studio-toolbar";
 import type { StudioController } from "../use-studio-lesson";
 
 /**
  * The editing surface, minus anything that depends on what is being edited.
  *
- * Slides, blocks, the palette and the JSON drawer are identical for a
+ * Slides, blocks, the two rails and the JSON drawer are identical for a
  * presentation, a student material and a homework — they are all the same
  * document shape. The two things that aren't identical arrive as slots: the meta
  * editor above the slides (`meta`), and the kind-specific toolbar buttons
@@ -87,7 +88,17 @@ export function StudioCanvas({
         {actions}
       </StudioToolbar>
 
-      <div className="mx-auto flex w-full max-w-6xl gap-6 px-4 py-6">
+      <div className="mx-auto flex w-full max-w-[84rem] gap-6 px-4 py-6">
+        {/* Left rail: blocks */}
+        <BlockPalette
+          slides={lesson.slides}
+          activeKey={targetKey}
+          blockTypes={blockTypes}
+          onAddBlock={(type) => {
+            if (targetKey) studio.addBlock(targetKey, type);
+          }}
+        />
+
         {/* Canvas */}
         <div className="min-w-0 flex-1 space-y-4">
           {meta}
@@ -118,14 +129,10 @@ export function StudioCanvas({
           </button>
         </div>
 
-        {/* Right rail */}
-        <BlockPalette
+        {/* Right rail: slide outline */}
+        <SlideOutline
           slides={lesson.slides}
           activeKey={targetKey}
-          blockTypes={blockTypes}
-          onAddBlock={(type) => {
-            if (targetKey) studio.addBlock(targetKey, type);
-          }}
           onAddSlide={handleAddSlide}
           onSelectSlide={handleSelectSlide}
         />
