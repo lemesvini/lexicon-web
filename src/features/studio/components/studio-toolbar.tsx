@@ -81,7 +81,10 @@ export function StudioToolbar({
         </Link>
       </Button>
 
-      <div className="pointer-events-none flex flex-col w-full absolute items-center ">
+      {/* Anchored to the header box, not to its own static position: laid out
+          after the Library button, a `w-full` overlay starts at that button's
+          right edge and hangs off the page. */}
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
         <span className="font-display text-2xl leading-none text-primary">
           Studio
         </span>
