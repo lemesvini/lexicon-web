@@ -8,15 +8,28 @@
 // will move to src/schema/ as Zod schemas (a future shared package) — keep the
 // shapes framework-free so that extraction stays a copy-paste.
 
-export type TextBlock = {
+/**
+ * What every block carries, whatever its type.
+ *
+ * `audience: "teacher"` marks a block as the teacher's alone — an answer key, a
+ * profile card, a line to read out but not to project. The control device shows
+ * them, the projected slide does not, and no student document may contain one:
+ * `strip_teacher_content` (migration 0004) drops any block carrying the flag,
+ * regardless of type, which is why it belongs on the base rather than on the
+ * handful of block types that happened to need it first.
+ */
+export type BlockBase = {
+  audience?: "teacher";
+};
+
+export type TextBlock = BlockBase & {
   type: "text";
   label?: string;
   body: string;
   note?: string;
-  audience?: "teacher";
 };
 
-export type ListBlock = {
+export type ListBlock = BlockBase & {
   type: "list";
   label?: string;
   style: "numbered" | "bullet" | "checklist";
@@ -24,23 +37,22 @@ export type ListBlock = {
   note?: string;
 };
 
-export type CalloutBlock = {
+export type CalloutBlock = BlockBase & {
   type: "callout";
   icon?: string;
   color?: string;
   title: string;
   body: string;
-  audience?: "teacher";
 };
 
-export type TableBlock = {
+export type TableBlock = BlockBase & {
   type: "table";
   label?: string;
   note?: string;
   columns: { title: string; rows: string[] }[];
 };
 
-export type DialogBlock = {
+export type DialogBlock = BlockBase & {
   type: "dialog";
   label?: string;
   note?: string;
@@ -56,7 +68,7 @@ export type DialogBlock = {
  * out per screen, so the same cover holds its proportions on a 16:9 projector, a
  * 16:10 laptop and a phone in a student's material.
  */
-export type TitleBlock = {
+export type TitleBlock = BlockBase & {
   type: "title";
   /** Small line above the headline, e.g. "Lesson One". */
   eyebrow?: string;
@@ -71,7 +83,7 @@ export type TitleBlock = {
   hideWordmark?: boolean;
 };
 
-export type ImageBlock = {
+export type ImageBlock = BlockBase & {
   type: "image";
   label?: string;
   /** Object path inside the Supabase Storage bucket (see @/lib/storage). The
@@ -106,7 +118,7 @@ export type ImageBlock = {
 export const SENTENCE_BLANK = "___";
 
 /** A sentence with one word missing, chosen from a few options. */
-export type FinishSentenceBlock = {
+export type FinishSentenceBlock = BlockBase & {
   type: "finish-sentence";
   id: string;
   label?: string;
@@ -119,7 +131,7 @@ export type FinishSentenceBlock = {
 };
 
 /** A passage, and a set of descriptions of it — one of them right. */
-export type ChooseDescriptionBlock = {
+export type ChooseDescriptionBlock = BlockBase & {
   type: "choose-description";
   id: string;
   label?: string;
@@ -133,7 +145,7 @@ export type ChooseDescriptionBlock = {
 };
 
 /** A question answered in the student's own words. Marked by hand. */
-export type LongAnswerBlock = {
+export type LongAnswerBlock = BlockBase & {
   type: "long-answer";
   id: string;
   label?: string;

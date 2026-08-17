@@ -67,10 +67,9 @@ export function createBlock(type: BlockType): LessonBlock {
   return BLOCK_REGISTRY[type].create();
 }
 
-/** Teacher-only blocks (answer keys, profile cards) are hidden from students. */
+/** Teacher-only blocks (answer keys, profile cards) are hidden from students.
+ *  Any block type can be marked, matching `strip_teacher_content` in the
+ *  database, which drops a flagged block whatever its type. */
 export function isTeacherOnly(block: LessonBlock): boolean {
-  return (
-    (block.type === "text" || block.type === "callout") &&
-    block.audience === "teacher"
-  );
+  return block.audience === "teacher";
 }

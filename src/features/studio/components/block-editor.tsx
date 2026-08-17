@@ -9,14 +9,9 @@ import { cn } from "@/lib/utils";
 import {
   BLOCK_REGISTRY,
   IconAction,
+  isTeacherOnly,
   type BlockEditorProps,
 } from "@/features/blocks";
-
-/** Block types that carry an optional `audience: "teacher"` flag. */
-type AudienceBlock = Extract<LessonBlock, { audience?: "teacher" }>;
-function hasAudience(block: LessonBlock): block is AudienceBlock {
-  return block.type === "text" || block.type === "callout";
-}
 
 type ImageBlock = Extract<LessonBlock, { type: "image" }>;
 function isImage(block: LessonBlock): block is ImageBlock {
@@ -60,7 +55,7 @@ export function BlockEditor({
 }) {
   const meta = BLOCK_REGISTRY[block.type].meta;
   const Icon = meta.icon;
-  const teacherOnly = hasAudience(block) && block.audience === "teacher";
+  const teacherOnly = isTeacherOnly(block);
 
   return (
     <div
@@ -102,7 +97,7 @@ export function BlockEditor({
               Wallpaper
             </button>
           )}
-          {teacherContent && hasAudience(block) && (
+          {teacherContent && (
             <button
               type="button"
               onClick={() =>
