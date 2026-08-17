@@ -29,8 +29,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TempPasswordPanel } from "@/features/students/components/temp-password-panel";
-import { createStudent, type ModuleOption } from "@/features/students/data/students";
+import { TempPasswordPanel } from "@/components/temp-password-panel";
+import {
+  createStudent,
+  type ModuleOption,
+  type TeacherOption,
+} from "@/features/students/data/students";
 
 // Radix's Select has no concept of an empty value, so "no module yet" needs a
 // sentinel of its own.
@@ -41,6 +45,7 @@ const schema = z.object({
   email: z.email("Enter a valid email."),
   phone: z.string().trim().optional(),
   currentModuleId: z.string().optional(),
+  teacherId: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -55,9 +60,19 @@ type FormValues = z.infer<typeof schema>;
  */
 export function AddStudentDialog({
   modules,
+  teachers,
+  currentTeacherId,
   onCreated,
 }: {
   modules: ModuleOption[];
+  /**
+   * Who the student can belong to. One entry (or none) for a teacher — they can
+   * only add to their own roster, so the field isn't shown at all. See
+   * `listTeacherOptions`.
+   */
+  teachers: TeacherOption[];
+  /** The signed-in user, who the picker starts on. */
+  currentTeacherId: string;
   /** Called after a successful create, so the roster can reload. */
   onCreated: () => void;
 }) {
@@ -67,6 +82,8 @@ export function AddStudentDialog({
   >(null);
   const [error, setError] = React.useState<string | null>(null);
 
+  const canPickTeacher = teachers.length > 1;
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -74,6 +91,7 @@ export function AddStudentDialog({
       email: "",
       phone: "",
       currentModuleId: NO_MODULE_VALUE,
+      teacherId: currentTeacherId,
     },
   });
 
@@ -99,6 +117,9 @@ export function AddStudentDialog({
           values.currentModuleId && values.currentModuleId !== NO_MODULE_VALUE
             ? values.currentModuleId
             : null,
+        // Only ever read for an admin — the function ignores it otherwise and
+        // files the student under whoever is calling.
+        teacherId: canPickTeacher ? values.teacherId || null : null,
       });
       setCreated({ email: values.email, password: tempPassword });
     } catch (err) {
@@ -217,6 +238,36 @@ export function AddStudentDialog({
                   </FormItem>
                 )}
               />
+
+              {canPickTeacher && (
+                <FormField
+                  control={form.control}
+                  name="teacherId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Teacher</FormLabel>
+                      <Select
+                        value={field.value || currentTeacherId}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Pick a teacher" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {teachers.map((teacher) => (
+                            <SelectItem key={teacher.id} value={teacher.id}>
+                              {teacher.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {error && <p className="text-sm text-destructive">{error}</p>}
 

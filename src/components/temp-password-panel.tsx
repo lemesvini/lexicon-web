@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
  * Shows a freshly issued temporary password, once.
  *
  * Nothing stores it in readable form, so this panel is the only chance to get it
- * across to the student — which is why it says so, and why copying is one click.
+ * across to whoever it belongs to — which is why it says so, and why copying is
+ * one click. Used for both students and teachers: the accounts differ, the
+ * hand-over doesn't.
  */
 export function TempPasswordPanel({
   email,
@@ -48,9 +50,9 @@ export function TempPasswordPanel({
       </Button>
 
       <p className="text-xs text-muted-foreground">
-        Send these to the student. This password won’t be shown again — if it’s
-        lost, generate a new one from the roster. They’ll be asked to choose
-        their own password the first time they sign in.
+        Send these across. This password won’t be shown again — if it’s lost,
+        generate a new one from this page. They’ll be asked to choose their own
+        password the first time they sign in.
       </p>
     </div>
   );

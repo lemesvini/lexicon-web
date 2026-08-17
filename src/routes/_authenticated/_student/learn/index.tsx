@@ -69,7 +69,7 @@ function LearnPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <SiteNav />
+      <SiteNav align="narrow" />
       <main className="mx-auto w-full max-w-3xl space-y-6 px-4 py-10">
         <div>
           <p className="font-display text-3xl tracking-wide text-foreground">

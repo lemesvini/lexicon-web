@@ -45,14 +45,23 @@ export function serviceClient(): SupabaseClient {
   );
 }
 
+/** What the caller turned out to be, once their JWT and profile check out. */
+export type Caller = {
+  service: SupabaseClient;
+  callerId: string;
+  role: "admin" | "teacher";
+  isAdmin: boolean;
+};
+
 /**
- * Verifies the caller's JWT and that their profile carries the admin role.
- * Throws {@link HttpError} otherwise. Returns the service client plus the
- * caller's id, which is what the callers need next.
+ * Verifies the caller's JWT and that their profile is staff — an admin, or a
+ * teacher who is still active. Throws {@link HttpError} otherwise.
+ *
+ * The role comes back with it, because the callers that accept both need to
+ * treat them differently: a teacher acts only on their own students, an admin on
+ * anyone's. See supabase/migrations/0006_teachers.sql.
  */
-export async function requireAdmin(
-  req: Request,
-): Promise<{ service: SupabaseClient; callerId: string }> {
+export async function requireStaff(req: Request): Promise<Caller> {
   const authHeader = req.headers.get("Authorization") ?? "";
   const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
   if (!jwt) throw new HttpError(401, "Missing authorization header.");
@@ -66,16 +75,31 @@ export async function requireAdmin(
 
   const { data: profile, error: profileError } = await service
     .from("profiles")
-    .select("role")
+    .select("role, status")
     .eq("id", userData.user.id)
     .maybeSingle();
 
   if (profileError) throw new HttpError(500, profileError.message);
-  if (profile?.role !== "admin") {
-    throw new HttpError(403, "Only an admin can do this.");
+
+  const role = profile?.role;
+  const isActiveTeacher = role === "teacher" && profile?.status !== "inactive";
+  if (role !== "admin" && !isActiveTeacher) {
+    throw new HttpError(403, "Only a teacher can do this.");
   }
 
-  return { service, callerId: userData.user.id };
+  return {
+    service,
+    callerId: userData.user.id,
+    role: role === "admin" ? "admin" : "teacher",
+    isAdmin: role === "admin",
+  };
+}
+
+/** As {@link requireStaff}, but for the things only the admin may do. */
+export async function requireAdmin(req: Request): Promise<Caller> {
+  const caller = await requireStaff(req);
+  if (!caller.isAdmin) throw new HttpError(403, "Only an admin can do this.");
+  return caller;
 }
 
 // Ambiguous glyphs (0/O, 1/l/I) are left out: this password gets read off a

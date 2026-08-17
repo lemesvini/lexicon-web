@@ -4,7 +4,8 @@ import type { Profile } from '@/lib/profile'
 
 export type AuthContextState = {
   session: Session | null
-  /** The signed-in user's row in `profiles`; carries their admin/student role. */
+  /** The signed-in user's row in `profiles`; carries their role — admin,
+   *  teacher or student. */
   profile: Profile | null
   isLoading: boolean
   signOut: () => Promise<void>

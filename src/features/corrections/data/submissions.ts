@@ -1,10 +1,16 @@
-// Admin-side access to what students have handed in.
+// Teacher-side access to what students have handed in.
 //
-// Reads and grading go straight to `homework_submissions` under the admin RLS
-// policy (see supabase/migrations/0005_homework_exercises.sql). There is no RPC
-// on this side and there doesn't need to be: the functions on the student's side
-// exist to stop them writing columns that aren't theirs, and an admin is trusted
-// with every column on the row.
+// Reads and grading go straight to `homework_submissions` under the staff RLS
+// policy (see supabase/migrations/0005_homework_exercises.sql, rescoped by
+// 0006). There is no RPC on this side and there doesn't need to be: the
+// functions on the student's side exist to stop them writing columns that aren't
+// theirs, and whoever teaches a student is trusted with every column on their
+// row.
+//
+// The queue below is not filtered by teacher here, and shouldn't be: a
+// submission reaches whoever the student belongs to, and the admin, because the
+// policy says so. Adding a client-side filter would only be a second, weaker
+// copy of that rule.
 
 import { supabase } from "@/lib/supabase";
 import type { AnswerValue, Lesson } from "@/lib/lessons";

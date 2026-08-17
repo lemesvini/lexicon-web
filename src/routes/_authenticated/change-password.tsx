@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
-import { getCurrentProfile, mustChangePassword } from "@/lib/profile";
+import { getCurrentProfile, isStaff, mustChangePassword } from "@/lib/profile";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/change-password")({
@@ -68,7 +68,7 @@ function ChangePasswordPage() {
 
     const profile = await getCurrentProfile().catch(() => null);
     setIsSubmitting(false);
-    navigate({ to: profile?.role === "admin" ? "/" : "/learn" });
+    navigate({ to: isStaff(profile) ? "/" : "/learn" });
   }
 
   return (

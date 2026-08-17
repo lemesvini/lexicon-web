@@ -23,20 +23,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TempPasswordPanel } from "@/features/students/components/temp-password-panel";
+import { TempPasswordPanel } from "@/components/temp-password-panel";
 import {
   resetStudentPassword,
   setCurrentModule,
   setStudentStatus,
+  setStudentTeacher,
   type ModuleOption,
   type StudentRow,
+  type TeacherOption,
 } from "@/features/students/data/students";
 
 const NO_MODULE_VALUE = "none";
 
 /**
- * Per-row admin actions: activate/deactivate, move to another module, or issue
- * a new temporary password.
+ * Per-row actions: activate/deactivate, move to another module, or issue a new
+ * temporary password — plus, for the admin, hand the student to another teacher.
  *
  * The dialogs are siblings of the menu rather than children of it — a dialog
  * rendered inside a DropdownMenuItem is unmounted the moment the menu closes.
@@ -44,10 +46,13 @@ const NO_MODULE_VALUE = "none";
 export function StudentRowActions({
   student,
   modules,
+  teachers,
   onChanged,
 }: {
   student: StudentRow;
   modules: ModuleOption[];
+  /** Empty unless the caller is the admin: a teacher can't hand a student on. */
+  teachers: TeacherOption[];
   /** Called after any change lands, so the roster can reload. */
   onChanged: () => void;
 }) {
@@ -56,6 +61,8 @@ export function StudentRowActions({
   const [moduleValue, setModuleValue] = React.useState(
     student.moduleId ?? NO_MODULE_VALUE,
   );
+  const [teacherDialogOpen, setTeacherDialogOpen] = React.useState(false);
+  const [teacherValue, setTeacherValue] = React.useState(student.teacherId ?? "");
   const [newPassword, setNewPassword] = React.useState<string | null>(null);
 
   const run = async (action: () => Promise<void>) => {
@@ -85,6 +92,12 @@ export function StudentRowActions({
         moduleValue === NO_MODULE_VALUE ? null : moduleValue,
       );
       setModuleDialogOpen(false);
+    });
+
+  const saveTeacher = () =>
+    run(async () => {
+      if (teacherValue) await setStudentTeacher(student.id, teacherValue);
+      setTeacherDialogOpen(false);
     });
 
   const resetPassword = async () => {
@@ -118,6 +131,17 @@ export function StudentRowActions({
             >
               Change module
             </DropdownMenuItem>
+            {/* Only worth offering once there is somewhere to move them to. */}
+            {teachers.length > 1 && (
+              <DropdownMenuItem
+                onSelect={() => {
+                  setTeacherValue(student.teacherId ?? "");
+                  setTeacherDialogOpen(true);
+                }}
+              >
+                Change teacher
+              </DropdownMenuItem>
+            )}
             {/* Disabled rather than alerting on click: a native dialog fired
                 from `onSelect` races the menu's own close. */}
             <DropdownMenuItem
@@ -164,6 +188,42 @@ export function StudentRowActions({
               className="w-full"
               disabled={busy}
               onClick={() => void saveModule()}
+            >
+              {busy ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={teacherDialogOpen} onOpenChange={setTeacherDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change teacher</DialogTitle>
+            <DialogDescription>
+              {student.name} moves to this teacher’s roster, and their homework
+              to that teacher’s corrections queue. Their module and everything
+              they’ve already handed in stay as they are.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-4">
+            <Select value={teacherValue} onValueChange={setTeacherValue}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Pick a teacher" />
+              </SelectTrigger>
+              <SelectContent>
+                {teachers.map((teacher) => (
+                  <SelectItem key={teacher.id} value={teacher.id}>
+                    {teacher.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button
+              className="w-full"
+              disabled={busy || !teacherValue}
+              onClick={() => void saveTeacher()}
             >
               {busy ? "Saving…" : "Save"}
             </Button>

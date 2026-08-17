@@ -13,14 +13,14 @@ import {
   handle,
   HttpError,
   json,
-  requireAdmin,
+  requireStaff,
 } from "../_shared/admin.ts";
 
 const bodySchema = z.object({ studentId: z.uuid() });
 
 Deno.serve(
   handle(async (req) => {
-    const { service } = await requireAdmin(req);
+    const { service, callerId, isAdmin } = await requireStaff(req);
 
     const parsed = bodySchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
@@ -29,12 +29,19 @@ Deno.serve(
 
     const { data: student, error: studentError } = await service
       .from("students")
-      .select("id, email, user_id")
+      .select("id, email, user_id, teacher_id")
       .eq("id", parsed.data.studentId)
       .maybeSingle();
 
     if (studentError) throw new HttpError(500, studentError.message);
     if (!student) throw new HttpError(404, "Student not found.");
+    // The query above runs on the service client, which bypasses RLS — so the
+    // check the roster's policies would have made has to be made here instead.
+    // Reported as a 404 rather than a 403: whether another teacher has a student
+    // by that id is not this caller's business.
+    if (!isAdmin && student.teacher_id !== callerId) {
+      throw new HttpError(404, "Student not found.");
+    }
     if (!student.user_id) {
       throw new HttpError(409, "This student has no account yet.");
     }

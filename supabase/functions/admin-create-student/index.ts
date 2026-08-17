@@ -1,5 +1,10 @@
 // admin-create-student: adds a student to the roster and gives them an account.
 //
+// Called by any staff account. The student belongs to whoever created them (see
+// `students.teacher_id` in supabase/migrations/0006_teachers.sql), which is what
+// keeps one teacher's roster and corrections queue out of another's; an admin
+// may name a different teacher instead, and sees everyone regardless.
+//
 // Deliberately sends no email. Supabase's built-in SMTP only delivers to the
 // project's own team members and is capped at 2 messages an hour, so an invite
 // email would silently fail for real students. Instead the account is created
@@ -19,7 +24,7 @@ import {
   handle,
   HttpError,
   json,
-  requireAdmin,
+  requireStaff,
 } from "../_shared/admin.ts";
 
 const bodySchema = z.object({
@@ -27,17 +32,36 @@ const bodySchema = z.object({
   email: z.email("Enter a valid email.").transform((value) => value.trim().toLowerCase()),
   phone: z.string().trim().optional(),
   currentModuleId: z.uuid().nullish(),
+  // Admin only: which teacher the student belongs to. Ignored for a teacher,
+  // who can only ever add to their own roster.
+  teacherId: z.uuid().nullish(),
 });
 
 Deno.serve(
   handle(async (req) => {
-    const { service, callerId } = await requireAdmin(req);
+    const { service, callerId, isAdmin } = await requireStaff(req);
 
     const parsed = bodySchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       throw new HttpError(400, parsed.error.issues[0]?.message ?? "Invalid request.");
     }
-    const { fullName, email, phone, currentModuleId } = parsed.data;
+    const { fullName, email, phone, currentModuleId, teacherId } = parsed.data;
+
+    // A teacher's students are their own, full stop — the field is only read
+    // for an admin, who is adding on someone else's behalf.
+    const owner = isAdmin ? (teacherId ?? callerId) : callerId;
+
+    if (isAdmin && teacherId && teacherId !== callerId) {
+      const { data: teacher, error: teacherError } = await service
+        .from("profiles")
+        .select("role")
+        .eq("id", teacherId)
+        .maybeSingle();
+      if (teacherError) throw new HttpError(500, teacherError.message);
+      if (teacher?.role !== "teacher" && teacher?.role !== "admin") {
+        throw new HttpError(400, "That teacher no longer exists.");
+      }
+    }
 
     const { data: existing, error: existingError } = await service
       .from("students")
@@ -78,9 +102,12 @@ Deno.serve(
           phone: phone || null,
           status: "active",
           current_module_id: currentModuleId ?? null,
+          teacher_id: owner,
           created_by: callerId,
         })
-        .select("id, full_name, email, phone, status, current_module_id, created_at")
+        .select(
+          "id, full_name, email, phone, status, current_module_id, teacher_id, created_at",
+        )
         .single();
 
       if (insertError) throw new HttpError(500, insertError.message);

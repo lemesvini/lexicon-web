@@ -3,12 +3,8 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { DataTableSortableHeader as SortableHeader } from "@/components/data-table-sortable-header";
 import { multiSelectFilter } from "@/lib/data-table";
-import { StudentRowActions } from "@/features/students/components/student-row-actions";
-import type {
-  ModuleOption,
-  StudentRow,
-  TeacherOption,
-} from "@/features/students/data/students";
+import { TeacherRowActions } from "@/features/teachers/components/teacher-row-actions";
+import type { TeacherRow } from "@/features/teachers/data/teachers";
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
 
@@ -18,30 +14,26 @@ function formatDate(iso: string): string {
   return Number.isNaN(date.getTime()) ? "—" : dateFormat.format(date);
 }
 
-/**
- * A factory rather than a constant (unlike `classesColumns`) because the row
- * actions need the module list and a way to tell the page to reload.
- *
- * The teacher column is admin-only: on a teacher's own roster every row would
- * name them, which is a column that costs width and says nothing.
- */
-export function studentsColumns({
-  modules,
-  teachers,
-  isAdmin,
+/** A factory, like `studentsColumns`, because the row actions need a way to tell
+ *  the page to reload. */
+export function teachersColumns({
   onChanged,
 }: {
-  modules: ModuleOption[];
-  teachers: TeacherOption[];
-  isAdmin: boolean;
   onChanged: () => void;
-}): ColumnDef<StudentRow>[] {
+}): ColumnDef<TeacherRow>[] {
   return [
     {
       accessorKey: "name",
       header: ({ column }) => <SortableHeader column={column} label="Name" />,
       cell: ({ row }) => (
-        <span className="font-medium">{row.getValue("name")}</span>
+        <span className="flex items-center gap-2">
+          <span className="font-medium">{row.getValue("name") || "—"}</span>
+          {row.original.isAdmin && (
+            <Badge variant="secondary" className="font-normal">
+              Admin
+            </Badge>
+          )}
+        </span>
       ),
     },
     {
@@ -52,35 +44,12 @@ export function studentsColumns({
       ),
     },
     {
-      accessorKey: "module",
-      header: ({ column }) => <SortableHeader column={column} label="Module" />,
-      // Backs the toolbar's module dropdown, which sets an array of names.
-      filterFn: multiSelectFilter,
-      cell: ({ row }) => {
-        const module = row.getValue<string>("module");
-        return module === "—" ? (
-          <span className="text-muted-foreground">—</span>
-        ) : (
-          <Badge variant="outline">{module}</Badge>
-        );
-      },
+      accessorKey: "studentCount",
+      header: ({ column }) => <SortableHeader column={column} label="Students" />,
+      cell: ({ row }) => (
+        <span className="tabular-nums">{row.getValue("studentCount")}</span>
+      ),
     },
-    ...(isAdmin
-      ? [
-          {
-            accessorKey: "teacher",
-            header: ({ column }) => (
-              <SortableHeader column={column} label="Teacher" />
-            ),
-            filterFn: multiSelectFilter,
-            cell: ({ row }) => (
-              <span className="text-muted-foreground">
-                {row.getValue<string>("teacher")}
-              </span>
-            ),
-          } satisfies ColumnDef<StudentRow>,
-        ]
-      : []),
     {
       id: "status",
       // The accessor is the display label, not the raw value: the faceted filter
@@ -111,12 +80,7 @@ export function studentsColumns({
       header: () => <span className="sr-only">Actions</span>,
       enableSorting: false,
       cell: ({ row }) => (
-        <StudentRowActions
-          student={row.original}
-          modules={modules}
-          teachers={isAdmin ? teachers : []}
-          onChanged={onChanged}
-        />
+        <TeacherRowActions teacher={row.original} onChanged={onChanged} />
       ),
     },
   ];

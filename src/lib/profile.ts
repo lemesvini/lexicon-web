@@ -2,18 +2,37 @@
 // land in the teacher app or the student app.
 //
 // See supabase/migrations/0002_students_and_access.sql: every auth user has
-// exactly one `profiles` row, and RLS lets them read their own.
+// exactly one `profiles` row, and RLS lets them read their own. 0006 adds the
+// third role: a teacher gets the same app as the admin minus /teachers, and sees
+// only the students they created.
 
 import { supabase } from "@/lib/supabase";
 
-export type Role = "admin" | "student";
+export type Role = "admin" | "teacher" | "student";
 
 export type Profile = {
   id: string;
   email: string;
   fullName: string;
   role: Role;
+  /** Only meaningful for a teacher: an inactive one is locked out of the app. */
+  status: "active" | "inactive";
 };
+
+/**
+ * Whether this profile can use the teacher app at all. The client-side mirror of
+ * `public.is_staff()` (0006) — the database is what enforces it, this is only
+ * what decides which app to render, so keep the two in step.
+ */
+export function isStaff(profile: Profile | null | undefined): boolean {
+  if (!profile) return false;
+  if (profile.role === "admin") return true;
+  return profile.role === "teacher" && profile.status === "active";
+}
+
+function toRole(raw: unknown): Role {
+  return raw === "admin" || raw === "teacher" ? raw : "student";
+}
 
 /**
  * Cached because the route guards need the role, and TanStack Router's
@@ -40,7 +59,7 @@ supabase.auth.onAuthStateChange((event) => {
 async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, email, full_name, role")
+    .select("id, email, full_name, role, status")
     .eq("id", userId)
     .maybeSingle();
 
@@ -51,7 +70,8 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
     id: data.id,
     email: data.email ?? "",
     fullName: data.full_name ?? "",
-    role: data.role === "admin" ? "admin" : "student",
+    role: toRole(data.role),
+    status: data.status === "inactive" ? "inactive" : "active",
   };
 }
 

@@ -1,10 +1,15 @@
-// Admin-side access to the student roster.
+// Teacher-side access to the student roster.
 //
-// Reads and roster edits go straight to Postgres through RLS (admins have full
-// access, students see only their own row — see
-// supabase/migrations/0002_students_and_access.sql). Anything that touches an
-// auth account goes through an Edge Function instead, because that needs the
-// service_role key and this app runs entirely in the browser.
+// Reads and roster edits go straight to Postgres through RLS. There is no
+// filtering to do here: since 0006 a student belongs to a teacher, and the
+// policies say a teacher sees only their own students, the admin sees everyone,
+// and a student sees only themselves (see
+// supabase/migrations/0006_teachers.sql). The same `listStudents()` therefore
+// returns a different roster depending on who is asking, which is the point.
+//
+// Anything that touches an auth account goes through an Edge Function instead,
+// because that needs the service_role key and this app runs entirely in the
+// browser.
 
 import { supabase } from "@/lib/supabase";
 
@@ -12,6 +17,12 @@ export type StudentStatus = "active" | "inactive";
 
 /** A module a student can be placed in. */
 export type ModuleOption = {
+  id: string;
+  name: string;
+};
+
+/** A teacher a student can belong to. Only the admin is shown the choice. */
+export type TeacherOption = {
   id: string;
   name: string;
 };
@@ -28,11 +39,25 @@ export type StudentRow = {
   moduleId: string | null;
   /** Module name, or "—" so the faceted filter has a value to group on. */
   module: string;
+  teacherId: string | null;
+  /** Teacher name, or "—" for the same reason as `module`. Only shown to the
+   *  admin — a teacher's roster is all their own, so the column would say the
+   *  same thing on every row. */
+  teacher: string;
   createdAt: string;
 };
 
-/** Placeholder used in the module column when a student has none assigned. */
+/** Placeholder used in the module and teacher columns when there is none. */
 export const NO_MODULE = "—";
+export const NO_TEACHER = "—";
+
+type Embedded<T> = T | T[] | null;
+
+/** PostgREST returns an embedded to-one either as an object or as a
+ *  one-element array, depending on how it resolves the relationship. */
+function one<T>(embedded: Embedded<T>): T | undefined {
+  return Array.isArray(embedded) ? embedded[0] : (embedded ?? undefined);
+}
 
 type StudentRecord = {
   id: string;
@@ -42,15 +67,15 @@ type StudentRecord = {
   phone: string | null;
   status: string | null;
   current_module_id: string | null;
+  teacher_id: string | null;
   created_at: string | null;
-  module: { name?: string } | { name?: string }[] | null;
+  module: Embedded<{ name?: string }>;
+  teacher: Embedded<{ full_name?: string | null; email?: string | null }>;
 };
 
 function toStudentRow(record: StudentRecord): StudentRow {
-  // PostgREST returns an embedded to-one either as an object or as a
-  // one-element array, depending on how it resolves the relationship.
-  const embedded = record.module;
-  const module = Array.isArray(embedded) ? embedded[0] : embedded;
+  const module = one(record.module);
+  const teacher = one(record.teacher);
 
   return {
     id: record.id,
@@ -61,17 +86,21 @@ function toStudentRow(record: StudentRecord): StudentRow {
     status: record.status === "inactive" ? "inactive" : "active",
     moduleId: record.current_module_id,
     module: module?.name ?? NO_MODULE,
+    teacherId: record.teacher_id,
+    // Falls back to the email so a teacher who never filled in a name still
+    // identifies the rows they own.
+    teacher: teacher?.full_name || teacher?.email || NO_TEACHER,
     createdAt: record.created_at ?? "",
   };
 }
 
 const SELECT_COLUMNS =
-  "id, user_id, full_name, email, phone, status, current_module_id, created_at, module:modules (name)";
+  "id, user_id, full_name, email, phone, status, current_module_id, teacher_id, created_at, module:modules (name), teacher:profiles (full_name, email)";
 
 /**
- * Every student on the roster, active and inactive alike, newest first. The
- * status filter is a toolbar facet rather than a query parameter — an inactive
- * student should be one click away, not invisible.
+ * Every student the caller is allowed to see, active and inactive alike, newest
+ * first. The status filter is a toolbar facet rather than a query parameter — an
+ * inactive student should be one click away, not invisible.
  */
 export async function listStudents(): Promise<StudentRow[]> {
   const { data, error } = await supabase
@@ -96,11 +125,36 @@ export async function listModules(): Promise<ModuleOption[]> {
   return (data ?? []).map((row) => ({ id: row.id, name: row.name ?? "" }));
 }
 
+/**
+ * Who a new student can be handed to. Empty for a teacher — the RLS on
+ * `profiles` only lets them read their own row, and they can only ever add to
+ * their own roster anyway, so the caller treats an empty list as "no choice to
+ * make" rather than as an error.
+ */
+export async function listTeacherOptions(): Promise<TeacherOption[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, role, status")
+    .in("role", ["admin", "teacher"])
+    .eq("status", "active")
+    .order("full_name", { ascending: true });
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    name: row.full_name || row.email || "Unnamed teacher",
+  }));
+}
+
 export type NewStudent = {
   fullName: string;
   email: string;
   phone?: string;
   currentModuleId?: string | null;
+  /** Admin only: which teacher they belong to. Ignored for a teacher, who can
+   *  only add to their own roster. */
+  teacherId?: string | null;
 };
 
 /**
@@ -156,6 +210,24 @@ async function edgeErrorMessage(error: unknown): Promise<string> {
   }
 
   return (error as Error).message ?? "Something went wrong.";
+}
+
+/**
+ * Hands a student to another teacher. Admin only in practice — the write policy
+ * lets a teacher set `teacher_id` to themselves and nothing else, so a teacher
+ * calling this would only ever be moving a student off their own roster, and the
+ * row action isn't offered to them.
+ */
+export async function setStudentTeacher(
+  studentId: string,
+  teacherId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("students")
+    .update({ teacher_id: teacherId })
+    .eq("id", studentId);
+
+  if (error) throw new Error(error.message);
 }
 
 export async function setStudentStatus(

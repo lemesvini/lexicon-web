@@ -6,12 +6,15 @@ and step 3.
 
 ## 1. Run the migrations
 
-Paste each file in `migrations/` into the SQL editor, oldest first. Both are
+Paste each file in `migrations/` into the SQL editor, oldest first. They are all
 idempotent, so re-running one is safe.
 
 - `0001_create_lessons.sql` — the lesson library (already applied on existing projects)
 - `0002_students_and_access.sql` — roles, modules, students, and the RLS that isolates them
 - `0003_module_management.sql` — the RPCs behind the Modules screen (rename, delete, move lessons)
+- `0004_student_materials_and_homework.sql` — what the student reads, and the views they read it through
+- `0005_homework_exercises.sql` — homework the student answers and the teacher corrects
+- `0006_teachers.sql` — the teacher role, and students belonging to the teacher who created them
 
 ## 2. Check you're still an admin
 
@@ -30,10 +33,22 @@ page:
 update public.profiles set role = 'admin' where email = 'you@example.com';
 ```
 
-This is also how you promote a new teacher later. The signup trigger never reads
-a role from user metadata (that would let anyone hitting the public signup
-endpoint make themselves an admin), so promotion is always a deliberate SQL
-statement.
+The signup trigger never reads a role from user metadata (that would let anyone
+hitting the public signup endpoint make themselves an admin), so a role is always
+either set by a deliberate SQL statement or by an Edge Function holding the
+`service_role` key.
+
+Since `0006` there are three roles. Adding a teacher is a page in the app now
+(**Teachers**, admin only), but the SQL equivalent is:
+
+```sql
+update public.profiles set role = 'teacher' where email = 'them@example.com';
+```
+
+Everything a teacher can reach is what an admin can reach minus that page. What
+differs is scope: `students.teacher_id` says who a student belongs to, and a
+teacher's roster and corrections queue are limited to their own. The curriculum —
+lessons, modules, materials, homework — is shared by everyone.
 
 ## 3. Close public signup
 
@@ -66,6 +81,8 @@ Then, and after any change to `functions/`:
 ```sh
 supabase functions deploy admin-create-student
 supabase functions deploy admin-reset-student-password
+supabase functions deploy admin-create-teacher
+supabase functions deploy admin-reset-teacher-password
 ```
 
 No secrets to configure: `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are

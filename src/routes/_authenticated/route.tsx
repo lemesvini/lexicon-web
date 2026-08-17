@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 import { supabase } from '@/lib/supabase'
 import { mustChangePassword } from '@/lib/profile'
+import { NavSidebarProvider } from '@/components/nav-sidebar'
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ location }) => {
@@ -22,5 +23,12 @@ export const Route = createFileRoute('/_authenticated')({
       throw redirect({ to: '/change-password' })
     }
   },
-  component: () => <Outlet />,
+  // The sidebar is mounted here rather than inside `SiteNav`, because not every
+  // page renders that header — and the left edge should open the menu on all of
+  // them, header or not.
+  component: () => (
+    <NavSidebarProvider>
+      <Outlet />
+    </NavSidebarProvider>
+  ),
 })
