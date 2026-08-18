@@ -1,8 +1,9 @@
 import { TextSelectIcon } from "lucide-react";
 import type { ChooseDescriptionBlock } from "@/lib/lessons";
+import { cn } from "@/lib/utils";
 import type { BlockAnswerProps, BlockDefinition, BlockViewProps } from "../types";
 import { newBlockId } from "../block-id";
-import { renderInline } from "../inline-md";
+import { Markdown } from "../markdown";
 import { BlockLabel, BlockNote } from "../view-ui";
 import { AutoTextarea } from "../editor-ui/auto-textarea";
 import {
@@ -13,12 +14,25 @@ import {
 } from "../editor-ui/primitives";
 import { AnswerKeyMark, OptionButton, optionState } from "../exercise-ui";
 
+/** Monospace treatment for the passage. Slightly smaller because Monaco runs
+ *  wide, so matched point sizes read as a jump in scale. */
+const MONO_CLASS = "font-mono text-[0.9em]";
+
 /** The passage itself — set apart from the options, because reading it and
- *  choosing between them are two different acts. */
-function Passage({ text }: { text: string }) {
+ *  choosing between them are two different acts.
+ *
+ *  Rendered as markdown rather than as one run of text: an email has a greeting,
+ *  a body and a sign-off, and where the author broke the lines is part of what
+ *  the student is being asked to read. */
+function Passage({ block }: { block: ChooseDescriptionBlock }) {
   return (
-    <blockquote className="rounded-xl border-l-4 border-primary/50 bg-muted/40 px-5 py-4 text-lg leading-relaxed">
-      {renderInline(text)}
+    <blockquote
+      className={cn(
+        "rounded-xl border-l-4 border-primary/50 bg-muted/40 px-5 py-4 text-lg leading-relaxed",
+        block.font === "mono" && MONO_CLASS,
+      )}
+    >
+      <Markdown text={block.text} />
     </blockquote>
   );
 }
@@ -30,7 +44,7 @@ function View({ block, audience }: BlockViewProps<ChooseDescriptionBlock>) {
     <section className="space-y-4">
       {block.label && <BlockLabel>{block.label}</BlockLabel>}
 
-      <Passage text={block.text} />
+      <Passage block={block} />
 
       <ul className="space-y-2">
         {block.options.map((option, i) => (
@@ -63,7 +77,7 @@ function Answer({
     <section className="space-y-4">
       {block.label && <BlockLabel>{block.label}</BlockLabel>}
 
-      <Passage text={block.text} />
+      <Passage block={block} />
 
       <ul className="space-y-2">
         {block.options.map((option, i) => (
@@ -81,6 +95,38 @@ function Answer({
 
       {block.note && <BlockNote text={block.note} />}
     </section>
+  );
+}
+
+/** Sans or mono for the passage — a two-state segmented control, set in the
+ *  face it selects so the choice is legible as itself. */
+function FontToggle({
+  value,
+  onChange,
+}: {
+  value: "sans" | "mono";
+  onChange: (font: "sans" | "mono") => void;
+}) {
+  return (
+    <div className="flex items-center gap-0.5 rounded-md border p-0.5">
+      {(["sans", "mono"] as const).map((font) => (
+        <button
+          key={font}
+          type="button"
+          onClick={() => onChange(font)}
+          aria-pressed={value === font}
+          className={cn(
+            "rounded px-2 py-0.5 text-[10px] font-medium capitalize transition-colors",
+            font === "mono" && "font-mono",
+            value === font
+              ? "bg-accent text-foreground"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {font}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -115,12 +161,28 @@ function Editor({
         onChange={(label) => onChange({ ...block, label })}
       />
 
-      <AutoTextarea
-        value={block.text}
-        onValueChange={(text) => onChange({ ...block, text })}
-        placeholder="The English text the student reads…"
-        className="rounded-md border bg-background px-3 py-1.5 text-base"
-      />
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Passage — markdown
+          </p>
+          <FontToggle
+            value={block.font ?? "sans"}
+            onChange={(font) =>
+              onChange({ ...block, font: font === "sans" ? undefined : font })
+            }
+          />
+        </div>
+        <AutoTextarea
+          value={block.text}
+          onValueChange={(text) => onChange({ ...block, text })}
+          placeholder="The English text the student reads… blank lines, line breaks and lists are kept"
+          className={cn(
+            "rounded-md border bg-background px-3 py-1.5 text-base",
+            block.font === "mono" && MONO_CLASS,
+          )}
+        />
+      </div>
 
       <div className="space-y-1.5">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

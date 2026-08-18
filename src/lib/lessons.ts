@@ -135,8 +135,12 @@ export type ChooseDescriptionBlock = BlockBase & {
   type: "choose-description";
   id: string;
   label?: string;
-  /** The passage the student reads, in English. */
+  /** The passage the student reads, in English. Block markdown: paragraphs,
+   *  line breaks, headings and lists are kept as typed. */
   text: string;
+  /** How the passage is set. "mono" for anything whose own layout is part of
+   *  the reading — an email, a chat, a form. Defaults to "sans". */
+  font?: "sans" | "mono";
   /** The descriptions to choose between, in the student's own language. */
   options: string[];
   /** Index into `options`. Absent in the student's copy. */
