@@ -9,12 +9,6 @@ import {
   type GroupRow,
 } from "@/features/groups/data/groups";
 
-const dayFormat = new Intl.DateTimeFormat(undefined, {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-});
-
 /** One of the days the dashboard looks over, named as a teacher would name it. */
 type Day = { label: string; date: Date; weekday: number };
 
@@ -101,7 +95,6 @@ export function UpcomingClasses() {
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h2 className="text-lg font-display leading-none">
               {day.label}
-               {/* · {dayFormat.format(day.date)} */}
             </h2>
             {/* Once, above whichever day comes first: the same link under both
                 headings would be two ways to one page, a few lines apart. */}
