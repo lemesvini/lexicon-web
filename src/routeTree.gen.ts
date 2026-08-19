@@ -12,14 +12,15 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DevPreviewRouteImport } from './routes/dev-preview'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedChangePasswordRouteImport } from './routes/_authenticated/change-password'
 import { Route as AuthenticatedStudentRouteRouteImport } from './routes/_authenticated/_student/route'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/_admin/route'
-import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/_admin/index'
 import { Route as AuthenticatedAdminTeachersRouteImport } from './routes/_authenticated/_admin/teachers'
 import { Route as AuthenticatedAdminStudentsRouteImport } from './routes/_authenticated/_admin/students'
 import { Route as AuthenticatedAdminPartnersRouteImport } from './routes/_authenticated/_admin/partners'
 import { Route as AuthenticatedAdminModulesRouteImport } from './routes/_authenticated/_admin/modules'
+import { Route as AuthenticatedAdminLessonsRouteImport } from './routes/_authenticated/_admin/lessons'
 import { Route as AuthenticatedAdminGroupsRouteImport } from './routes/_authenticated/_admin/groups'
 import { Route as AuthenticatedAdminFinancesRouteImport } from './routes/_authenticated/_admin/finances'
 import { Route as AuthenticatedStudentLearnIndexRouteImport } from './routes/_authenticated/_student/learn/index'
@@ -49,6 +50,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedChangePasswordRoute =
   AuthenticatedChangePasswordRouteImport.update({
     id: '/change-password',
@@ -63,11 +69,6 @@ const AuthenticatedStudentRouteRoute =
 const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
   id: '/_admin',
   getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
 const AuthenticatedAdminTeachersRoute =
   AuthenticatedAdminTeachersRouteImport.update({
@@ -91,6 +92,12 @@ const AuthenticatedAdminModulesRoute =
   AuthenticatedAdminModulesRouteImport.update({
     id: '/modules',
     path: '/modules',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminLessonsRoute =
+  AuthenticatedAdminLessonsRouteImport.update({
+    id: '/lessons',
+    path: '/lessons',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
 const AuthenticatedAdminGroupsRoute =
@@ -179,12 +186,13 @@ const AuthenticatedAdminStudioHomeworkHomeworkIdRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedAdminIndexRoute
+  '/': typeof IndexRoute
   '/dev-preview': typeof DevPreviewRoute
   '/login': typeof LoginRoute
   '/change-password': typeof AuthenticatedChangePasswordRoute
   '/finances': typeof AuthenticatedAdminFinancesRoute
   '/groups': typeof AuthenticatedAdminGroupsRoute
+  '/lessons': typeof AuthenticatedAdminLessonsRoute
   '/modules': typeof AuthenticatedAdminModulesRoute
   '/partners': typeof AuthenticatedAdminPartnersRoute
   '/students': typeof AuthenticatedAdminStudentsRoute
@@ -203,12 +211,13 @@ export interface FileRoutesByFullPath {
   '/studio/material/$lessonId': typeof AuthenticatedAdminStudioMaterialLessonIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof AuthenticatedAdminIndexRoute
+  '/': typeof IndexRoute
   '/dev-preview': typeof DevPreviewRoute
   '/login': typeof LoginRoute
   '/change-password': typeof AuthenticatedChangePasswordRoute
   '/finances': typeof AuthenticatedAdminFinancesRoute
   '/groups': typeof AuthenticatedAdminGroupsRoute
+  '/lessons': typeof AuthenticatedAdminLessonsRoute
   '/modules': typeof AuthenticatedAdminModulesRoute
   '/partners': typeof AuthenticatedAdminPartnersRoute
   '/students': typeof AuthenticatedAdminStudentsRoute
@@ -228,6 +237,7 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/dev-preview': typeof DevPreviewRoute
   '/login': typeof LoginRoute
@@ -236,11 +246,11 @@ export interface FileRoutesById {
   '/_authenticated/change-password': typeof AuthenticatedChangePasswordRoute
   '/_authenticated/_admin/finances': typeof AuthenticatedAdminFinancesRoute
   '/_authenticated/_admin/groups': typeof AuthenticatedAdminGroupsRoute
+  '/_authenticated/_admin/lessons': typeof AuthenticatedAdminLessonsRoute
   '/_authenticated/_admin/modules': typeof AuthenticatedAdminModulesRoute
   '/_authenticated/_admin/partners': typeof AuthenticatedAdminPartnersRoute
   '/_authenticated/_admin/students': typeof AuthenticatedAdminStudentsRoute
   '/_authenticated/_admin/teachers': typeof AuthenticatedAdminTeachersRoute
-  '/_authenticated/_admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/_admin/control/$lessonId': typeof AuthenticatedAdminControlLessonIdRoute
   '/_authenticated/_admin/corrections/$submissionId': typeof AuthenticatedAdminCorrectionsSubmissionIdRoute
   '/_authenticated/_admin/present/$lessonId': typeof AuthenticatedAdminPresentLessonIdRoute
@@ -263,6 +273,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/finances'
     | '/groups'
+    | '/lessons'
     | '/modules'
     | '/partners'
     | '/students'
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/finances'
     | '/groups'
+    | '/lessons'
     | '/modules'
     | '/partners'
     | '/students'
@@ -305,6 +317,7 @@ export interface FileRouteTypes {
     | '/studio/material/$lessonId'
   id:
     | '__root__'
+    | '/'
     | '/_authenticated'
     | '/dev-preview'
     | '/login'
@@ -313,11 +326,11 @@ export interface FileRouteTypes {
     | '/_authenticated/change-password'
     | '/_authenticated/_admin/finances'
     | '/_authenticated/_admin/groups'
+    | '/_authenticated/_admin/lessons'
     | '/_authenticated/_admin/modules'
     | '/_authenticated/_admin/partners'
     | '/_authenticated/_admin/students'
     | '/_authenticated/_admin/teachers'
-    | '/_authenticated/_admin/'
     | '/_authenticated/_admin/control/$lessonId'
     | '/_authenticated/_admin/corrections/$submissionId'
     | '/_authenticated/_admin/present/$lessonId'
@@ -333,6 +346,7 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   DevPreviewRoute: typeof DevPreviewRoute
   LoginRoute: typeof LoginRoute
@@ -361,6 +375,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/change-password': {
       id: '/_authenticated/change-password'
       path: '/change-password'
@@ -381,13 +402,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedAdminRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/_admin/': {
-      id: '/_authenticated/_admin/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
     }
     '/_authenticated/_admin/teachers': {
       id: '/_authenticated/_admin/teachers'
@@ -415,6 +429,13 @@ declare module '@tanstack/react-router' {
       path: '/modules'
       fullPath: '/modules'
       preLoaderRoute: typeof AuthenticatedAdminModulesRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/_admin/lessons': {
+      id: '/_authenticated/_admin/lessons'
+      path: '/lessons'
+      fullPath: '/lessons'
+      preLoaderRoute: typeof AuthenticatedAdminLessonsRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
     '/_authenticated/_admin/groups': {
@@ -521,11 +542,11 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminFinancesRoute: typeof AuthenticatedAdminFinancesRoute
   AuthenticatedAdminGroupsRoute: typeof AuthenticatedAdminGroupsRoute
+  AuthenticatedAdminLessonsRoute: typeof AuthenticatedAdminLessonsRoute
   AuthenticatedAdminModulesRoute: typeof AuthenticatedAdminModulesRoute
   AuthenticatedAdminPartnersRoute: typeof AuthenticatedAdminPartnersRoute
   AuthenticatedAdminStudentsRoute: typeof AuthenticatedAdminStudentsRoute
   AuthenticatedAdminTeachersRoute: typeof AuthenticatedAdminTeachersRoute
-  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminControlLessonIdRoute: typeof AuthenticatedAdminControlLessonIdRoute
   AuthenticatedAdminCorrectionsSubmissionIdRoute: typeof AuthenticatedAdminCorrectionsSubmissionIdRoute
   AuthenticatedAdminPresentLessonIdRoute: typeof AuthenticatedAdminPresentLessonIdRoute
@@ -540,11 +561,11 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
   {
     AuthenticatedAdminFinancesRoute: AuthenticatedAdminFinancesRoute,
     AuthenticatedAdminGroupsRoute: AuthenticatedAdminGroupsRoute,
+    AuthenticatedAdminLessonsRoute: AuthenticatedAdminLessonsRoute,
     AuthenticatedAdminModulesRoute: AuthenticatedAdminModulesRoute,
     AuthenticatedAdminPartnersRoute: AuthenticatedAdminPartnersRoute,
     AuthenticatedAdminStudentsRoute: AuthenticatedAdminStudentsRoute,
     AuthenticatedAdminTeachersRoute: AuthenticatedAdminTeachersRoute,
-    AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
     AuthenticatedAdminControlLessonIdRoute:
       AuthenticatedAdminControlLessonIdRoute,
     AuthenticatedAdminCorrectionsSubmissionIdRoute:
@@ -606,6 +627,7 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   DevPreviewRoute: DevPreviewRoute,
   LoginRoute: LoginRoute,

@@ -22,7 +22,7 @@ import {
 import type { Role } from "@/lib/profile";
 
 export type LinkTo =
-  | "/"
+  | "/lessons"
   | "/studio"
   | "/modules"
   | "/students"
@@ -42,10 +42,10 @@ export type NavLink = { label: string; to: LinkTo; icon: LucideIcon };
 export type NavSection = { label?: string; links: readonly NavLink[] };
 
 // Running a class, in the order the work happens: pick the lesson, write one,
-// file it, mark what came back. "/" is the presenter's launcher, so it is
+// file it, mark what came back. "/lessons" is the presenter's launcher, so it is
 // Lessons here rather than a dashboard — nothing about it is a summary.
 const CLASSES: readonly NavLink[] = [
-  { label: "Lessons", to: "/", icon: PresentationIcon },
+  { label: "Lessons", to: "/lessons", icon: PresentationIcon },
   { label: "Studio", to: "/studio", icon: PaletteIcon },
   { label: "Modules", to: "/modules", icon: LibraryIcon },
   { label: "Corrections", to: "/corrections", icon: ClipboardCheckIcon },

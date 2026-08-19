@@ -16,7 +16,7 @@ export const Route = createFileRoute('/_authenticated/_admin/teachers')({
     const profile = await getCurrentProfile()
 
     if (profile?.role !== 'admin') {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/lessons' })
     }
   },
   component: TeachersPage,

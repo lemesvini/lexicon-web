@@ -15,7 +15,7 @@ export const Route = createFileRoute('/_authenticated/_student')({
     const profile = await getCurrentProfile()
 
     if (isStaff(profile)) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/lessons' })
     }
 
     const access = await fetchMyStudentAccess()

@@ -3,11 +3,11 @@ import { SiteNav } from "@/components/site-nav";
 import PresenterMenu from "@/features/homepage/components/presenter-menu";
 import { UpcomingClasses } from "@/features/homepage/components/upcoming-classes";
 
-export const Route = createFileRoute("/_authenticated/_admin/")({
-  component: HomePage,
+export const Route = createFileRoute("/_authenticated/_admin/lessons")({
+  component: LessonsPage,
 });
 
-function HomePage() {
+function LessonsPage() {
   return (
     <div className="min-h-[100dvh] bg-background">
       <SiteNav />

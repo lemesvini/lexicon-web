@@ -341,10 +341,10 @@ export function NavSidebarProvider({ children }: { children: React.ReactNode }) 
                       key={to}
                       to={to}
                       onClick={close}
-                      // Every page sits under "/", so only Lessons can afford to
-                      // match loosely — the rest stay lit on their own
-                      // sub-routes (/studio while editing a lesson, say).
-                      activeOptions={{ exact: to === "/" }}
+                      // Loose matching throughout: every link stays lit on its
+                      // own sub-routes (/studio while editing a lesson, say).
+                      // Nothing needs an exact opt-out now that the launcher is
+                      // /lessons rather than "/", which prefixed every page.
                       activeProps={{ className: "bg-accent text-foreground" }}
                       className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                     >
