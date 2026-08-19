@@ -2,7 +2,9 @@ import * as React from "react";
 import { FolderOpenIcon, RefreshCwIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/data-table";
+import { FacetedFilter } from "@/components/data-table-faceted-filter";
 import { TableSkeleton } from "@/components/table-skeleton";
 import {
   cloudClassRow,
@@ -10,14 +12,49 @@ import {
   type ClassRow,
 } from "@/features/homepage/data/classes";
 import { classesColumns } from "@/features/homepage/components/classes-columns";
+import { ClassesGallery } from "@/features/homepage/components/classes-gallery";
+import {
+  ClassViewToggle,
+  type ClassView,
+} from "@/features/homepage/components/class-view-toggle";
 import { listCloudLessons, listCloudModules } from "@/lib/lessons-cloud";
 import { putLocalLesson } from "@/lib/lesson-store";
 import { parseLesson } from "@/features/studio/model";
 
 /**
+ * Where the chosen view is remembered. The gallery is the default in the sense
+ * that matters — what a teacher sees before they have said otherwise — but a
+ * preference about how to read the library is not a per-visit question, so
+ * having said otherwise sticks. Same reasoning as the studio's preview toggle.
+ */
+const VIEW_KEY = "homepage:classes-view";
+
+function readViewPreference(): ClassView {
+  try {
+    return window.localStorage.getItem(VIEW_KEY) === "table"
+      ? "table"
+      : "gallery";
+  } catch {
+    // Private mode, blocked storage — a preference is not a reason to fail to
+    // draw the page.
+    return "gallery";
+  }
+}
+
+/**
  * The homepage's class library: every launchable class — from the shared cloud
- * library or opened from a local JSON file — in a searchable, sortable table,
- * with Present (`/present`) and Control (`/control`) on each row.
+ * library or opened from a local JSON file — with Present (`/present`) and
+ * Control (`/control`) on each one.
+ *
+ * Two views over the same rows: a gallery of covers (the default — a teacher
+ * recognises the class they are about to teach by its cover long before they
+ * read its title) and the table, for when the question is "which of these
+ * hundred" rather than "that one".
+ *
+ * The search box and the module filter live here rather than in the table's own
+ * toolbar, which is what they used to be: filters that reset every time you
+ * changed how the list was drawn would make the toggle feel like it navigated
+ * somewhere.
  */
 export default function PresenterMenu() {
   const fileRef = React.useRef<HTMLInputElement>(null);
@@ -29,6 +66,18 @@ export default function PresenterMenu() {
     "loading",
   );
   const [reloadKey, setReloadKey] = React.useState(0);
+
+  const [view, setView] = React.useState<ClassView>(readViewPreference);
+  const [query, setQuery] = React.useState("");
+  const [selectedModules, setSelectedModules] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(VIEW_KEY, view);
+    } catch {
+      // See readViewPreference — the toggle still works for this session.
+    }
+  }, [view]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -57,10 +106,24 @@ export default function PresenterMenu() {
 
   // A local file shadows a cloud lesson of the same id, matching the order
   // present/control resolve them in (@/features/presenter/use-resolved-lesson).
+  //
+  // Ahead of the library rather than sorted into it: `listCloudLessons` returns
+  // the curriculum's own sequence, and a file opened from disk has no place in
+  // it — but it was opened a second ago, so it is the one being looked for.
   const items = React.useMemo(() => {
     const localIds = new Set(local.map((row) => row.id));
     return [...local, ...cloud.filter((row) => !localIds.has(row.id))];
   }, [local, cloud]);
+
+  const rows = React.useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const chosen = new Set(selectedModules);
+    return items.filter(
+      (row) =>
+        (!needle || row.title.toLowerCase().includes(needle)) &&
+        (chosen.size === 0 || chosen.has(row.module)),
+    );
+  }, [items, query, selectedModules]);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -78,15 +141,6 @@ export default function PresenterMenu() {
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        {/* <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Classes</h1>
-          <p className="text-sm text-muted-foreground">
-            Put a class on the display, or drive it from this device.
-          </p>
-        </div> */}
-      </div>
-
       {status === "loading" ? (
         <TableSkeleton />
       ) : status === "error" ? (
@@ -100,32 +154,50 @@ export default function PresenterMenu() {
           </Button>
         </div>
       ) : (
-        <DataTable
-          columns={classesColumns}
-          data={items}
-          filterColumn="title"
-          filterPlaceholder="Filter classes..."
-          toolbarActions={
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => fileRef.current?.click()}
-            >
-              <FolderOpenIcon className="text-muted-foreground" />
-              {/* Open a local file */}
-            </Button>
-          }
-          facets={[
-            {
-              columnId: "module",
-              label: "Module",
-              options: modules,
-              clearLabel: "All modules",
-            },
-          ]}
-          emptyMessage="No classes match."
-          countLabel={(count) => `${count} class${count === 1 ? "" : "es"}`}
-        />
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Filter classes..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="max-w-sm"
+            />
+            <ClassViewToggle value={view} onValueChange={setView} />
+
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => fileRef.current?.click()}
+                title="Open a local file"
+              >
+                <FolderOpenIcon className="text-muted-foreground" />
+              </Button>
+              <FacetedFilter
+                label="Module"
+                options={modules}
+                clearLabel="All modules"
+                value={selectedModules}
+                onValueChange={setSelectedModules}
+              />
+            </div>
+          </div>
+
+          {view === "gallery" ? (
+            <ClassesGallery
+              rows={rows}
+              showEveryUnit={query.trim() !== ""}
+              emptyMessage="No classes match."
+            />
+          ) : (
+            <DataTable
+              columns={classesColumns}
+              data={rows}
+              emptyMessage="No classes match."
+              countLabel={(count) => `${count} class${count === 1 ? "" : "es"}`}
+            />
+          )}
+        </>
       )}
 
       <input

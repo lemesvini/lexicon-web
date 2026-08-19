@@ -15,6 +15,11 @@ export type ClassRow = {
   title: string;
   unit: string;
   module: string;
+  /** Place in the curriculum, 1-based; 0 for a lesson that has none (see
+   *  `CloudLessonSummary.order`). Rows arrive sorted by it. */
+  order: number;
+  /** The grammar the class covers — the gallery card's tags. */
+  grammarFocus: string[];
   source: ClassSource;
   /** ISO timestamp of the last cloud save; empty for a local file. */
   updatedAt: string;
@@ -27,6 +32,8 @@ export function cloudClassRow(row: CloudLessonSummary): ClassRow {
     title: row.title || row.id,
     unit: row.unit,
     module: row.module,
+    order: row.order,
+    grammarFocus: row.grammarFocus,
     source: "cloud",
     updatedAt: row.updatedAt,
   };
@@ -47,6 +54,11 @@ export function localClassRow(
     title: lesson.title || fallbackTitle,
     unit: lesson.unit ?? "",
     module: lesson.module ?? "",
+    // A file on disk has no curriculum place: `order` lives on the row in the
+    // database, not in the document (which is why editing a lesson can't move
+    // it), so a lesson opened from JSON is unplaced by definition.
+    order: 0,
+    grammarFocus: lesson.grammarFocus ?? [],
     source: "local",
     updatedAt: "",
   };

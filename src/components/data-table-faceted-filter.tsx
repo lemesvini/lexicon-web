@@ -12,40 +12,71 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type DataTableFacetedFilterProps<TData> = {
-  column?: Column<TData, unknown>;
+type FacetedFilterProps = {
   /** Trigger label while nothing is selected, e.g. "Module". */
   label: string;
   /** The values a row's column may be narrowed to. */
   options: string[];
   /** Reset item label, e.g. "All modules". */
   clearLabel?: string;
+  /** The currently chosen values. Empty means "everything". */
+  value: string[];
+  onValueChange: (next: string[]) => void;
+};
+
+type DataTableFacetedFilterProps<TData> = Omit<
+  FacetedFilterProps,
+  "value" | "onValueChange"
+> & {
+  column?: Column<TData, unknown>;
 };
 
 /**
- * The dropdown that narrows one column to a chosen set of its values — a
- * multi-select built from the same checkbox items shadcn's column-visibility
- * menu uses, so it reads as part of the table toolbar.
+ * The same dropdown, bound to a table column instead of to state — what
+ * `DataTable`'s own toolbar renders.
+ */
+export function DataTableFacetedFilter<TData>({
+  column,
+  ...props
+}: DataTableFacetedFilterProps<TData>) {
+  return (
+    <FacetedFilter
+      {...props}
+      value={(column?.getFilterValue() as string[]) ?? []}
+      // Clearing the filter entirely is not the same as filtering on an empty
+      // set — the latter would match no rows at all.
+      onValueChange={(next) => column?.setFilterValue(next.length ? next : undefined)}
+    />
+  );
+}
+
+/**
+ * The dropdown that narrows a list to a chosen set of values — a multi-select
+ * built from the same checkbox items shadcn's column-visibility menu uses, so it
+ * reads as part of the table toolbar.
+ *
+ * Presentational, so it can serve a toolbar that isn't a table's: the homepage
+ * filters the same rows through a table and through a gallery, and only one of
+ * those has columns to hang a filter off.
  *
  * Options are supplied by the caller rather than derived from the rows: the
  * homepage feeds this the full module list from Supabase, which is a superset of
  * the modules the currently-loaded rows happen to cover.
  */
-export function DataTableFacetedFilter<TData>({
-  column,
+export function FacetedFilter({
   label,
   options,
   clearLabel,
-}: DataTableFacetedFilterProps<TData>) {
-  const selected = new Set((column?.getFilterValue() as string[]) ?? []);
+  value,
+  onValueChange,
+}: FacetedFilterProps) {
+  const selected = new Set(value);
 
   const toggle = (option: string, checked: boolean) => {
     const next = new Set(selected);
     if (checked) next.add(option);
     else next.delete(option);
-    // Clearing the filter entirely is not the same as filtering on an empty
-    // set — the latter would match no rows at all.
-    column?.setFilterValue(next.size ? [...next] : undefined);
+    onValueChange([...next]);
   };
 
   const triggerLabel =
@@ -86,7 +117,7 @@ export function DataTableFacetedFilter<TData>({
         {selected.size > 0 && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => column?.setFilterValue(undefined)}>
+            <DropdownMenuItem onSelect={() => onValueChange([])}>
               {clearLabel ?? `All ${label.toLowerCase()}`}
             </DropdownMenuItem>
           </>

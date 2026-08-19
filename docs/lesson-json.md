@@ -1,0 +1,419 @@
+# Authoring lesson JSON
+
+Instructions for generating a lesson document by hand (or with an LLM) that the
+Studio, the presenter and the student surfaces will all accept.
+
+Read this **before** writing any lesson JSON. Most of it is a list of values
+that are legal and values that are not, because nothing validates a block on the
+way in: `parseLesson` (`src/features/studio/model.ts`) checks only that the file
+is an object with a `slides` array, then hands the blocks straight to the
+renderers. A wrong enum value is not caught at import — it either renders as the
+wrong thing or throws and takes the whole page down.
+
+The types are the source of truth: `src/lib/lessons.ts`. If this document and
+that file disagree, the file wins and this document is the bug.
+
+---
+
+## The rules that actually break things
+
+Everything else in this document is detail. These are the ones that produce a
+broken import or a silently wrong slide.
+
+1. **`color` means two unrelated things.** A `title` block and a `callout` block
+   both have a `color` field and they share no values. Putting a callout colour
+   on a title block **crashes the render** (`Cannot destructure property
+   'background' of TITLE_COLORS[...]`). See [Colour](#colour).
+2. **`list` blocks must have `style`.** It is not optional and has no default.
+3. **Exercise blocks (`finish-sentence`, `choose-description`, `long-answer`)
+   need a stable `id`,** and only ever appear in homework. See
+   [Which blocks go where](#which-blocks-go-where).
+4. **`answer` is an index into `options`, not the answer text.** Zero-based.
+5. **`image` blocks cannot be authored from scratch.** `path` points at a file
+   already uploaded to Supabase Storage. Do not invent one. See [image](#image).
+6. **Write UTF-8.** Portuguese in these lessons is full of accented characters,
+   and a file saved as Latin-1 renders as `cafÃ© da manhÃ£` on a projector in
+   front of a class. Check with `file -I lesson.json` — you want
+   `charset=utf-8`, and no BOM.
+
+---
+
+## The three kinds of document
+
+All three use the same `Lesson` shape and the same importer. What differs is
+which blocks belong in them.
+
+| Kind | Where it is used | Blocks allowed |
+|---|---|---|
+| **Presentation** | Projected in class + the teacher's control device | Everything except exercise blocks |
+| **Material** | The student's own copy of the lesson | Same, minus teacher-only content |
+| **Homework** | Answered and submitted by the student | Exercise blocks (plus prose blocks around them) |
+
+A material is usually seeded from the presentation and then stripped: teacher
+notes and any block marked `audience: "teacher"` are removed, by
+`stripTeacherContent` in the client and by the `strip_teacher_content` trigger
+in the database (migration `0004`). The database is the guarantee — you do not
+have to strip by hand, but you do have to mark correctly.
+
+---
+
+## Skeleton
+
+```json
+{
+  "id": "B1L2",
+  "unit": "Unit One",
+  "module": "Book One",
+  "title": "[Lesson Two] My Daily Routine",
+  "context": "One paragraph for the teacher: what this class is about.",
+  "minorCanDo": "Talk about your daily routine and describe what you do at work",
+  "grammarFocus": ["Present Simple", "Auxiliary Verbs (do/don't)"],
+  "classPlan": [
+    { "stage": "Warm-up", "duration": "10", "goal": "Recall last class" }
+  ],
+  "slides": [
+    {
+      "id": "1",
+      "stage": "Title",
+      "duration": "10",
+      "goal": "",
+      "hideStage": true,
+      "blocks": [
+        { "type": "title", "color": "jade", "eyebrow": "Lesson Two", "title": "My Daily\nRoutine" }
+      ]
+    }
+  ]
+}
+```
+
+### Lesson fields
+
+Every one of these is required by the `Lesson` type. Emit all of them, even when
+empty — `parseLesson` will fill in a missing one, but a round-trip through the
+Studio always writes the full set, so omitting them just makes the first save a
+noisy diff.
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | string | Lesson slug, e.g. `"B1L2"`. Used as the URL and as the key a material attaches to. |
+| `unit` | string | e.g. `"Unit One"` |
+| `module` | string | e.g. `"Book One"` |
+| `title` | string | Shown in the library table |
+| `context` | string | Teacher-facing summary of the class |
+| `minorCanDo` | string | The one thing the student can do at the end |
+| `grammarFocus` | string[] | Shown as chips in the library |
+| `classPlan` | `{stage, duration, goal}[]` | `duration` is minutes as a **string**, e.g. `"10"`. The library sums these into the lesson's total duration, so a non-numeric string counts as zero. |
+| `slides` | Slide[] | The document itself |
+
+### Slide fields
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | string | Free-form. Number the slides as strings (`"1"`, `"2"`) and keep it consistent — an empty `id` is tolerated but reads as an oversight. |
+| `stage` | string | The label in the slide header, e.g. `"Vocabulary"` |
+| `duration` | string | Minutes for this slide. Display only — the total comes from `classPlan`. |
+| `goal` | string | Teacher-facing note on what the slide is for |
+| `layout` | `"column"` \| `"row"` | Optional, defaults to `"column"`. `"row"` puts the blocks side by side in equal columns — good for two tables or text next to an image. Two or three blocks maximum; four will not fit on a projector. |
+| `hideStage` | boolean | Optional. Drops the stage header. Set it on cover slides. |
+| `blocks` | Block[] | See below |
+| `teacherNotes` | string[] | Optional. Shown only on the teacher's control device, never projected, and stripped from student documents. Good for drill prompts and answer lines. |
+
+### Full-bleed slides
+
+`title` blocks and `image` blocks with `"wallpaper": true` are lifted out of the
+normal flow and stacked edge to edge **in the order you wrote them**. Any other
+blocks on that slide are laid on top, centred.
+
+That ordering is the mechanism behind a title over a photo:
+
+```json
+"blocks": [
+  { "type": "image", "path": "images/abc.jpg", "wallpaper": true },
+  { "type": "title", "color": "clear", "title": "Small Talk" }
+]
+```
+
+`color: "clear"` is the only title colour that is a scrim rather than a solid
+fill, and it exists for exactly this case.
+
+A slide holding any full-bleed block drops its stage header regardless of
+`hideStage`, so setting the flag on a cover slide is redundant — harmless, and
+the Studio round-trips it, but it is not what hides the header.
+
+---
+
+## Colour
+
+The single most common authoring error. Two different vocabularies, one field
+name, and only one of them fails loudly.
+
+### `title` blocks — `jade` · `forest` · `mist` · `clear`
+
+Defined in `src/features/blocks/title/index.tsx`. **Any other value throws and
+breaks the import.** There is no fallback.
+
+| Value | Looks like | Use for |
+|---|---|---|
+| `jade` | Brand green, light type. The default. | Lesson covers |
+| `forest` | Dark green, light type | Section breaks — Drills, Practice |
+| `mist` | Pale green, dark type | The closing "Now you CAN DO" slide |
+| `clear` | Gradient scrim, light type | A title laid over a wallpaper image |
+
+### `callout` blocks — `blue_bg` · `green_bg` · `yellow_bg` · `gray_bg` · `red_bg`
+
+Defined in `src/features/blocks/callout/index.tsx`. Unknown values fall back to
+`blue_bg`, so a mistake here is invisible rather than fatal — which makes it
+worth getting right on the first pass.
+
+**Never put a `*_bg` value on a title block, and never put `jade`/`forest`/
+`mist`/`clear` on a callout.**
+
+---
+
+## Markdown
+
+Two renderers, and which one a field gets is fixed per field.
+
+**Inline only** — `**bold**`, `*italic*`, `` `code` ``, `~~strike~~`. Not
+nestable. Newlines survive as line breaks. This covers `text.body`,
+`list.items[]`, `callout.body`, `table` cells, `dialog` line text,
+`image.caption`, `finish-sentence.sentence`, `long-answer.question`.
+
+**Block markdown** — paragraphs, hard line breaks, `#`/`##`/`###` headings, and
+`-`/`*`/`+` or `1.` lists, plus all the inline marks. Only
+`choose-description.text` gets this, because a passage is often an email or a
+chat whose own layout is part of what is being read.
+
+Nothing else is supported anywhere: no links, no tables-in-markdown, no images,
+no blockquotes, no nested lists. Write a `table` block instead of a markdown
+table.
+
+---
+
+## Block reference
+
+Every block may also carry `"audience": "teacher"` to make it teacher-only. It
+will show on the control device and be removed from every student document,
+whatever its type.
+
+### title
+
+A cover. Drawn as type, not uploaded as an image, so it re-lays itself on any
+screen shape instead of being cropped.
+
+```json
+{
+  "type": "title",
+  "color": "jade",
+  "eyebrow": "Lesson Two",
+  "title": "My Daily\nRoutine",
+  "subtitle": "Present Simple",
+  "hideWordmark": false
+}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `title` | yes | The headline. **`\n` is meaningful** — the type is sized to the longest line, so you control the wrap. Two or three short lines beat one long one. |
+| `color` | no | See [Colour](#colour). Defaults to `jade`. |
+| `eyebrow` | no | Small line above, e.g. `"Lesson Two"` |
+| `subtitle` | no | Quieter line beneath the headline |
+| `hideWordmark` | no | Drops the "lexicon" wordmark from the corner |
+
+Put it on its own slide. It fills the slide by itself and suppresses the stage
+header on its own.
+
+### text
+
+```json
+{ "type": "text", "label": "Warm-up", "body": "Paragraph text.", "note": "Teacher aside" }
+```
+
+`body` required. `label` is a small heading above; `note` is a smaller line
+below. Inline markdown in `body`.
+
+### list
+
+```json
+{ "type": "list", "style": "bullet", "items": ["First", "Second"], "label": "Examples" }
+```
+
+`style` and `items` required. **`style` has no default** — one of `"bullet"`,
+`"numbered"`, `"checklist"`. Empty strings in `items` are dropped on save.
+
+### callout
+
+```json
+{
+  "type": "callout",
+  "color": "green_bg",
+  "icon": "💡",
+  "title": "Present Simple — Affirmative",
+  "body": "I work in sales\nI deal with clients every day"
+}
+```
+
+`title` and `body` required. `icon` is a single emoji, rendered as text — an
+emoji, not an icon name, and not a digit standing in for one. Newlines in `body`
+are kept, which is how a callout holds a short list of example sentences.
+
+### table
+
+```json
+{
+  "type": "table",
+  "label": "Vocabulary",
+  "columns": [
+    { "title": "In English", "rows": ["Wake up", "Get up"] },
+    { "title": "In Portuguese", "rows": ["Acordar", "Levantar"] }
+  ]
+}
+```
+
+`columns` required. **Give every column the same number of rows** — the table is
+as tall as its longest column and short ones are padded with blanks, so a
+mismatch shows up as empty cells rather than an error. Two or three columns; a
+fourth stops being readable at projector distance.
+
+### dialog
+
+```json
+{
+  "type": "dialog",
+  "lines": [
+    { "speaker": "Alex", "text": "What do you do for a living?" },
+    { "speaker": "You", "text": "I work as a _________." }
+  ]
+}
+```
+
+`lines` required, each with `speaker` and `text`. Lines blank in both fields are
+dropped on save. Underscore runs are the convention for a gap the student fills
+out loud — this is not the `finish-sentence` exercise block and nothing is
+parsed out of it.
+
+### image
+
+```json
+{ "type": "image", "path": "images/6f1c-….png", "alt": "…", "caption": "…", "wallpaper": false }
+```
+
+`path` required — an **object path inside the `lesson-images` Supabase Storage
+bucket**, not a URL and not a local file. The public URL is derived at render
+time.
+
+**You cannot author this block from nothing.** A path that was not produced by
+an actual upload resolves to a broken image. Either copy a path from an existing
+lesson, or leave the image out and tell the author to add it in the Studio,
+which uploads the file and fills the path in. `wallpaper: true` wants 1920×1080.
+
+---
+
+## Exercise blocks (homework only)
+
+These are the blocks a student answers. They do not belong in a presentation or
+a material — neither surface can submit an answer.
+
+Two rules apply to all three:
+
+- **`id` is required, and permanent.** A submission is stored as a map from
+  block id to answer, so changing an id orphans every answer already given.
+  Generate a UUID. When editing an existing homework, never renumber or reuse.
+- **`answer` is a zero-based index into `options`.** It is present in the
+  teacher's copy and stripped from the student's by the `student_homework` view.
+  Do not remove empty options to tidy up — the index would repoint at the wrong
+  one.
+
+### finish-sentence
+
+```json
+{
+  "type": "finish-sentence",
+  "id": "3f2b1c4d-…",
+  "sentence": "I ___ at 7 am every day.",
+  "options": ["wake up", "wakes up", "waking up", "woke up"],
+  "answer": 0
+}
+```
+
+The gap is exactly three underscores, `___`. **Only the first one is the gap** —
+any others render as literal text, because one gap per sentence is what keeps
+the answer a single index. Four options is the usual shape.
+
+### choose-description
+
+```json
+{
+  "type": "choose-description",
+  "id": "…",
+  "text": "Hi Sarah,\n\nI'm writing about Monday's meeting.\n\nBest,\nTom",
+  "font": "mono",
+  "options": ["Tom está remarcando a reunião.", "Tom está confirmando a reunião."],
+  "answer": 1
+}
+```
+
+A passage in English, and descriptions of it **in the student's own language**.
+`text` takes block markdown. `font` is `"sans"` (default) or `"mono"` — use
+`mono` when the passage's own layout is part of the reading: an email, a chat, a
+form. Three options is the usual shape.
+
+### long-answer
+
+```json
+{
+  "type": "long-answer",
+  "id": "…",
+  "question": "Describe your daily routine.",
+  "hint": "3–5 sentences"
+}
+```
+
+Free text, marked by hand. No `answer` and no `options`. `hint` sets the
+expectation of length or shape.
+
+---
+
+## Building a lesson
+
+A presentation that works in a real class usually runs:
+
+1. **Cover** — `title` on `jade`, `hideStage: true`
+2. **Minor Can Do** — a `text` framing the goal, then a `dialog` with gaps, so
+   the class hears the target language before analysing it
+3. **Vocabulary** — one or two `table` blocks, English against Portuguese;
+   `layout: "row"` when there are two
+4. **Grammar** — `callout` blocks for the pattern, then a `table` for the full
+   conjugation
+5. **Examples** — a `list` of model sentences
+6. **Drills** — a `forest` `title` as a section break, with the prompts in the
+   slide's `teacherNotes` where only the teacher sees them
+7. **Close** — a `mist` `title`, "Now you CAN DO"
+
+Keep it to one idea per slide. A slide is read at projector distance by someone
+who is also listening to a teacher, so a table of six rows is near the ceiling
+and a `text` block longer than three lines will not be read at all.
+
+---
+
+## Before handing the file over
+
+- [ ] Valid JSON — `python3 -m json.tool lesson.json > /dev/null`
+- [ ] UTF-8, no BOM — `file -I lesson.json` says `charset=utf-8`; no `Ã` or `â`
+      anywhere in the file
+- [ ] Every `title` block's `color` is `jade`, `forest`, `mist` or `clear`
+- [ ] Every `callout` block's `color` ends in `_bg`
+- [ ] Every `list` block has a `style`
+- [ ] Every `table` block's columns have equal row counts
+- [ ] Every exercise block has a unique `id`, and `answer` indexes into
+      `options` (0-based, in range)
+- [ ] No exercise blocks in a presentation or material; no `image` block with an
+      invented `path`
+- [ ] Top-level `id`, `unit`, `module`, `title`, `context`, `minorCanDo`,
+      `grammarFocus`, `classPlan`, `slides` all present
+- [ ] Answer keys and drill prompts are behind `teacherNotes` or
+      `audience: "teacher"`
+
+Then import it: Studio → open the JSON file, or the presenter menu's "open from
+file", or paste it into the Studio's raw JSON drawer. All three call
+`parseLesson`, so all three fail the same way on the same file.

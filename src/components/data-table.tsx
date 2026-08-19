@@ -91,33 +91,39 @@ export function DataTable<TData, TValue>({
 
   const searchColumn = filterColumn ? table.getColumn(filterColumn) : undefined;
   const filteredCount = table.getFilteredRowModel().rows.length;
+  // A caller that filters the rows itself (the homepage, which shares one
+  // toolbar between this table and its gallery) hands over neither a search
+  // column nor facets, and an empty toolbar is a gap above the table.
+  const hasToolbar = Boolean(searchColumn || facets.length || toolbarActions);
 
   return (
     <div className="w-full space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {searchColumn && (
-          <Input
-            placeholder={filterPlaceholder}
-            value={(searchColumn.getFilterValue() as string) ?? ""}
-            onChange={(event) =>
-              searchColumn.setFilterValue(event.target.value)
-            }
-            className="max-w-sm"
-          />
-        )}
-        <div className="ml-auto flex items-center gap-2">
-          {toolbarActions}
-          {facets.map((facet) => (
-            <DataTableFacetedFilter
-              key={facet.columnId}
-              column={table.getColumn(facet.columnId)}
-              label={facet.label}
-              options={facet.options}
-              clearLabel={facet.clearLabel}
+      {hasToolbar && (
+        <div className="flex flex-wrap items-center gap-2">
+          {searchColumn && (
+            <Input
+              placeholder={filterPlaceholder}
+              value={(searchColumn.getFilterValue() as string) ?? ""}
+              onChange={(event) =>
+                searchColumn.setFilterValue(event.target.value)
+              }
+              className="max-w-sm"
             />
-          ))}
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            {toolbarActions}
+            {facets.map((facet) => (
+              <DataTableFacetedFilter
+                key={facet.columnId}
+                column={table.getColumn(facet.columnId)}
+                label={facet.label}
+                options={facet.options}
+                clearLabel={facet.clearLabel}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="overflow-hidden rounded-md border">
         <Table>
