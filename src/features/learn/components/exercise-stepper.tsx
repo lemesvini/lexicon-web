@@ -200,31 +200,63 @@ function Dots({
   current: number;
   onGo: (index: number) => void;
 }) {
+  const scrollerRef = React.useRef<HTMLDivElement>(null);
+  const activeRef = React.useRef<HTMLButtonElement>(null);
+
+  // One scrolling row instead of a wrapping one: on a phone anything past nine
+  // questions spilled onto a second row and pushed the question itself off the
+  // screen. Scrolling keeps the strip one line tall at any count, so the
+  // current question has to be dragged back into view on every step.
+  React.useEffect(() => {
+    const scroller = scrollerRef.current;
+    const active = activeRef.current;
+    if (!scroller || !active) return;
+    const strip = scroller.getBoundingClientRect();
+    const dot = active.getBoundingClientRect();
+    scroller.scrollBy({
+      left: dot.left - strip.left - (strip.width - dot.width) / 2,
+      behavior: "smooth",
+    });
+  }, [current]);
+
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {items.map((item, i) => {
-        const answered = isAnswered(item, answers);
-        return (
-          <button
-            key={item.id || i}
-            type="button"
-            onClick={() => onGo(i)}
-            aria-label={
-              item.number ? `Question ${item.number}` : `Step ${i + 1}`
-            }
-            aria-current={i === current ? "step" : undefined}
-            className={cn(
-              "size-8 rounded-lg border text-xs font-medium tabular-nums transition-colors",
-              answered
-                ? "border-primary/40 bg-primary/15 text-primary"
-                : "border-border text-muted-foreground hover:bg-accent",
-              i === current && "ring-2 ring-ring ring-offset-2 ring-offset-background",
-            )}
-          >
-            {item.number ?? "·"}
-          </button>
-        );
-      })}
+    // Padded so the current dot's ring is not clipped by the scroll box, and
+    // pulled back by the same amount so the row still lines up with the bar.
+    <div
+      ref={scrollerRef}
+      className="no-scrollbar -mx-1 overflow-x-auto px-1 py-1"
+    >
+      {/* A short row reads as stray sitting against the left edge, so anything
+          under ten is centred. The centring is an auto margin on a shrink-to-fit
+          row rather than justify-center: auto margins collapse to zero once the
+          row outgrows the strip, where justify-center would push the first
+          question past the left edge and out of reach. */}
+      <div className={cn("flex w-max gap-1.5", items.length < 10 && "mx-auto")}>
+        {items.map((item, i) => {
+          const answered = isAnswered(item, answers);
+          return (
+            <button
+              key={item.id || i}
+              ref={i === current ? activeRef : undefined}
+              type="button"
+              onClick={() => onGo(i)}
+              aria-label={
+                item.number ? `Question ${item.number}` : `Step ${i + 1}`
+              }
+              aria-current={i === current ? "step" : undefined}
+              className={cn(
+                "size-8 shrink-0 rounded-lg border text-xs font-medium tabular-nums transition-colors",
+                answered
+                  ? "border-primary/40 bg-primary/15 text-primary"
+                  : "border-border text-muted-foreground hover:bg-accent",
+                i === current && "ring-2 ring-ring ring-offset-2 ring-offset-background",
+              )}
+            >
+              {item.number ?? "·"}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
