@@ -1,12 +1,19 @@
-import { LayoutGridIcon, ListIcon, type LucideIcon } from "lucide-react";
+import {
+  FolderIcon,
+  LayoutGridIcon,
+  ListIcon,
+  type LucideIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** How the class library is drawn: covers, or one row per class. */
-export type ClassView = "gallery" | "table";
+/** How the class library is drawn: by module, as covers, or one row per
+ *  class. */
+export type ClassView = "module" | "gallery" | "table";
 
 const VIEWS: { value: ClassView; label: string; icon: LucideIcon }[] = [
+  { value: "module", label: "Modules", icon: FolderIcon },
   { value: "gallery", label: "Gallery", icon: LayoutGridIcon },
   { value: "table", label: "List", icon: ListIcon },
 ];

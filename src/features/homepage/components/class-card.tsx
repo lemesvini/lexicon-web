@@ -31,7 +31,7 @@ const MAX_TAGS = 1;
  * name. Both halves are optional: a title with no bracket is all name, which is
  * what an older lesson or a file opened from disk will be.
  */
-function splitTitle(title: string): { label: string; name: string } {
+export function splitTitle(title: string): { label: string; name: string } {
   const match = /^\s*\[([^\]]+)\]\s*(.*)$/.exec(title);
   if (!match) return { label: "", name: title };
   return { label: match[1].trim(), name: match[2].trim() || title };
@@ -46,7 +46,7 @@ function splitTitle(title: string): { label: string; name: string } {
  * column as one long line and would be set tiny to fit. So the card picks the
  * breaks the author never got to.
  */
-function wrapHeadline(text: string): string {
+export function wrapHeadline(text: string): string {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length < 2) return text;
 

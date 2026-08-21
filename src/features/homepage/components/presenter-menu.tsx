@@ -13,6 +13,7 @@ import {
 } from "@/features/homepage/data/classes";
 import { classesColumns } from "@/features/homepage/components/classes-columns";
 import { ClassesGallery } from "@/features/homepage/components/classes-gallery";
+import { ModulesGallery } from "@/features/homepage/components/modules-gallery";
 import {
   ClassViewToggle,
   type ClassView,
@@ -22,22 +23,22 @@ import { putLocalLesson } from "@/lib/lesson-store";
 import { parseLesson } from "@/features/studio/model";
 
 /**
- * Where the chosen view is remembered. The gallery is the default in the sense
- * that matters — what a teacher sees before they have said otherwise — but a
- * preference about how to read the library is not a per-visit question, so
- * having said otherwise sticks. Same reasoning as the studio's preview toggle.
+ * Where the chosen view is remembered. The module gallery is the default in
+ * the sense that matters — what a teacher sees before they have said
+ * otherwise — but a preference about how to read the library is not a
+ * per-visit question, so having said otherwise sticks. Same reasoning as the
+ * studio's preview toggle.
  */
 const VIEW_KEY = "homepage:classes-view";
 
 function readViewPreference(): ClassView {
   try {
-    return window.localStorage.getItem(VIEW_KEY) === "table"
-      ? "table"
-      : "gallery";
+    const stored = window.localStorage.getItem(VIEW_KEY);
+    return stored === "table" || stored === "gallery" ? stored : "module";
   } catch {
     // Private mode, blocked storage — a preference is not a reason to fail to
     // draw the page.
-    return "gallery";
+    return "module";
   }
 }
 
@@ -46,10 +47,12 @@ function readViewPreference(): ClassView {
  * library or opened from a local JSON file — with Present (`/present`) and
  * Control (`/control`) on each one.
  *
- * Two views over the same rows: a gallery of covers (the default — a teacher
- * recognises the class they are about to teach by its cover long before they
- * read its title) and the table, for when the question is "which of these
- * hundred" rather than "that one".
+ * Three views over the same rows: a gallery of modules (the default — a
+ * teacher picks the module they're teaching from before they pick the class
+ * inside it, and clicking one opens its lessons in a panel beside the grid),
+ * a gallery of covers (a teacher recognises the class they are about to teach
+ * by its cover long before they read its title), and the table, for when the
+ * question is "which of these hundred" rather than "that one".
  *
  * The search box and the module filter live here rather than in the table's own
  * toolbar, which is what they used to be: filters that reset every time you
@@ -183,7 +186,9 @@ export default function PresenterMenu() {
             </div>
           </div>
 
-          {view === "gallery" ? (
+          {view === "module" ? (
+            <ModulesGallery rows={rows} emptyMessage="No classes match." />
+          ) : view === "gallery" ? (
             <ClassesGallery
               rows={rows}
               showEveryUnit={query.trim() !== ""}
