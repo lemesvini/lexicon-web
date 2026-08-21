@@ -149,6 +149,8 @@ function serializeBlock(block: LessonBlock): LessonBlock {
         },
         ["type", "lines"],
       );
+    case "email":
+      return prune(block, ["type", "body"]);
     case "image":
       return prune(block, ["type", "path"]);
     case "title":

@@ -17,7 +17,6 @@ import { Route as AuthenticatedChangePasswordRouteImport } from './routes/_authe
 import { Route as AuthenticatedStudentRouteRouteImport } from './routes/_authenticated/_student/route'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/_admin/route'
 import { Route as AuthenticatedAdminTeachersRouteImport } from './routes/_authenticated/_admin/teachers'
-import { Route as AuthenticatedAdminStudentsRouteImport } from './routes/_authenticated/_admin/students'
 import { Route as AuthenticatedAdminPartnersRouteImport } from './routes/_authenticated/_admin/partners'
 import { Route as AuthenticatedAdminModulesRouteImport } from './routes/_authenticated/_admin/modules'
 import { Route as AuthenticatedAdminLessonsRouteImport } from './routes/_authenticated/_admin/lessons'
@@ -26,9 +25,11 @@ import { Route as AuthenticatedAdminFinancesRouteImport } from './routes/_authen
 import { Route as AuthenticatedStudentLearnIndexRouteImport } from './routes/_authenticated/_student/learn/index'
 import { Route as AuthenticatedStudentHomeworkIndexRouteImport } from './routes/_authenticated/_student/homework/index'
 import { Route as AuthenticatedAdminStudioIndexRouteImport } from './routes/_authenticated/_admin/studio/index'
+import { Route as AuthenticatedAdminStudentsIndexRouteImport } from './routes/_authenticated/_admin/students/index'
 import { Route as AuthenticatedAdminCorrectionsIndexRouteImport } from './routes/_authenticated/_admin/corrections/index'
 import { Route as AuthenticatedStudentLearnLessonIdRouteImport } from './routes/_authenticated/_student/learn/$lessonId'
 import { Route as AuthenticatedStudentHomeworkHomeworkIdRouteImport } from './routes/_authenticated/_student/homework/$homeworkId'
+import { Route as AuthenticatedAdminStudentsStudentIdRouteImport } from './routes/_authenticated/_admin/students/$studentId'
 import { Route as AuthenticatedAdminPresentLessonIdRouteImport } from './routes/_authenticated/_admin/present/$lessonId'
 import { Route as AuthenticatedAdminCorrectionsSubmissionIdRouteImport } from './routes/_authenticated/_admin/corrections/$submissionId'
 import { Route as AuthenticatedAdminControlLessonIdRouteImport } from './routes/_authenticated/_admin/control/$lessonId'
@@ -74,12 +75,6 @@ const AuthenticatedAdminTeachersRoute =
   AuthenticatedAdminTeachersRouteImport.update({
     id: '/teachers',
     path: '/teachers',
-    getParentRoute: () => AuthenticatedAdminRouteRoute,
-  } as any)
-const AuthenticatedAdminStudentsRoute =
-  AuthenticatedAdminStudentsRouteImport.update({
-    id: '/students',
-    path: '/students',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
 const AuthenticatedAdminPartnersRoute =
@@ -130,6 +125,12 @@ const AuthenticatedAdminStudioIndexRoute =
     path: '/studio/',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminStudentsIndexRoute =
+  AuthenticatedAdminStudentsIndexRouteImport.update({
+    id: '/students/',
+    path: '/students/',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminCorrectionsIndexRoute =
   AuthenticatedAdminCorrectionsIndexRouteImport.update({
     id: '/corrections/',
@@ -147,6 +148,12 @@ const AuthenticatedStudentHomeworkHomeworkIdRoute =
     id: '/homework/$homeworkId',
     path: '/homework/$homeworkId',
     getParentRoute: () => AuthenticatedStudentRouteRoute,
+  } as any)
+const AuthenticatedAdminStudentsStudentIdRoute =
+  AuthenticatedAdminStudentsStudentIdRouteImport.update({
+    id: '/students/$studentId',
+    path: '/students/$studentId',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
 const AuthenticatedAdminPresentLessonIdRoute =
   AuthenticatedAdminPresentLessonIdRouteImport.update({
@@ -195,14 +202,15 @@ export interface FileRoutesByFullPath {
   '/lessons': typeof AuthenticatedAdminLessonsRoute
   '/modules': typeof AuthenticatedAdminModulesRoute
   '/partners': typeof AuthenticatedAdminPartnersRoute
-  '/students': typeof AuthenticatedAdminStudentsRoute
   '/teachers': typeof AuthenticatedAdminTeachersRoute
   '/control/$lessonId': typeof AuthenticatedAdminControlLessonIdRoute
   '/corrections/$submissionId': typeof AuthenticatedAdminCorrectionsSubmissionIdRoute
   '/present/$lessonId': typeof AuthenticatedAdminPresentLessonIdRoute
+  '/students/$studentId': typeof AuthenticatedAdminStudentsStudentIdRoute
   '/homework/$homeworkId': typeof AuthenticatedStudentHomeworkHomeworkIdRoute
   '/learn/$lessonId': typeof AuthenticatedStudentLearnLessonIdRoute
   '/corrections/': typeof AuthenticatedAdminCorrectionsIndexRoute
+  '/students/': typeof AuthenticatedAdminStudentsIndexRoute
   '/studio/': typeof AuthenticatedAdminStudioIndexRoute
   '/homework/': typeof AuthenticatedStudentHomeworkIndexRoute
   '/learn/': typeof AuthenticatedStudentLearnIndexRoute
@@ -220,14 +228,15 @@ export interface FileRoutesByTo {
   '/lessons': typeof AuthenticatedAdminLessonsRoute
   '/modules': typeof AuthenticatedAdminModulesRoute
   '/partners': typeof AuthenticatedAdminPartnersRoute
-  '/students': typeof AuthenticatedAdminStudentsRoute
   '/teachers': typeof AuthenticatedAdminTeachersRoute
   '/control/$lessonId': typeof AuthenticatedAdminControlLessonIdRoute
   '/corrections/$submissionId': typeof AuthenticatedAdminCorrectionsSubmissionIdRoute
   '/present/$lessonId': typeof AuthenticatedAdminPresentLessonIdRoute
+  '/students/$studentId': typeof AuthenticatedAdminStudentsStudentIdRoute
   '/homework/$homeworkId': typeof AuthenticatedStudentHomeworkHomeworkIdRoute
   '/learn/$lessonId': typeof AuthenticatedStudentLearnLessonIdRoute
   '/corrections': typeof AuthenticatedAdminCorrectionsIndexRoute
+  '/students': typeof AuthenticatedAdminStudentsIndexRoute
   '/studio': typeof AuthenticatedAdminStudioIndexRoute
   '/homework': typeof AuthenticatedStudentHomeworkIndexRoute
   '/learn': typeof AuthenticatedStudentLearnIndexRoute
@@ -249,14 +258,15 @@ export interface FileRoutesById {
   '/_authenticated/_admin/lessons': typeof AuthenticatedAdminLessonsRoute
   '/_authenticated/_admin/modules': typeof AuthenticatedAdminModulesRoute
   '/_authenticated/_admin/partners': typeof AuthenticatedAdminPartnersRoute
-  '/_authenticated/_admin/students': typeof AuthenticatedAdminStudentsRoute
   '/_authenticated/_admin/teachers': typeof AuthenticatedAdminTeachersRoute
   '/_authenticated/_admin/control/$lessonId': typeof AuthenticatedAdminControlLessonIdRoute
   '/_authenticated/_admin/corrections/$submissionId': typeof AuthenticatedAdminCorrectionsSubmissionIdRoute
   '/_authenticated/_admin/present/$lessonId': typeof AuthenticatedAdminPresentLessonIdRoute
+  '/_authenticated/_admin/students/$studentId': typeof AuthenticatedAdminStudentsStudentIdRoute
   '/_authenticated/_student/homework/$homeworkId': typeof AuthenticatedStudentHomeworkHomeworkIdRoute
   '/_authenticated/_student/learn/$lessonId': typeof AuthenticatedStudentLearnLessonIdRoute
   '/_authenticated/_admin/corrections/': typeof AuthenticatedAdminCorrectionsIndexRoute
+  '/_authenticated/_admin/students/': typeof AuthenticatedAdminStudentsIndexRoute
   '/_authenticated/_admin/studio/': typeof AuthenticatedAdminStudioIndexRoute
   '/_authenticated/_student/homework/': typeof AuthenticatedStudentHomeworkIndexRoute
   '/_authenticated/_student/learn/': typeof AuthenticatedStudentLearnIndexRoute
@@ -276,14 +286,15 @@ export interface FileRouteTypes {
     | '/lessons'
     | '/modules'
     | '/partners'
-    | '/students'
     | '/teachers'
     | '/control/$lessonId'
     | '/corrections/$submissionId'
     | '/present/$lessonId'
+    | '/students/$studentId'
     | '/homework/$homeworkId'
     | '/learn/$lessonId'
     | '/corrections/'
+    | '/students/'
     | '/studio/'
     | '/homework/'
     | '/learn/'
@@ -301,14 +312,15 @@ export interface FileRouteTypes {
     | '/lessons'
     | '/modules'
     | '/partners'
-    | '/students'
     | '/teachers'
     | '/control/$lessonId'
     | '/corrections/$submissionId'
     | '/present/$lessonId'
+    | '/students/$studentId'
     | '/homework/$homeworkId'
     | '/learn/$lessonId'
     | '/corrections'
+    | '/students'
     | '/studio'
     | '/homework'
     | '/learn'
@@ -329,14 +341,15 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/lessons'
     | '/_authenticated/_admin/modules'
     | '/_authenticated/_admin/partners'
-    | '/_authenticated/_admin/students'
     | '/_authenticated/_admin/teachers'
     | '/_authenticated/_admin/control/$lessonId'
     | '/_authenticated/_admin/corrections/$submissionId'
     | '/_authenticated/_admin/present/$lessonId'
+    | '/_authenticated/_admin/students/$studentId'
     | '/_authenticated/_student/homework/$homeworkId'
     | '/_authenticated/_student/learn/$lessonId'
     | '/_authenticated/_admin/corrections/'
+    | '/_authenticated/_admin/students/'
     | '/_authenticated/_admin/studio/'
     | '/_authenticated/_student/homework/'
     | '/_authenticated/_student/learn/'
@@ -410,13 +423,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminTeachersRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
-    '/_authenticated/_admin/students': {
-      id: '/_authenticated/_admin/students'
-      path: '/students'
-      fullPath: '/students'
-      preLoaderRoute: typeof AuthenticatedAdminStudentsRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
     '/_authenticated/_admin/partners': {
       id: '/_authenticated/_admin/partners'
       path: '/partners'
@@ -473,6 +479,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminStudioIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/_admin/students/': {
+      id: '/_authenticated/_admin/students/'
+      path: '/students'
+      fullPath: '/students/'
+      preLoaderRoute: typeof AuthenticatedAdminStudentsIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/_admin/corrections/': {
       id: '/_authenticated/_admin/corrections/'
       path: '/corrections'
@@ -493,6 +506,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/homework/$homeworkId'
       preLoaderRoute: typeof AuthenticatedStudentHomeworkHomeworkIdRouteImport
       parentRoute: typeof AuthenticatedStudentRouteRoute
+    }
+    '/_authenticated/_admin/students/$studentId': {
+      id: '/_authenticated/_admin/students/$studentId'
+      path: '/students/$studentId'
+      fullPath: '/students/$studentId'
+      preLoaderRoute: typeof AuthenticatedAdminStudentsStudentIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
     }
     '/_authenticated/_admin/present/$lessonId': {
       id: '/_authenticated/_admin/present/$lessonId'
@@ -545,12 +565,13 @@ interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminLessonsRoute: typeof AuthenticatedAdminLessonsRoute
   AuthenticatedAdminModulesRoute: typeof AuthenticatedAdminModulesRoute
   AuthenticatedAdminPartnersRoute: typeof AuthenticatedAdminPartnersRoute
-  AuthenticatedAdminStudentsRoute: typeof AuthenticatedAdminStudentsRoute
   AuthenticatedAdminTeachersRoute: typeof AuthenticatedAdminTeachersRoute
   AuthenticatedAdminControlLessonIdRoute: typeof AuthenticatedAdminControlLessonIdRoute
   AuthenticatedAdminCorrectionsSubmissionIdRoute: typeof AuthenticatedAdminCorrectionsSubmissionIdRoute
   AuthenticatedAdminPresentLessonIdRoute: typeof AuthenticatedAdminPresentLessonIdRoute
+  AuthenticatedAdminStudentsStudentIdRoute: typeof AuthenticatedAdminStudentsStudentIdRoute
   AuthenticatedAdminCorrectionsIndexRoute: typeof AuthenticatedAdminCorrectionsIndexRoute
+  AuthenticatedAdminStudentsIndexRoute: typeof AuthenticatedAdminStudentsIndexRoute
   AuthenticatedAdminStudioIndexRoute: typeof AuthenticatedAdminStudioIndexRoute
   AuthenticatedAdminStudioHomeworkHomeworkIdRoute: typeof AuthenticatedAdminStudioHomeworkHomeworkIdRoute
   AuthenticatedAdminStudioLessonLessonIdRoute: typeof AuthenticatedAdminStudioLessonLessonIdRoute
@@ -564,7 +585,6 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
     AuthenticatedAdminLessonsRoute: AuthenticatedAdminLessonsRoute,
     AuthenticatedAdminModulesRoute: AuthenticatedAdminModulesRoute,
     AuthenticatedAdminPartnersRoute: AuthenticatedAdminPartnersRoute,
-    AuthenticatedAdminStudentsRoute: AuthenticatedAdminStudentsRoute,
     AuthenticatedAdminTeachersRoute: AuthenticatedAdminTeachersRoute,
     AuthenticatedAdminControlLessonIdRoute:
       AuthenticatedAdminControlLessonIdRoute,
@@ -572,8 +592,11 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
       AuthenticatedAdminCorrectionsSubmissionIdRoute,
     AuthenticatedAdminPresentLessonIdRoute:
       AuthenticatedAdminPresentLessonIdRoute,
+    AuthenticatedAdminStudentsStudentIdRoute:
+      AuthenticatedAdminStudentsStudentIdRoute,
     AuthenticatedAdminCorrectionsIndexRoute:
       AuthenticatedAdminCorrectionsIndexRoute,
+    AuthenticatedAdminStudentsIndexRoute: AuthenticatedAdminStudentsIndexRoute,
     AuthenticatedAdminStudioIndexRoute: AuthenticatedAdminStudioIndexRoute,
     AuthenticatedAdminStudioHomeworkHomeworkIdRoute:
       AuthenticatedAdminStudioHomeworkHomeworkIdRoute,

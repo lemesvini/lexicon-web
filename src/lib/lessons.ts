@@ -60,6 +60,38 @@ export type DialogBlock = BlockBase & {
 };
 
 /**
+ * An email, drawn as the macOS Mail compose window it would really be seen in.
+ *
+ * A `text` block can hold the same words, but half of what a student is being
+ * asked to read is the shape around them: who it is to, what the subject line
+ * says, where the greeting stops and the body starts. Drawing the window is what
+ * makes it read as an email rather than as a paragraph about one.
+ *
+ * The chrome is a still picture: traffic lights, and nothing that does anything.
+ * Nothing here is answered either; this is a presentation and material block. An
+ * email a student answers *about* is a `choose-description` exercise, whose
+ * passage takes the same block markdown.
+ */
+export type EmailBlock = BlockBase & {
+  type: "email";
+  label?: string;
+  /** Window treatment: the two macOS ones, plus two in the brand's own greens.
+   *  See EMAIL_THEMES. Defaults to "light". */
+  theme?: "light" | "dark" | "mist" | "forest";
+  /** Header rows. Each is drawn only when it has a value, so an email with no
+   *  `cc` is a window with no Cc line rather than one with an empty one. */
+  to?: string;
+  cc?: string;
+  subject?: string;
+  from?: string;
+  /** The message. Block markdown: paragraphs, line breaks, headings and lists
+   *  are kept as typed — a greeting, a body and a sign-off are three
+   *  paragraphs, and that spacing is part of the email. */
+  body: string;
+  note?: string;
+};
+
+/**
  * A cover: eyebrow, wordmark, and one huge headline on a flat brand colour.
  *
  * This is the presentation-only "big title" from docs/presenter.md, and it is
@@ -170,6 +202,7 @@ export type LessonBlock =
   | CalloutBlock
   | TableBlock
   | DialogBlock
+  | EmailBlock
   | ImageBlock
   | TitleBlock
   | ExerciseBlock;

@@ -20,7 +20,7 @@ const HEADER_H = "4rem";
  * chooses to press send. It saves them opening on a blank thread wondering what
  * to say, which is where these links usually lose people.
  */
-const WHATSAPP_NUMBER = "5549999619725";
+const WHATSAPP_NUMBER = "5549999984639";
 const WHATSAPP_GREETING =
   "Olá! Gostaria de saber mais sobre as aulas da Lexicon.";
 const WHATSAPP_HREF = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
@@ -109,8 +109,8 @@ function Hero() {
           Descubra a liberdade de ser <span className="text-primary">bilíngue</span>
         </h1>
 
-        <p className="mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground sm:text-xl">
-          Aulas focadas em conversação que contam com todas as possibilidades do nosso Can Do Syllabus: material didático que se adapta às suas necessidades
+        <p className="mt-6 max-w-2xl font-montserrat text-pretty text-lg leading-relaxed text-muted-foreground sm:text-xl">
+Somos uma escola de inglês que oferece aulas personalizadas com foco em conversação e resultado prático com o Can Do Syllabus, nosso material didático exclusivo.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4">

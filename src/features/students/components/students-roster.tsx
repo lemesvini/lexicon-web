@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { RefreshCwIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -29,10 +30,15 @@ import {
  * Inactive students are listed rather than hidden — the status facet is there to
  * narrow the view on demand, so nobody quietly disappears from the roster after
  * being deactivated.
+ *
+ * A row opens that student's dashboard. The roster answers "who is here?"; the
+ * questions after it ("how are they doing?", "what have they handed in?") all
+ * belong to one student, and there is no room for any of them in a column.
  */
 export function StudentsRoster() {
   const { profile } = useAuth();
   const isAdmin = profile?.role === "admin";
+  const navigate = useNavigate();
 
   const [students, setStudents] = React.useState<StudentRow[]>([]);
   const [modules, setModules] = React.useState<ModuleOption[]>([]);
@@ -147,6 +153,12 @@ export function StudentsRoster() {
       ]}
       emptyMessage="No students match."
       countLabel={(count) => `${count} student${count === 1 ? "" : "s"}`}
+      onRowClick={(student) =>
+        void navigate({
+          to: "/students/$studentId",
+          params: { studentId: student.id },
+        })
+      }
     />
   );
 }

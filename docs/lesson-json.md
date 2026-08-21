@@ -168,6 +168,28 @@ worth getting right on the first pass.
 **Never put a `*_bg` value on a title block, and never put `jade`/`forest`/
 `mist`/`clear` on a callout.**
 
+### `email` blocks — `theme`, not `color`
+
+Defined in `src/features/blocks/email/index.tsx`. The email window's field is
+called `theme`, and it is a separate field name precisely so it cannot be
+confused with the two lists above: an `email` block has no `color` at all.
+
+| Value | Looks like | Use for |
+|---|---|---|
+| `light` | macOS Mail, light. The default. | Almost always — the email as the student meets it |
+| `dark` | macOS Mail, dark | An email shown on a dark slide |
+| `mist` | Pale green window, dark green type | A branded slide, paired with a `mist` title |
+| `forest` | Deep green window, pale type | A branded slide, paired with a `forest` title |
+
+`mist` and `forest` are the brand greens from `src/features/blocks/brand.ts` —
+the same two grounds the `title` covers of those names use, which is why they
+share the names. Reach for them when the email is a piece of the deck; reach for
+`light`/`dark` when it is meant to look like a real email, which is most of the
+time.
+
+An unknown value falls back to `light` rather than throwing — the mistake shows
+up as a light window in the studio preview instead of a blank slide in class.
+
 ---
 
 ## Markdown
@@ -180,9 +202,13 @@ nestable. Newlines survive as line breaks. This covers `text.body`,
 `image.caption`, `finish-sentence.sentence`, `long-answer.question`.
 
 **Block markdown** — paragraphs, hard line breaks, `#`/`##`/`###` headings, and
-`-`/`*`/`+` or `1.` lists, plus all the inline marks. Only
-`choose-description.text` gets this, because a passage is often an email or a
-chat whose own layout is part of what is being read.
+`-`/`*`/`+` or `1.` lists, plus all the inline marks. Two fields get this:
+`choose-description.text` and `email.body`, because a passage is often an email
+or a chat whose own layout is part of what is being read.
+
+**Neither** — `email`'s four header fields (`to`, `cc`, `subject`, `from`) are
+printed as typed. An address is not prose and `**bold**` in a To: line would
+render as asterisks in the window.
 
 Nothing else is supported anywhere: no links, no tables-in-markdown, no images,
 no blockquotes, no nested lists. Write a `table` block instead of a markdown
@@ -291,6 +317,35 @@ fourth stops being readable at projector distance.
 dropped on save. Underscore runs are the convention for a gap the student fills
 out loud — this is not the `finish-sentence` exercise block and nothing is
 parsed out of it.
+
+### email
+
+```json
+{
+  "type": "email",
+  "theme": "light",
+  "to": "reservations@hotelvista.com",
+  "subject": "Booking for 12 March",
+  "from": "Ana Ribeiro – ana@example.com",
+  "body": "Dear Sir or Madam,\n\nI would like to book a double room…\n\nKind regards,\nAna"
+}
+```
+
+An email drawn as the macOS Mail compose window — a title bar with three
+traffic lights, the header rows, the message. Presentation and material only;
+the chrome is a picture and none of it does anything.
+
+`body` required (block markdown — blank line between paragraphs). `theme` is
+`light`, `dark`, `mist` or `forest`, defaulting to `light`; see
+[Colour](#email-blocks--theme-not-color).
+
+`to`, `cc`, `subject` and `from` are each optional and **each row is drawn only
+when it has a value**. Leave `cc` out and the window simply has no Cc line — do
+not pass `""` to hide a row, that is what omitting it does.
+
+Use this for reading an email as a class. If the student has to answer a
+question *about* the email, that is a `choose-description` block in a homework
+document, whose passage takes the same block markdown.
 
 ### image
 

@@ -19,6 +19,8 @@ The traps, in short:
 - `title` blocks take `jade` / `forest` / `mist` / `clear`. `callout` blocks
   take `blue_bg` / `green_bg` / `yellow_bg` / `gray_bg` / `red_bg`. Same field
   name, no shared values; a callout colour on a title block **crashes**.
+  `email` blocks have no `color` — their field is `theme`: `light` / `dark` /
+  `mist` / `forest`.
 - `list` blocks require `style` — no default.
 - Exercise blocks need a stable `id`; `answer` is a 0-based index into
   `options`; homework only.

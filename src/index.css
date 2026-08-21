@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@fontsource/caprasimo";
+@import "@fontsource-variable/montserrat";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -41,6 +42,7 @@
   --font-serif: Georgia, serif;
   --font-mono: Monaco, monospace;
   --font-display: Caprasimo, system-ui, sans-serif;
+  --font-montserrat: "Montserrat Variable", sans-serif;
   --radius: 0.5rem;
   --shadow-x: 0;
   --shadow-y: 1px;
@@ -97,6 +99,7 @@
   --font-serif: Georgia, serif;
   --font-mono: Monaco, monospace;
   --font-display: Caprasimo, system-ui, sans-serif;
+  --font-montserrat: "Montserrat Variable", sans-serif;
   --radius: 0.5rem;
   --shadow-x: 0;
   --shadow-y: 1px;
@@ -152,6 +155,7 @@
   --font-mono: var(--font-mono);
   --font-serif: var(--font-serif);
   --font-display: var(--font-display);
+  --font-montserrat: var(--font-montserrat);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

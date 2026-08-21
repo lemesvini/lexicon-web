@@ -5,6 +5,7 @@ import { listBlock } from "./list";
 import { calloutBlock } from "./callout";
 import { tableBlock } from "./table";
 import { dialogBlock } from "./dialog";
+import { emailBlock } from "./email";
 import { imageBlock } from "./image";
 import { titleBlock } from "./title";
 import { finishSentenceBlock } from "./finish-sentence";
@@ -24,6 +25,7 @@ export const BLOCK_REGISTRY: Registry = {
   callout: calloutBlock,
   table: tableBlock,
   dialog: dialogBlock,
+  email: emailBlock,
   image: imageBlock,
   "finish-sentence": finishSentenceBlock,
   "choose-description": chooseDescriptionBlock,
@@ -38,6 +40,7 @@ export const BLOCK_ORDER: BlockType[] = [
   "callout",
   "table",
   "dialog",
+  "email",
   "image",
 ];
 

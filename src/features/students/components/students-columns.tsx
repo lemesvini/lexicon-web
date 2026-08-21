@@ -2,7 +2,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 
 import { Badge } from "@/components/ui/badge";
 import { DataTableSortableHeader as SortableHeader } from "@/components/data-table-sortable-header";
-import { multiSelectFilter } from "@/lib/data-table";
+import { multiSelectFilter, rowClickIgnore } from "@/lib/data-table";
 import { StudentRowActions } from "@/features/students/components/student-row-actions";
 import type {
   ModuleOption,
@@ -110,13 +110,17 @@ export function studentsColumns({
       id: "actions",
       header: () => <span className="sr-only">Actions</span>,
       enableSorting: false,
+      // The row itself opens the student, so the menu has to swallow its own
+      // clicks — otherwise "Deactivate" would also navigate.
       cell: ({ row }) => (
-        <StudentRowActions
-          student={row.original}
-          modules={modules}
-          teachers={isAdmin ? teachers : []}
-          onChanged={onChanged}
-        />
+        <div {...rowClickIgnore}>
+          <StudentRowActions
+            student={row.original}
+            modules={modules}
+            teachers={isAdmin ? teachers : []}
+            onChanged={onChanged}
+          />
+        </div>
       ),
     },
   ];

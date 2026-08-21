@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTableFacetedFilter } from "@/components/data-table-faceted-filter";
+import { cn } from "@/lib/utils";
 
 /** A toolbar dropdown that narrows one column to a chosen set of its values. */
 export type DataTableFacet = {
@@ -53,6 +54,16 @@ type DataTableProps<TData, TValue> = {
   /** Footer row count, e.g. `(n) => \`${n} classes\``. */
   countLabel?: (count: number) => string;
   pageSize?: number;
+  /**
+   * Makes each row open something — normally a detail page for that row.
+   *
+   * Rows become focusable and answer Enter as well as a click, so the table is
+   * still navigable from the keyboard. A cell holding its own controls (a menu,
+   * a link) has to stop the click propagating, or pressing its button would
+   * navigate away underneath it — `rowClickIgnore` in @/lib/data-table is the
+   * shorthand for that.
+   */
+  onRowClick?: (row: TData) => void;
 };
 
 /**
@@ -70,6 +81,7 @@ export function DataTable<TData, TValue>({
   emptyMessage = "No results.",
   countLabel = (count) => `${count} row${count === 1 ? "" : "s"}`,
   pageSize = 10,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -146,7 +158,29 @@ export function DataTable<TData, TValue>({
           <TableBody>
             {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  // `button`, not `link`: there is no href to give it, and a
+                  // link that isn't one is worse than a button that says so.
+                  role={onRowClick ? "button" : undefined}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                  onKeyDown={
+                    onRowClick
+                      ? (event) => {
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          // Space scrolls the page otherwise, which is a jump
+                          // away from the row that was just activated.
+                          event.preventDefault();
+                          onRowClick(row.original);
+                        }
+                      : undefined
+                  }
+                  className={cn(
+                    onRowClick &&
+                      "cursor-pointer focus-visible:bg-muted/50 focus-visible:outline-none",
+                  )}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(

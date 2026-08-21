@@ -2,7 +2,6 @@ import * as React from "react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { PlusIcon, RefreshCwIcon } from "lucide-react";
 
-import { BackLink } from "@/components/back-link";
 import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
@@ -123,27 +122,23 @@ function StudioLibraryPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
-      <SiteNav />
+      <SiteNav backTo="/lessons" backLabel="Back to lessons" />
       <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-10">
-        <div className="space-y-4">
-          <BackLink />
-
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div className="space-y-1">
-              <h1 className="font-display text-4xl leading-none text-primary">
-                Studio
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Everything you've authored — what you project, what your
-                students read, and what they take home.
-              </p>
-            </div>
-
-            <Button onClick={() => setCreateOpen(true)}>
-              <PlusIcon />
-              Create
-            </Button>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="space-y-1">
+            <h1 className="font-display text-4xl leading-none text-primary">
+              Studio
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Everything you've authored — what you project, what your students
+              read, and what they take home.
+            </p>
           </div>
+
+          <Button onClick={() => setCreateOpen(true)}>
+            <PlusIcon />
+            Create
+          </Button>
         </div>
 
         {status === "loading" ? (

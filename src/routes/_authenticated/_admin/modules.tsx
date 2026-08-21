@@ -1,24 +1,25 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { BackLink } from '@/components/back-link'
-import { ModulesBoard } from '@/features/modules/components/modules-board'
+import { createFileRoute } from "@tanstack/react-router";
+import { SiteNav } from "@/components/site-nav";
+import { ModulesBoard } from "@/features/modules/components/modules-board";
 
-export const Route = createFileRoute('/_authenticated/_admin/modules')({
+export const Route = createFileRoute("/_authenticated/_admin/modules")({
   component: ModulesPage,
-})
+});
 
 function ModulesPage() {
   return (
-    <div className="min-h-svh bg-background p-6 text-foreground">
-      <div className="mx-auto w-full max-w-6xl space-y-6">
-        <div>
-          <BackLink />
-          <h1 className="mt-4 text-2xl font-semibold">Modules</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+    <div className="min-h-[100dvh] bg-background text-foreground">
+      <SiteNav backTo="/lessons" backLabel="Back to lessons" />
+      <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-10">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Modules</h1>
+          <p className="text-sm text-muted-foreground">
             The curriculum a student’s access is pinned to.
           </p>
         </div>
+
         <ModulesBoard />
-      </div>
+      </main>
     </div>
-  )
+  );
 }

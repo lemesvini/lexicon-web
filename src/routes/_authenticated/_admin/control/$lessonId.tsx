@@ -7,7 +7,7 @@ import {
   Loader2Icon,
   XIcon,
 } from 'lucide-react'
-import { BackLink } from '@/components/back-link'
+import { BackButton } from '@/components/back-button'
 import { Button } from '@/components/ui/button'
 import { SlideView } from '@/features/blocks'
 import { Whiteboard } from '@/features/presenter/components/whiteboard'
@@ -133,7 +133,7 @@ function ControlPage() {
   return (
     <div className="flex h-svh flex-col bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border px-6 py-3">
-        <BackLink />
+        <BackButton to="/lessons" label="Back to lessons" />
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">{lesson.title}</span>
           <ConnectionBadge status={status} />

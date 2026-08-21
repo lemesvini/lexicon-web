@@ -2,19 +2,14 @@ import { HeadingIcon } from "lucide-react";
 import type { TitleBlock } from "@/lib/lessons";
 import { cn } from "@/lib/utils";
 import type { BlockDefinition } from "../types";
+import { FOREST, INK, JADE, MIST, withAlpha } from "../brand";
 import { AutoTextarea } from "../editor-ui/auto-textarea";
 
 // The cover slide, drawn instead of uploaded. See `TitleBlock` in @/lib/lessons
 // for why: an image is cropped to whatever screen it lands on, type is not.
-
-/**
- * Brand palette (docs/presenter.md → Brand), written out here rather than read
- * from the theme tokens on purpose: a projected cover must look the same in
- * either app theme. The room sees the brand, not the teacher's dark mode.
- */
-const JADE = "oklch(0.7084 0.0942 167.3388)";
-const FOREST = "oklch(0.3004 0.0440 168.9151)";
-const MIST = "oklch(0.9400 0.0300 167.0000)";
+//
+// The greens come from ../brand (docs/presenter.md → Brand) rather than from the
+// theme tokens: a projected cover must look the same in either app theme.
 
 type TitleColor = NonNullable<TitleBlock["color"]>;
 
@@ -30,8 +25,7 @@ export const TITLE_COLORS: Record<
   // keeps the type readable without hiding the picture.
   clear: {
     label: "Over image",
-    background:
-      "linear-gradient(to top, oklch(0.1841 0.0101 172.88 / 0.55), oklch(0.1841 0.0101 172.88 / 0.05))",
+    background: `linear-gradient(to top, ${withAlpha(INK, 0.55)}, ${withAlpha(INK, 0.05)})`,
     foreground: MIST,
   },
 };
