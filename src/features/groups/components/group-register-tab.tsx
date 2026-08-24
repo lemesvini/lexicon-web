@@ -1,10 +1,5 @@
 import * as React from "react";
-import {
-  CalendarDaysIcon,
-  MoreHorizontalIcon,
-  RefreshCwIcon,
-  XIcon,
-} from "lucide-react";
+import { CalendarCheckIcon, RefreshCwIcon, XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,13 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -35,14 +23,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AddMemberDialog } from "@/features/groups/components/add-member-dialog";
 import { WeekdayPicker } from "@/features/groups/components/weekday-picker";
 import {
-  deleteGroup,
-  formatSchedule,
+  listScheduledOn,
+  type ScheduledClass,
+} from "@/features/groups/data/group-lessons";
+import {
+  formatDays,
   listGroupMembers,
   removeGroupStudent,
   setAttendance,
   setGroupDays,
   setGroupLesson,
-  setGroupStatus,
   today,
   type GroupMember,
   type GroupRow,
@@ -63,37 +53,34 @@ function formatRate(rate: number | null): string {
 }
 
 /**
- * One group's register: the lesson it's on, and who was there on a given day.
+ * The Register tab: the group's settings, and who was there on a given day.
  *
- * The date is a field rather than an assumption about today, because the
- * register is as often filled in the morning after as during the class. Changing
- * it reloads what was recorded for that day — an empty register for a date
- * nobody has marked yet, not a fresh set of absences.
+ * The date is a field rather than an assumption about today, because the register
+ * is as often filled in the morning after as during the class. Changing it
+ * reloads what was recorded for that day — an empty register for a date nobody
+ * has marked yet, not a fresh set of absences.
+ *
+ * The group's name, its teacher and the destructive actions live on the page
+ * around this rather than here: they are true of the group whichever tab is open.
  */
-export function GroupRegister({
+export function GroupRegisterTab({
   group,
   classDate,
   onClassDateChange,
   lessons,
   students,
-  attendanceOpen,
-  onToggleAttendance,
   onChanged,
 }: {
   group: GroupRow;
-  /**
-   * The day being marked. Owned by the board rather than here, because the
-   * attendance panel next door moves it too — two controls on one date only
-   * agree if neither of them owns it.
-   */
+  /** The day being marked. Owned by the page rather than here, because the
+   *  Attendance tab moves it too — two controls on one date only agree if
+   *  neither of them owns it. */
   classDate: string;
   onClassDateChange: (classDate: string) => void;
   lessons: CloudLessonSummary[];
   /** Every student the caller can see, for the add dialog. */
   students: StudentRow[];
-  attendanceOpen: boolean;
-  onToggleAttendance: () => void;
-  /** Called when something changes that the group list also shows. */
+  /** Called when something changes that the page header also shows. */
   onChanged: () => void;
 }) {
   // What is on screen, and which day it is the register *for*. Kept together so
@@ -106,8 +93,33 @@ export function GroupRegister({
   const [failed, setFailed] = React.useState(false);
   const [reloadKey, setReloadKey] = React.useState(0);
   const [busy, setBusy] = React.useState(false);
-  const [confirmingDelete, setConfirmingDelete] = React.useState(false);
   const [removing, setRemoving] = React.useState<GroupMember | null>(null);
+
+  // What this group is planned to teach on the date being marked (0010). The
+  // register snapshots a lesson id, and the honest answer to "what did they do
+  // that day?" is what the calendar says — not `current_lesson_id`, which is a
+  // pointer somebody has to remember to move and is stale as often as not.
+  const [planned, setPlanned] = React.useState<ScheduledClass | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    listScheduledOn([classDate])
+      .then((byDate) => {
+        if (cancelled) return;
+        setPlanned(
+          (byDate.get(classDate) ?? []).find((row) => row.groupId === group.id) ??
+            null,
+        );
+      })
+      // Not fatal: without it the register falls back to the group's current
+      // lesson, which is what it always used to record.
+      .catch(() => {
+        if (!cancelled) setPlanned(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [group.id, classDate]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -137,7 +149,7 @@ export function GroupRegister({
   /** Refetch in place, keeping whatever is on screen until the answer lands. */
   const reload = React.useCallback(() => setReloadKey((k) => k + 1), []);
 
-  /** Runs a write, then refreshes both this panel and the list beside it. */
+  /** Runs a write, then refreshes both this tab and the page around it. */
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
     try {
@@ -151,6 +163,10 @@ export function GroupRegister({
     }
   };
 
+  /** What the register writes against. The plan for the day wins; the group's
+   *  current lesson is the fallback for a date nothing is planned for. */
+  const recordedLessonId = planned?.lessonId ?? group.lessonId;
+
   const mark = (studentId: string, present: boolean) =>
     run(() =>
       setAttendance({
@@ -158,7 +174,7 @@ export function GroupRegister({
         studentId,
         classDate,
         present,
-        lessonId: group.lessonId,
+        lessonId: recordedLessonId,
       }),
     );
 
@@ -173,7 +189,7 @@ export function GroupRegister({
           studentId: member.studentId,
           classDate,
           present: true,
-          lessonId: group.lessonId,
+          lessonId: recordedLessonId,
         });
       }
     });
@@ -190,108 +206,6 @@ export function GroupRegister({
 
   return (
     <section className="rounded-md border">
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b p-4">
-        <div className="min-w-0 space-y-1">
-          <h2 className="truncate text-lg font-semibold tracking-tight">
-            {group.name}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {[group.teacher, formatSchedule(group)].filter(Boolean).join(" · ") ||
-              "No teacher or schedule set"}
-          </p>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          {/* `aria-pressed` rather than a second label: the button doesn't change
-              its text when the panel is out, so the state has to be said
-              somewhere a screen reader will find it. */}
-          <Button
-            variant={attendanceOpen ? "secondary" : "outline"}
-            size="sm"
-            aria-pressed={attendanceOpen}
-            onClick={onToggleAttendance}
-          >
-            <CalendarDaysIcon />
-            Attendance
-          </Button>
-          <AddMemberDialog
-            groupId={group.id}
-            groupName={group.name}
-            students={students}
-            memberIds={memberIds}
-            onAdd={() => {
-              reload();
-              onChanged();
-            }}
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" disabled={busy}>
-                <MoreHorizontalIcon />
-                <span className="sr-only">Actions for {group.name}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onSelect={() =>
-                  void run(() =>
-                    setGroupStatus(
-                      group.id,
-                      group.status === "active" ? "inactive" : "active",
-                    ),
-                  )
-                }
-              >
-                {group.status === "active" ? "Archive group" : "Reactivate"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onSelect={() => setConfirmingDelete(true)}
-              >
-                Delete group
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
-
-      {/* A sibling of the menu rather than a child of it — a dialog rendered
-          inside a DropdownMenuItem is unmounted the moment the menu closes — and
-          a real dialog rather than `confirm()`, which fired from `onSelect`
-          races that close. */}
-      <Dialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete {group.name}?</DialogTitle>
-            <DialogDescription>
-              The group and its attendance record go with it. The students stay
-              on the roster, and everything else about them is untouched.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="mt-4 flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setConfirmingDelete(false)}
-              disabled={busy}
-            >
-              Keep it
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={busy}
-              onClick={() => {
-                setConfirmingDelete(false);
-                void run(() => deleteGroup(group.id));
-              }}
-            >
-              Delete group
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <div className="grid gap-4 border-b p-4 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
           <Label id="register-days-label">Meets on</Label>
@@ -308,30 +222,50 @@ export function GroupRegister({
 
         <div className="space-y-2">
           <Label htmlFor="group-lesson">Lesson</Label>
-          <Select
-            value={group.lessonId ?? NO_LESSON_VALUE}
-            onValueChange={(value) =>
-              void run(() =>
-                setGroupLesson(
-                  group.id,
-                  value === NO_LESSON_VALUE ? null : value,
-                ),
-              )
-            }
-          >
-            <SelectTrigger id="group-lesson" className="w-full">
-              <SelectValue placeholder="Pick a lesson" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_LESSON_VALUE}>No lesson set</SelectItem>
-              {lessons.map((lesson) => (
-                <SelectItem key={lesson.id} value={lesson.id}>
-                  {lesson.module ? `${lesson.module} · ` : ""}
-                  {lesson.title || lesson.id}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {planned ? (
+            // Planned on the Lessons tab, so it is read-only here — two places to
+            // set the same thing is how they end up disagreeing. Shown rather than
+            // left implicit because this is what the register is about to record.
+            <div
+              id="group-lesson"
+              className="flex h-9 items-center gap-2 rounded-md border bg-muted/40 px-3 text-sm"
+            >
+              <CalendarCheckIcon className="size-3.5 shrink-0 text-primary" />
+              <span className="truncate">
+                {planned.title || planned.lessonId}
+              </span>
+            </div>
+          ) : (
+            <Select
+              value={group.lessonId ?? NO_LESSON_VALUE}
+              onValueChange={(value) =>
+                void run(() =>
+                  setGroupLesson(
+                    group.id,
+                    value === NO_LESSON_VALUE ? null : value,
+                  ),
+                )
+              }
+            >
+              <SelectTrigger id="group-lesson" className="w-full">
+                <SelectValue placeholder="Pick a lesson" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_LESSON_VALUE}>No lesson set</SelectItem>
+                {lessons.map((lesson) => (
+                  <SelectItem key={lesson.id} value={lesson.id}>
+                    {lesson.module ? `${lesson.module} · ` : ""}
+                    {lesson.title || lesson.id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <p className="text-xs text-muted-foreground">
+            {planned
+              ? "Planned for this date on the Lessons tab — the register records it."
+              : "Nothing planned for this date, so the register records the group’s current lesson."}
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -347,6 +281,23 @@ export function GroupRegister({
           />
         </div>
       </div>
+
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+        <p className="text-sm text-muted-foreground">
+          {members.length} on the register
+          {group.meetsOn.length > 0 && ` · ${formatDays(group.meetsOn)}`}
+        </p>
+        <AddMemberDialog
+          groupId={group.id}
+          groupName={group.name}
+          students={students}
+          memberIds={memberIds}
+          onAdd={() => {
+            reload();
+            onChanged();
+          }}
+        />
+      </header>
 
       {failed ? (
         <div className="flex flex-col items-center gap-3 p-8 text-center">

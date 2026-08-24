@@ -57,6 +57,8 @@ export type StudentProfile = {
   teacher: string;
   /** Free-text staff note. Editable from the dashboard — see {@link setStudentNotes}. */
   notes: string;
+  /** Storage object path of their picture, or "" for none. See @/lib/avatars. */
+  avatarPath: string;
   /** Null until someone has priced them up — not zero. */
   monthlyFee: number | null;
   classesPerWeek: number | null;
@@ -154,6 +156,7 @@ type ProfileRecord = {
   current_module_id: string | null;
   teacher_id: string | null;
   notes: string | null;
+  avatar_path: string | null;
   monthly_fee: number | string | null;
   classes_per_week: number | null;
   created_at: string | null;
@@ -220,7 +223,7 @@ export async function fetchStudentDossier(
       supabase
         .from("students")
         .select(
-          "id, user_id, full_name, email, phone, status, current_module_id, teacher_id, notes, monthly_fee, classes_per_week, created_at, module:modules (name), teacher:profiles (full_name, email)",
+          "id, user_id, full_name, email, phone, status, current_module_id, teacher_id, notes, avatar_path, monthly_fee, classes_per_week, created_at, module:modules (name), teacher:profiles (full_name, email)",
         )
         .eq("id", studentId)
         .maybeSingle(),
@@ -277,6 +280,7 @@ export async function fetchStudentDossier(
       // named here rather than showing as unassigned.
       teacher: teacher?.full_name || teacher?.email || "",
       notes: record.notes ?? "",
+      avatarPath: record.avatar_path ?? "",
       monthlyFee: toNumber(record.monthly_fee),
       classesPerWeek: record.classes_per_week,
       createdAt: record.created_at ?? "",
@@ -394,6 +398,29 @@ export async function setStudentNotes(
     .from("students")
     .update({ notes: notes.trim() || null })
     .eq("id", studentId);
+
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Flips one register entry between present and absent.
+ *
+ * Updates a row that already exists rather than upserting: `group_attendance`
+ * carries the group and the lesson taught that day, and inventing a row from a
+ * date alone would record a class nobody said happened. Adding a day is the
+ * register's job, on the group's own screen; this is the correction.
+ *
+ * RLS does the rest — `owns_group()` (0007) means a teacher can only correct
+ * the register of a group of theirs.
+ */
+export async function setClassAttendance(
+  attendanceId: string,
+  present: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from("group_attendance")
+    .update({ present })
+    .eq("id", attendanceId);
 
   if (error) throw new Error(error.message);
 }

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { RefreshCwIcon, XIcon } from "lucide-react";
+import { RefreshCwIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,28 +19,22 @@ const dayFormat = new Intl.DateTimeFormat(undefined, {
 
 /**
  * The group's attendance, class by class — the history behind the single day the
- * register beside it is showing.
+ * Register tab is showing.
  *
- * A panel rather than a page: the question it answers ("how has this group been
- * turning up?") is one you ask *while* looking at the register, and an answer you
- * have to navigate away to read is one you stop asking for.
- *
- * Each day is a button that moves the register onto that date, so a thin-looking
- * class is one click from the names behind it.
+ * Each day is a button that moves the register onto that date and switches back
+ * to it, so a thin-looking class is one click from the names behind it.
  */
 export function GroupAttendancePanel({
   group,
   classDate,
   onPickDate,
-  onClose,
-  /** Bumped by the board after any write, so the history follows the register. */
+  /** Bumped by the page after any write, so the history follows the register. */
   reloadKey,
 }: {
   group: GroupRow;
-  /** The date the register is on, highlighted here so the two panels agree. */
+  /** The date the register is on, highlighted here so the two tabs agree. */
   classDate: string;
   onPickDate: (classDate: string) => void;
-  onClose: () => void;
   reloadKey: number;
 }) {
   const [days, setDays] = React.useState<AttendanceDay[]>([]);
@@ -83,23 +77,24 @@ export function GroupAttendancePanel({
 
   return (
     <section className="rounded-md border">
-      <header className="flex items-start justify-between gap-2 border-b py-3 pr-2 pl-4">
+      <header className="border-b px-4 py-3">
         <div className="min-w-0 space-y-0.5">
           <h2 className="text-sm font-medium">Attendance</h2>
           <p className="text-xs text-muted-foreground">
             {status === "ready"
-              ? days.length === 0
+              ? // `totals.total` can be zero even with days on the list — a day
+                // every student was left unmarked has rows but nothing counted —
+                // so the guard is on the divisor, not on `days.length`.
+                days.length === 0
                 ? "No classes recorded yet"
-                : `${days.length} class${days.length === 1 ? "" : "es"} · ${Math.round(
-                    (totals.present / totals.total) * 100,
-                  )}% overall`
+                : `${days.length} class${days.length === 1 ? "" : "es"}${
+                    totals.total > 0
+                      ? ` · ${Math.round((totals.present / totals.total) * 100)}% overall`
+                      : ""
+                  }`
               : group.name}
           </p>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <XIcon />
-          <span className="sr-only">Close the attendance panel</span>
-        </Button>
       </header>
 
       {status === "loading" ? (

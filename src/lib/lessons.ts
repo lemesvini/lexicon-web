@@ -17,9 +17,18 @@
  * `strip_teacher_content` (migration 0004) drops any block carrying the flag,
  * regardless of type, which is why it belongs on the base rather than on the
  * handful of block types that happened to need it first.
+ *
+ * `advancedContext: true` marks a block one group added on top of the shared
+ * lesson — the extra example, the vocabulary this room keeps tripping over. It
+ * only ever appears inside a `group_lessons` document (migration 0010), never in
+ * a base lesson, and it is on the base type for the same reason `audience` is:
+ * any block may be one. Everything that renders it draws the primary-bordered
+ * "Advanced Context" frame; everything that edits it treats the blocks WITHOUT
+ * the flag as read-only base material.
  */
 export type BlockBase = {
   audience?: "teacher";
+  advancedContext?: true;
 };
 
 export type TextBlock = BlockBase & {
@@ -222,6 +231,15 @@ export type LessonSlide = {
   /** Hide the stage header (the eyebrow + stage name) on this slide. Wallpaper
    *  slides always hide it regardless of this flag. */
   hideStage?: boolean;
+  /** A whole slide one group added on top of the shared lesson. The block-level
+   *  counterpart of the same flag on `BlockBase`: base slides are locked in the
+   *  Advanced Context Studio, slides carrying this are the teacher's own and
+   *  fully editable. */
+  advancedContext?: true;
+  /** How an advanced-context slide is framed on the projector: the brand green
+   *  around a dark panel ("jade", the default), or the dark ground around a pale
+   *  one ("forest"). Ignored on a slide that isn't advanced context. */
+  advancedTheme?: "jade" | "forest";
   blocks: LessonBlock[];
   teacherNotes?: string[];
 };

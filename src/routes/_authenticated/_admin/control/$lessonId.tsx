@@ -20,13 +20,21 @@ import {
 import { useLessonPresenter } from '@/features/presenter/use-lesson-presenter'
 import { useResolvedLesson } from '@/features/presenter/use-resolved-lesson'
 
+type ControlSearch = { groupId?: string }
+
 export const Route = createFileRoute('/_authenticated/_admin/control/$lessonId')({
+  // Mirrors the present route: the teacher's device has to be driving the same
+  // deck the projector is showing.
+  validateSearch: (search: Record<string, unknown>): ControlSearch => ({
+    groupId: typeof search.groupId === 'string' ? search.groupId : undefined,
+  }),
   component: ControlPage,
 })
 
 function ControlPage() {
   const { lessonId } = Route.useParams()
-  const { lesson, loading } = useResolvedLesson(lessonId)
+  const { groupId } = Route.useSearch()
+  const { lesson, loading } = useResolvedLesson(lessonId, groupId)
   const slideCount = lesson?.slides.length ?? 0
   const {
     slideIndex,

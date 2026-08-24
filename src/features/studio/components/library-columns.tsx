@@ -8,6 +8,7 @@ import { DataTableSortableHeader as SortableHeader } from "@/components/data-tab
 import { multiSelectFilter } from "@/lib/data-table";
 import { deleteHomework, setHomeworkStatus } from "../data/homework";
 import { deleteMaterial, setMaterialStatus } from "../data/materials";
+import type { LibraryAdvancedRow } from "@/features/groups/data/group-lessons";
 import type {
   LibraryHomeworkRow,
   LibraryLessonRow,
@@ -181,6 +182,79 @@ export function materialColumns({
             deleteBody="The lesson itself and its presentation are untouched — only the student's copy is deleted. This can't be undone."
             onChanged={onChanged}
           />
+        </div>
+      ),
+    },
+  ];
+}
+
+// ── Advanced context ─────────────────────────────────────────────────────────
+// A group's own copy of a lesson. Read-only from here apart from Edit: a copy is
+// created and removed on the group's Lessons tab, where the group it belongs to
+// is the thing you are looking at.
+
+export function advancedColumns(): ColumnDef<LibraryAdvancedRow>[] {
+  return [
+    {
+      accessorKey: "groupName",
+      header: ({ column }) => <SortableHeader column={column} label="Group" />,
+      cell: ({ row }) => (
+        <span className="font-medium">{row.getValue("groupName") || "—"}</span>
+      ),
+    },
+    {
+      accessorKey: "title",
+      header: ({ column }) => <SortableHeader column={column} label="Lesson" />,
+      cell: ({ row }) => row.getValue("title") || row.original.lessonId,
+    },
+    {
+      accessorKey: "module",
+      header: ({ column }) => <SortableHeader column={column} label="Module" />,
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => row.getValue("module") || "—",
+    },
+    {
+      accessorKey: "advancedCount",
+      header: ({ column }) => <SortableHeader column={column} label="Added" />,
+      cell: ({ row }) =>
+        row.original.advancedCount > 0 ? (
+          <Badge variant="secondary">{row.original.advancedCount}</Badge>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
+      accessorKey: "updatedAt",
+      header: ({ column }) => <SortableHeader column={column} label="Updated" />,
+      cell: ({ row }) => (
+        <span className="flex items-center gap-2">
+          <Updated iso={row.getValue("updatedAt")} />
+          {row.original.baseIsNewer && (
+            <span title="The shared lesson has changed since this copy was made">
+              <AlertTriangleIcon className="size-3.5 text-amber-600" />
+            </span>
+          )}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => <span className="sr-only">Actions</span>,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" asChild>
+            <Link
+              to="/studio/advanced/$groupId/$lessonId"
+              params={{
+                groupId: row.original.groupId,
+                lessonId: row.original.lessonId,
+              }}
+            >
+              <PencilIcon />
+              Edit
+            </Link>
+          </Button>
         </div>
       ),
     },

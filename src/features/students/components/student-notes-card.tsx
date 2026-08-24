@@ -2,12 +2,16 @@ import * as React from "react";
 import { CheckIcon, Loader2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { setStudentNotes } from "@/features/students/data/student-profile";
-import { StudentPanel } from "@/features/students/components/student-panel";
+import {
+  StudentPanel,
+  type PanelSlotProps,
+} from "@/features/students/components/student-panel";
 
 /**
- * The staff note on a student — what you'd otherwise keep in a spreadsheet: why
- * they're behind, what their exam is for, who to call.
+ * The staff context on a student — what you'd otherwise keep in a spreadsheet:
+ * why they're behind, what their exam is for, who to call.
  *
  * Saved explicitly rather than on a debounce. This is a field two people might
  * have open at once, and an autosave would let the slower typist's copy quietly
@@ -19,6 +23,7 @@ import { StudentPanel } from "@/features/students/components/student-panel";
 export function StudentNotesCard({
   studentId,
   notes,
+  ...slot
 }: {
   studentId: string;
   /**
@@ -30,7 +35,7 @@ export function StudentNotesCard({
    * than leaving a stale draft in place.
    */
   notes: string;
-}) {
+} & PanelSlotProps) {
   const [draft, setDraft] = React.useState(notes);
   /** The last version known to be in the database. */
   const [saved, setSaved] = React.useState(notes);
@@ -55,7 +60,8 @@ export function StudentNotesCard({
 
   return (
     <StudentPanel
-      title="Notes"
+      {...slot}
+      title="Student's Context"
       meta={
         phase === "saved" && !dirty ? (
           <span className="flex items-center gap-1">
@@ -65,7 +71,10 @@ export function StudentNotesCard({
         ) : undefined
       }
     >
-      <div className="space-y-3 px-5 py-4">
+      {/* In the rail the field takes the height it is given — a note is the one
+          thing here you write rather than read, and a five-row box floating in
+          a full-height column is a smaller target than the space allows. */}
+      <div className="flex flex-1 flex-col gap-3 px-5 py-4">
         <textarea
           value={draft}
           onChange={(event) => {
@@ -73,8 +82,11 @@ export function StudentNotesCard({
             setPhase("idle");
           }}
           rows={5}
-          placeholder="Anything worth remembering about this student…"
-          className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-ring/30"
+          placeholder="Anything worth remembering about this student — why they're behind, what their exam is for, who to call…"
+          className={cn(
+            "w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-ring/30",
+            slot.variant === "flush" && "min-h-40 flex-1 resize-none",
+          )}
         />
 
         {/* The button only appears once there is something to save — an always-on

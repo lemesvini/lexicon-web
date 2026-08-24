@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { SiteNav } from "@/components/site-nav";
-import { GroupsBoard } from "@/features/groups/components/groups-board";
+import { GroupsList } from "@/features/groups/components/groups-list";
 
-export const Route = createFileRoute("/_authenticated/_admin/groups")({
+export const Route = createFileRoute("/_authenticated/_admin/groups/")({
   component: GroupsPage,
 });
 
@@ -19,7 +19,7 @@ function GroupsPage() {
           </p>
         </div>
 
-        <GroupsBoard />
+        <GroupsList />
       </main>
     </div>
   );

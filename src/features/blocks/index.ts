@@ -25,7 +25,7 @@ export {
 
 export { newBlockId } from "./block-id";
 
-export { SlideView, BlockView } from "./slide-view";
+export { SlideView, BlockView, AdvancedFrame } from "./slide-view";
 export { renderInline } from "./inline-md";
 
 // Editor toolkit — reused by the studio's own chrome (slide meta, teacher notes).

@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteNav } from "@/components/site-nav";
+import { requireAdmin } from "@/lib/route-guards";
 import { ModulesBoard } from "@/features/modules/components/modules-board";
 
 export const Route = createFileRoute("/_authenticated/_admin/modules")({
+  beforeLoad: requireAdmin,
   component: ModulesPage,
 });
 

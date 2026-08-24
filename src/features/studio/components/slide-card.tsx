@@ -70,6 +70,7 @@ export function SlideCard({
   studio,
   teacherContent = true,
   preview = true,
+  locked = false,
   blockTypes,
 }: {
   slide: EditorSlide;
@@ -80,6 +81,15 @@ export function SlideCard({
   blockTypes?: BlockType[];
   /** Draw the slide as the room will see it, above the fields that build it. */
   preview?: boolean;
+  /**
+   * Base material a group may add to but not change.
+   *
+   * The slide can't be deleted, moved, duplicated or renamed, and its existing
+   * blocks are read-only — but the `+` still works, and anything added through it
+   * is fully editable. That asymmetry is the whole point of the Advanced Context
+   * Studio: the shared lesson stays the shared lesson.
+   */
+  locked?: boolean;
   /** Whether this document can carry the teacher's half: per-slide notes, blocks
    *  marked teacher-only, and the class-planning fields (duration, goal). All of
    *  it is stripped on write to a student document, so a student-facing editor
@@ -108,6 +118,7 @@ export function SlideCard({
         <div className="min-w-0 flex-1 space-y-1">
           <input
             value={meta.stage}
+            readOnly={locked}
             onChange={(e) => setMeta({ stage: e.target.value })}
             placeholder="Stage name (e.g. Warm-up)"
             className="w-full bg-transparent text-lg font-semibold outline-none placeholder:text-muted-foreground/60 focus:rounded-sm focus:ring-2 focus:ring-ring/30"
@@ -117,17 +128,39 @@ export function SlideCard({
               <span className="text-xs">id</span>
               <input
                 value={meta.id}
+                readOnly={locked}
                 onChange={(e) => setMeta({ id: e.target.value })}
                 placeholder="slide-id"
                 className="w-28 bg-transparent font-mono text-xs outline-none placeholder:text-muted-foreground/50 focus:rounded-sm focus:ring-2 focus:ring-ring/30"
               />
             </label>
+            {locked && (
+              <span className="rounded bg-muted px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Base material
+              </span>
+            )}
+            {meta.advancedContext && (
+              <button
+                type="button"
+                onClick={() =>
+                  setMeta({
+                    advancedTheme:
+                      meta.advancedTheme === "forest" ? "jade" : "forest",
+                  })
+                }
+                title="Frame colour on the projector — click to switch"
+                className="rounded bg-primary/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary/25"
+              >
+                Advanced · {meta.advancedTheme === "forest" ? "dark" : "green"}
+              </button>
+            )}
             {teacherContent && (
               <>
                 <label className="inline-flex items-center gap-1.5">
                   <span className="text-xs">⏱</span>
                   <input
                     value={meta.duration}
+                    readOnly={locked}
                     onChange={(e) => setMeta({ duration: e.target.value })}
                     placeholder="10 min"
                     className="w-16 bg-transparent outline-none placeholder:text-muted-foreground/50 focus:rounded-sm focus:ring-2 focus:ring-ring/30"
@@ -135,6 +168,7 @@ export function SlideCard({
                 </label>
                 <input
                   value={meta.goal}
+                  readOnly={locked}
                   onChange={(e) => setMeta({ goal: e.target.value })}
                   placeholder="Goal of this slide…"
                   className="min-w-40 flex-1 bg-transparent italic outline-none placeholder:not-italic placeholder:text-muted-foreground/50 focus:rounded-sm focus:ring-2 focus:ring-ring/30"
@@ -144,47 +178,61 @@ export function SlideCard({
           </div>
         </div>
 
-        {/* Slide actions + the top-right add button */}
+        {/* Slide actions + the top-right add button. On a locked slide only the
+            add button survives — everything else here would change the shared
+            lesson rather than this group's copy of it. */}
         <div className="flex shrink-0 items-center gap-0.5">
-          <IconAction
-            onClick={() => setMeta({ hideStage: !meta.hideStage })}
-            label={
-              meta.hideStage
-                ? "Stage header hidden — click to show"
-                : "Stage header shown — click to hide"
-            }
-          >
-            {meta.hideStage ? <EyeOffIcon /> : <EyeIcon />}
-          </IconAction>
-          <IconAction
-            onClick={() => setMeta({ layout: isRow ? "column" : "row" })}
-            label={
-              isRow
-                ? "Layout: side by side — click to stack"
-                : "Layout: stacked — click for side by side"
-            }
-          >
-            {isRow ? <Columns2Icon /> : <Rows2Icon />}
-          </IconAction>
-          <IconAction onClick={() => studio.moveSlide(key, -1)} label="Move slide up">
-            <ChevronUpIcon className={cn(index === 0 && "opacity-30")} />
-          </IconAction>
-          <IconAction
-            onClick={() => studio.moveSlide(key, 1)}
-            label="Move slide down"
-          >
-            <ChevronDownIcon className={cn(index === total - 1 && "opacity-30")} />
-          </IconAction>
-          <IconAction onClick={() => studio.duplicateSlide(key)} label="Duplicate slide">
-            <CopyIcon />
-          </IconAction>
-          <IconAction
-            onClick={() => studio.removeSlide(key)}
-            label="Delete slide"
-            variant="danger"
-          >
-            <Trash2Icon />
-          </IconAction>
+          {!locked && (
+            <>
+              <IconAction
+                onClick={() => setMeta({ hideStage: !meta.hideStage })}
+                label={
+                  meta.hideStage
+                    ? "Stage header hidden — click to show"
+                    : "Stage header shown — click to hide"
+                }
+              >
+                {meta.hideStage ? <EyeOffIcon /> : <EyeIcon />}
+              </IconAction>
+              <IconAction
+                onClick={() => setMeta({ layout: isRow ? "column" : "row" })}
+                label={
+                  isRow
+                    ? "Layout: side by side — click to stack"
+                    : "Layout: stacked — click for side by side"
+                }
+              >
+                {isRow ? <Columns2Icon /> : <Rows2Icon />}
+              </IconAction>
+              <IconAction
+                onClick={() => studio.moveSlide(key, -1)}
+                label="Move slide up"
+              >
+                <ChevronUpIcon className={cn(index === 0 && "opacity-30")} />
+              </IconAction>
+              <IconAction
+                onClick={() => studio.moveSlide(key, 1)}
+                label="Move slide down"
+              >
+                <ChevronDownIcon
+                  className={cn(index === total - 1 && "opacity-30")}
+                />
+              </IconAction>
+              <IconAction
+                onClick={() => studio.duplicateSlide(key)}
+                label="Duplicate slide"
+              >
+                <CopyIcon />
+              </IconAction>
+              <IconAction
+                onClick={() => studio.removeSlide(key)}
+                label="Delete slide"
+                variant="danger"
+              >
+                <Trash2Icon />
+              </IconAction>
+            </>
+          )}
           <span className="ml-1">
             <AddBlockMenu
               onAdd={(type) => studio.addBlock(key, type)}
@@ -218,6 +266,10 @@ export function SlideCard({
               isFirst={i === 0}
               isLast={i === blocks.length - 1}
               teacherContent={teacherContent}
+              // A locked slide's base blocks are read-only; the ones this group
+              // added to it are theirs, and stay editable.
+              readOnly={locked && block.data.advancedContext !== true}
+              labelAdvanced={!meta.advancedContext}
               onChange={(data: LessonBlock) =>
                 studio.updateBlock(key, block.key, data)
               }

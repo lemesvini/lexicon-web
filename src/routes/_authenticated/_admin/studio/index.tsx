@@ -3,6 +3,7 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { PlusIcon, RefreshCwIcon } from "lucide-react";
 
 import { SiteNav } from "@/components/site-nav";
+import { requireAdmin } from "@/lib/route-guards";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { TableSkeleton } from "@/components/table-skeleton";
@@ -10,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreateArtifactDialog } from "@/features/studio/components/create-artifact-dialog";
 import { PickLessonDialog } from "@/features/studio/components/pick-lesson-dialog";
 import {
+  advancedColumns,
   homeworkColumns,
   lessonColumns,
   materialColumns,
@@ -19,6 +21,7 @@ import {
   type StudioLibrary,
 } from "@/features/studio/data/library";
 import {
+  ADVANCED_KIND,
   NEW_DOCUMENT_ID,
   STUDIO_KINDS,
   type StudioKind,
@@ -36,7 +39,8 @@ export const Route = createFileRoute("/_authenticated/_admin/studio/")({
   // `/studio?lessonId=x` was how the editor was deep-linked before it had a
   // route of its own. Kept as a redirect so old links and bookmarks land in the
   // right place instead of on an unexplained library.
-  beforeLoad: ({ search }) => {
+  beforeLoad: async ({ search }) => {
+    await requireAdmin();
     if (search.lessonId) {
       throw redirect({
         to: "/studio/lesson/$lessonId",
@@ -51,6 +55,7 @@ const EMPTY: StudioLibrary = {
   lessons: [],
   materials: [],
   homework: [],
+  advanced: [],
   modules: [],
 };
 
@@ -118,6 +123,7 @@ function StudioLibraryPage() {
     lesson: library.lessons.length,
     material: library.materials.length,
     homework: library.homework.length,
+    advanced: library.advanced.length,
   };
 
   return (
@@ -164,6 +170,15 @@ function StudioLibraryPage() {
                   </span>
                 </TabsTrigger>
               ))}
+              {/* Outside the map: a group's copy isn't something you create from
+                  here, so it isn't in STUDIO_KINDS and isn't in the Create
+                  dialog. It is still something you go looking for. */}
+              <TabsTrigger value={ADVANCED_KIND.kind} className="px-3">
+                {ADVANCED_KIND.label}
+                <span className="tabular-nums text-muted-foreground">
+                  {counts.advanced}
+                </span>
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="lesson">
@@ -187,6 +202,18 @@ function StudioLibraryPage() {
                 facets={moduleFacet}
                 emptyMessage="No student material yet."
                 countLabel={(n) => `${n} material${n === 1 ? "" : "s"}`}
+              />
+            </TabsContent>
+
+            <TabsContent value="advanced">
+              <DataTable
+                columns={advancedColumns()}
+                data={library.advanced}
+                filterColumn="groupName"
+                filterPlaceholder="Filter by group..."
+                facets={moduleFacet}
+                emptyMessage="No group has its own copy of a lesson yet. Assign a module on a group's Lessons tab."
+                countLabel={(n) => `${n} cop${n === 1 ? "y" : "ies"}`}
               />
             </TabsContent>
 

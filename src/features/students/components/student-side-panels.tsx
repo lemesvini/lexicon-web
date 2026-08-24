@@ -20,6 +20,7 @@ import {
 import {
   StudentPanel,
   StudentPanelEmpty,
+  type PanelSlotProps,
 } from "@/features/students/components/student-panel";
 
 /** How many classes the register shows before it stops. Enough to see a pattern
@@ -38,15 +39,19 @@ const RECENT_CLASSES = 12;
 export function StudentAttendancePanel({
   classes,
   summary,
+  ...slot
 }: {
   /** Newest first, as `fetchStudentDossier` returns them. */
   classes: StudentClass[];
   summary: StudentSummary;
-}) {
-  const shown = classes.slice(0, RECENT_CLASSES);
+} & PanelSlotProps) {
+  // The rail scrolls, so it shows the lot; a tile has to stop somewhere.
+  const shown =
+    slot.variant === "flush" ? classes : classes.slice(0, RECENT_CLASSES);
 
   return (
     <StudentPanel
+      {...slot}
       title="Attendance"
       meta={
         summary.classesRecorded === 0
@@ -115,9 +120,13 @@ export function StudentAttendancePanel({
 
 /** The groups this student sits in. A student can be in more than one — a group
  *  class and a private slot are both groups (see 0007). */
-export function StudentGroupsPanel({ groups }: { groups: StudentGroup[] }) {
+export function StudentGroupsPanel({
+  groups,
+  ...slot
+}: { groups: StudentGroup[] } & PanelSlotProps) {
   return (
     <StudentPanel
+      {...slot}
       title="Groups"
       meta={groups.length ? `${groups.length}` : undefined}
     >
@@ -161,13 +170,13 @@ export function StudentGroupsPanel({ groups }: { groups: StudentGroup[] }) {
  */
 export function StudentModulesPanel({
   modules,
-}: {
-  modules: StudentModuleEntry[];
-}) {
+  ...slot
+}: { modules: StudentModuleEntry[] } & PanelSlotProps) {
   const completed = modules.filter((entry) => entry.status === "completed").length;
 
   return (
     <StudentPanel
+      {...slot}
       title="Modules"
       meta={
         modules.length === 0

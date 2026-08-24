@@ -17,6 +17,15 @@ idempotent, so re-running one is safe.
 - `0006_teachers.sql` — the teacher role, and students belonging to the teacher who created them
 - `0007_groups_and_finances.sql` — what each student pays, and the groups they're taught in
 - `0008_group_weekdays.sql` — the days of the week a group meets, which the dashboard reads as today's classes
+- `0009_student_avatars.sql` — student profile-picture paths, storage bucket, and avatar policies
+- `0010_advanced_context.sql` — the advanced context a group carries into lesson generation
+- `0011_advanced_studio.sql` — the advanced studio's saved settings
+- `0012_student_onboarding.sql` — the first-visit questionnaire: `students.onboarded_at` and the RPC that appends the answers to the student's context
+
+If the app reports `column students.avatar_path does not exist`, apply
+`0009_student_avatars.sql` in the Supabase SQL editor (or with the CLI) before
+loading a student profile. The migration is idempotent, so it is safe to run on
+an existing project.
 
 ## 2. Check you're still an admin
 

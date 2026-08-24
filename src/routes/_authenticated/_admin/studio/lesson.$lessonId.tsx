@@ -3,6 +3,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { RefreshCwIcon } from "lucide-react";
 
 import { saveLessonToCloud } from "@/lib/lessons-cloud";
+import { requireAdmin } from "@/lib/route-guards";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStudioLesson } from "@/features/studio/use-studio-lesson";
@@ -14,7 +15,7 @@ import { NEW_DOCUMENT_ID as NEW, studioKind } from "@/features/studio/kinds";
 
 export const Route = createFileRoute(
   "/_authenticated/_admin/studio/lesson/$lessonId",
-)({ component: LessonEditorRoute });
+)({ beforeLoad: requireAdmin, component: LessonEditorRoute });
 
 function LessonEditorRoute() {
   const { lessonId } = Route.useParams();

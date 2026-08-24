@@ -1,30 +1,42 @@
 import { BLOCK_ORDER, blockMetas, type BlockType } from "@/features/blocks";
+import { cn } from "@/lib/utils";
 import type { EditorSlide } from "../model";
 
 /**
- * Left rail: the blocks you can drop into the active slide.
+ * The blocks you can drop into the active slide.
  *
- * The slide outline lives in its own rail on the other side ({@link
- * ./slide-outline.tsx}) — stacking the two in one column meant a long deck
- * pushed the block list out of reach behind a scrollbar.
+ * Normally its own rail, with the slide outline ({@link ./slide-outline.tsx})
+ * facing it across the canvas — stacking the two in one column means a long deck
+ * pushes the block list out of reach behind a scrollbar. `stacked` accepts that
+ * cost: the Advanced Context Studio needs the right-hand side for its drawer, so
+ * both rails move left and share the column.
  */
 export function BlockPalette({
   slides,
   activeKey,
   blockTypes = BLOCK_ORDER,
+  stacked = false,
   onAddBlock,
 }: {
   slides: EditorSlide[];
   activeKey: string | null;
   /** Which block types this editor offers. Homework gets only the exercises. */
   blockTypes?: BlockType[];
+  /** Render as a section of a shared rail rather than as a rail of its own. */
+  stacked?: boolean;
   onAddBlock: (type: BlockType) => void;
 }) {
   const active = slides.find((s) => s.key === activeKey) ?? slides[0];
   const metas = blockMetas(blockTypes);
 
   return (
-    <aside className="sticky top-20 hidden max-h-[calc(100svh-6rem)] w-56 shrink-0 flex-col lg:flex">
+    <aside
+      className={cn(
+        stacked
+          ? "flex min-h-0 shrink flex-col"
+          : "sticky top-20 hidden max-h-[calc(100svh-6rem)] w-56 shrink-0 flex-col lg:flex",
+      )}
+    >
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Add block
       </p>

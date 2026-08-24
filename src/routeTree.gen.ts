@@ -16,26 +16,30 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedChangePasswordRouteImport } from './routes/_authenticated/change-password'
 import { Route as AuthenticatedStudentRouteRouteImport } from './routes/_authenticated/_student/route'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/_admin/route'
+import { Route as AuthenticatedStudentProfileRouteImport } from './routes/_authenticated/_student/profile'
+import { Route as AuthenticatedStudentOnboardingRouteImport } from './routes/_authenticated/_student/onboarding'
 import { Route as AuthenticatedAdminTeachersRouteImport } from './routes/_authenticated/_admin/teachers'
 import { Route as AuthenticatedAdminPartnersRouteImport } from './routes/_authenticated/_admin/partners'
 import { Route as AuthenticatedAdminModulesRouteImport } from './routes/_authenticated/_admin/modules'
 import { Route as AuthenticatedAdminLessonsRouteImport } from './routes/_authenticated/_admin/lessons'
-import { Route as AuthenticatedAdminGroupsRouteImport } from './routes/_authenticated/_admin/groups'
 import { Route as AuthenticatedAdminFinancesRouteImport } from './routes/_authenticated/_admin/finances'
 import { Route as AuthenticatedStudentLearnIndexRouteImport } from './routes/_authenticated/_student/learn/index'
 import { Route as AuthenticatedStudentHomeworkIndexRouteImport } from './routes/_authenticated/_student/homework/index'
 import { Route as AuthenticatedAdminStudioIndexRouteImport } from './routes/_authenticated/_admin/studio/index'
 import { Route as AuthenticatedAdminStudentsIndexRouteImport } from './routes/_authenticated/_admin/students/index'
+import { Route as AuthenticatedAdminGroupsIndexRouteImport } from './routes/_authenticated/_admin/groups/index'
 import { Route as AuthenticatedAdminCorrectionsIndexRouteImport } from './routes/_authenticated/_admin/corrections/index'
 import { Route as AuthenticatedStudentLearnLessonIdRouteImport } from './routes/_authenticated/_student/learn/$lessonId'
 import { Route as AuthenticatedStudentHomeworkHomeworkIdRouteImport } from './routes/_authenticated/_student/homework/$homeworkId'
 import { Route as AuthenticatedAdminStudentsStudentIdRouteImport } from './routes/_authenticated/_admin/students/$studentId'
 import { Route as AuthenticatedAdminPresentLessonIdRouteImport } from './routes/_authenticated/_admin/present/$lessonId'
+import { Route as AuthenticatedAdminGroupsGroupIdRouteImport } from './routes/_authenticated/_admin/groups/$groupId'
 import { Route as AuthenticatedAdminCorrectionsSubmissionIdRouteImport } from './routes/_authenticated/_admin/corrections/$submissionId'
 import { Route as AuthenticatedAdminControlLessonIdRouteImport } from './routes/_authenticated/_admin/control/$lessonId'
 import { Route as AuthenticatedAdminStudioMaterialLessonIdRouteImport } from './routes/_authenticated/_admin/studio/material.$lessonId'
 import { Route as AuthenticatedAdminStudioLessonLessonIdRouteImport } from './routes/_authenticated/_admin/studio/lesson.$lessonId'
 import { Route as AuthenticatedAdminStudioHomeworkHomeworkIdRouteImport } from './routes/_authenticated/_admin/studio/homework.$homeworkId'
+import { Route as AuthenticatedAdminStudioAdvancedGroupIdLessonIdRouteImport } from './routes/_authenticated/_admin/studio/advanced.$groupId.$lessonId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -71,6 +75,18 @@ const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
   id: '/_admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedStudentProfileRoute =
+  AuthenticatedStudentProfileRouteImport.update({
+    id: '/profile',
+    path: '/profile',
+    getParentRoute: () => AuthenticatedStudentRouteRoute,
+  } as any)
+const AuthenticatedStudentOnboardingRoute =
+  AuthenticatedStudentOnboardingRouteImport.update({
+    id: '/onboarding',
+    path: '/onboarding',
+    getParentRoute: () => AuthenticatedStudentRouteRoute,
+  } as any)
 const AuthenticatedAdminTeachersRoute =
   AuthenticatedAdminTeachersRouteImport.update({
     id: '/teachers',
@@ -93,12 +109,6 @@ const AuthenticatedAdminLessonsRoute =
   AuthenticatedAdminLessonsRouteImport.update({
     id: '/lessons',
     path: '/lessons',
-    getParentRoute: () => AuthenticatedAdminRouteRoute,
-  } as any)
-const AuthenticatedAdminGroupsRoute =
-  AuthenticatedAdminGroupsRouteImport.update({
-    id: '/groups',
-    path: '/groups',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
 const AuthenticatedAdminFinancesRoute =
@@ -131,6 +141,12 @@ const AuthenticatedAdminStudentsIndexRoute =
     path: '/students/',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminGroupsIndexRoute =
+  AuthenticatedAdminGroupsIndexRouteImport.update({
+    id: '/groups/',
+    path: '/groups/',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminCorrectionsIndexRoute =
   AuthenticatedAdminCorrectionsIndexRouteImport.update({
     id: '/corrections/',
@@ -159,6 +175,12 @@ const AuthenticatedAdminPresentLessonIdRoute =
   AuthenticatedAdminPresentLessonIdRouteImport.update({
     id: '/present/$lessonId',
     path: '/present/$lessonId',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminGroupsGroupIdRoute =
+  AuthenticatedAdminGroupsGroupIdRouteImport.update({
+    id: '/groups/$groupId',
+    path: '/groups/$groupId',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
 const AuthenticatedAdminCorrectionsSubmissionIdRoute =
@@ -191,6 +213,12 @@ const AuthenticatedAdminStudioHomeworkHomeworkIdRoute =
     path: '/studio/homework/$homeworkId',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute =
+  AuthenticatedAdminStudioAdvancedGroupIdLessonIdRouteImport.update({
+    id: '/studio/advanced/$groupId/$lessonId',
+    path: '/studio/advanced/$groupId/$lessonId',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -198,18 +226,21 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/change-password': typeof AuthenticatedChangePasswordRoute
   '/finances': typeof AuthenticatedAdminFinancesRoute
-  '/groups': typeof AuthenticatedAdminGroupsRoute
   '/lessons': typeof AuthenticatedAdminLessonsRoute
   '/modules': typeof AuthenticatedAdminModulesRoute
   '/partners': typeof AuthenticatedAdminPartnersRoute
   '/teachers': typeof AuthenticatedAdminTeachersRoute
+  '/onboarding': typeof AuthenticatedStudentOnboardingRoute
+  '/profile': typeof AuthenticatedStudentProfileRoute
   '/control/$lessonId': typeof AuthenticatedAdminControlLessonIdRoute
   '/corrections/$submissionId': typeof AuthenticatedAdminCorrectionsSubmissionIdRoute
+  '/groups/$groupId': typeof AuthenticatedAdminGroupsGroupIdRoute
   '/present/$lessonId': typeof AuthenticatedAdminPresentLessonIdRoute
   '/students/$studentId': typeof AuthenticatedAdminStudentsStudentIdRoute
   '/homework/$homeworkId': typeof AuthenticatedStudentHomeworkHomeworkIdRoute
   '/learn/$lessonId': typeof AuthenticatedStudentLearnLessonIdRoute
   '/corrections/': typeof AuthenticatedAdminCorrectionsIndexRoute
+  '/groups/': typeof AuthenticatedAdminGroupsIndexRoute
   '/students/': typeof AuthenticatedAdminStudentsIndexRoute
   '/studio/': typeof AuthenticatedAdminStudioIndexRoute
   '/homework/': typeof AuthenticatedStudentHomeworkIndexRoute
@@ -217,6 +248,7 @@ export interface FileRoutesByFullPath {
   '/studio/homework/$homeworkId': typeof AuthenticatedAdminStudioHomeworkHomeworkIdRoute
   '/studio/lesson/$lessonId': typeof AuthenticatedAdminStudioLessonLessonIdRoute
   '/studio/material/$lessonId': typeof AuthenticatedAdminStudioMaterialLessonIdRoute
+  '/studio/advanced/$groupId/$lessonId': typeof AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -224,18 +256,21 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/change-password': typeof AuthenticatedChangePasswordRoute
   '/finances': typeof AuthenticatedAdminFinancesRoute
-  '/groups': typeof AuthenticatedAdminGroupsRoute
   '/lessons': typeof AuthenticatedAdminLessonsRoute
   '/modules': typeof AuthenticatedAdminModulesRoute
   '/partners': typeof AuthenticatedAdminPartnersRoute
   '/teachers': typeof AuthenticatedAdminTeachersRoute
+  '/onboarding': typeof AuthenticatedStudentOnboardingRoute
+  '/profile': typeof AuthenticatedStudentProfileRoute
   '/control/$lessonId': typeof AuthenticatedAdminControlLessonIdRoute
   '/corrections/$submissionId': typeof AuthenticatedAdminCorrectionsSubmissionIdRoute
+  '/groups/$groupId': typeof AuthenticatedAdminGroupsGroupIdRoute
   '/present/$lessonId': typeof AuthenticatedAdminPresentLessonIdRoute
   '/students/$studentId': typeof AuthenticatedAdminStudentsStudentIdRoute
   '/homework/$homeworkId': typeof AuthenticatedStudentHomeworkHomeworkIdRoute
   '/learn/$lessonId': typeof AuthenticatedStudentLearnLessonIdRoute
   '/corrections': typeof AuthenticatedAdminCorrectionsIndexRoute
+  '/groups': typeof AuthenticatedAdminGroupsIndexRoute
   '/students': typeof AuthenticatedAdminStudentsIndexRoute
   '/studio': typeof AuthenticatedAdminStudioIndexRoute
   '/homework': typeof AuthenticatedStudentHomeworkIndexRoute
@@ -243,6 +278,7 @@ export interface FileRoutesByTo {
   '/studio/homework/$homeworkId': typeof AuthenticatedAdminStudioHomeworkHomeworkIdRoute
   '/studio/lesson/$lessonId': typeof AuthenticatedAdminStudioLessonLessonIdRoute
   '/studio/material/$lessonId': typeof AuthenticatedAdminStudioMaterialLessonIdRoute
+  '/studio/advanced/$groupId/$lessonId': typeof AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -254,18 +290,21 @@ export interface FileRoutesById {
   '/_authenticated/_student': typeof AuthenticatedStudentRouteRouteWithChildren
   '/_authenticated/change-password': typeof AuthenticatedChangePasswordRoute
   '/_authenticated/_admin/finances': typeof AuthenticatedAdminFinancesRoute
-  '/_authenticated/_admin/groups': typeof AuthenticatedAdminGroupsRoute
   '/_authenticated/_admin/lessons': typeof AuthenticatedAdminLessonsRoute
   '/_authenticated/_admin/modules': typeof AuthenticatedAdminModulesRoute
   '/_authenticated/_admin/partners': typeof AuthenticatedAdminPartnersRoute
   '/_authenticated/_admin/teachers': typeof AuthenticatedAdminTeachersRoute
+  '/_authenticated/_student/onboarding': typeof AuthenticatedStudentOnboardingRoute
+  '/_authenticated/_student/profile': typeof AuthenticatedStudentProfileRoute
   '/_authenticated/_admin/control/$lessonId': typeof AuthenticatedAdminControlLessonIdRoute
   '/_authenticated/_admin/corrections/$submissionId': typeof AuthenticatedAdminCorrectionsSubmissionIdRoute
+  '/_authenticated/_admin/groups/$groupId': typeof AuthenticatedAdminGroupsGroupIdRoute
   '/_authenticated/_admin/present/$lessonId': typeof AuthenticatedAdminPresentLessonIdRoute
   '/_authenticated/_admin/students/$studentId': typeof AuthenticatedAdminStudentsStudentIdRoute
   '/_authenticated/_student/homework/$homeworkId': typeof AuthenticatedStudentHomeworkHomeworkIdRoute
   '/_authenticated/_student/learn/$lessonId': typeof AuthenticatedStudentLearnLessonIdRoute
   '/_authenticated/_admin/corrections/': typeof AuthenticatedAdminCorrectionsIndexRoute
+  '/_authenticated/_admin/groups/': typeof AuthenticatedAdminGroupsIndexRoute
   '/_authenticated/_admin/students/': typeof AuthenticatedAdminStudentsIndexRoute
   '/_authenticated/_admin/studio/': typeof AuthenticatedAdminStudioIndexRoute
   '/_authenticated/_student/homework/': typeof AuthenticatedStudentHomeworkIndexRoute
@@ -273,6 +312,7 @@ export interface FileRoutesById {
   '/_authenticated/_admin/studio/homework/$homeworkId': typeof AuthenticatedAdminStudioHomeworkHomeworkIdRoute
   '/_authenticated/_admin/studio/lesson/$lessonId': typeof AuthenticatedAdminStudioLessonLessonIdRoute
   '/_authenticated/_admin/studio/material/$lessonId': typeof AuthenticatedAdminStudioMaterialLessonIdRoute
+  '/_authenticated/_admin/studio/advanced/$groupId/$lessonId': typeof AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -282,18 +322,21 @@ export interface FileRouteTypes {
     | '/login'
     | '/change-password'
     | '/finances'
-    | '/groups'
     | '/lessons'
     | '/modules'
     | '/partners'
     | '/teachers'
+    | '/onboarding'
+    | '/profile'
     | '/control/$lessonId'
     | '/corrections/$submissionId'
+    | '/groups/$groupId'
     | '/present/$lessonId'
     | '/students/$studentId'
     | '/homework/$homeworkId'
     | '/learn/$lessonId'
     | '/corrections/'
+    | '/groups/'
     | '/students/'
     | '/studio/'
     | '/homework/'
@@ -301,6 +344,7 @@ export interface FileRouteTypes {
     | '/studio/homework/$homeworkId'
     | '/studio/lesson/$lessonId'
     | '/studio/material/$lessonId'
+    | '/studio/advanced/$groupId/$lessonId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -308,18 +352,21 @@ export interface FileRouteTypes {
     | '/login'
     | '/change-password'
     | '/finances'
-    | '/groups'
     | '/lessons'
     | '/modules'
     | '/partners'
     | '/teachers'
+    | '/onboarding'
+    | '/profile'
     | '/control/$lessonId'
     | '/corrections/$submissionId'
+    | '/groups/$groupId'
     | '/present/$lessonId'
     | '/students/$studentId'
     | '/homework/$homeworkId'
     | '/learn/$lessonId'
     | '/corrections'
+    | '/groups'
     | '/students'
     | '/studio'
     | '/homework'
@@ -327,6 +374,7 @@ export interface FileRouteTypes {
     | '/studio/homework/$homeworkId'
     | '/studio/lesson/$lessonId'
     | '/studio/material/$lessonId'
+    | '/studio/advanced/$groupId/$lessonId'
   id:
     | '__root__'
     | '/'
@@ -337,18 +385,21 @@ export interface FileRouteTypes {
     | '/_authenticated/_student'
     | '/_authenticated/change-password'
     | '/_authenticated/_admin/finances'
-    | '/_authenticated/_admin/groups'
     | '/_authenticated/_admin/lessons'
     | '/_authenticated/_admin/modules'
     | '/_authenticated/_admin/partners'
     | '/_authenticated/_admin/teachers'
+    | '/_authenticated/_student/onboarding'
+    | '/_authenticated/_student/profile'
     | '/_authenticated/_admin/control/$lessonId'
     | '/_authenticated/_admin/corrections/$submissionId'
+    | '/_authenticated/_admin/groups/$groupId'
     | '/_authenticated/_admin/present/$lessonId'
     | '/_authenticated/_admin/students/$studentId'
     | '/_authenticated/_student/homework/$homeworkId'
     | '/_authenticated/_student/learn/$lessonId'
     | '/_authenticated/_admin/corrections/'
+    | '/_authenticated/_admin/groups/'
     | '/_authenticated/_admin/students/'
     | '/_authenticated/_admin/studio/'
     | '/_authenticated/_student/homework/'
@@ -356,6 +407,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/studio/homework/$homeworkId'
     | '/_authenticated/_admin/studio/lesson/$lessonId'
     | '/_authenticated/_admin/studio/material/$lessonId'
+    | '/_authenticated/_admin/studio/advanced/$groupId/$lessonId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -416,6 +468,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/_student/profile': {
+      id: '/_authenticated/_student/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthenticatedStudentProfileRouteImport
+      parentRoute: typeof AuthenticatedStudentRouteRoute
+    }
+    '/_authenticated/_student/onboarding': {
+      id: '/_authenticated/_student/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedStudentOnboardingRouteImport
+      parentRoute: typeof AuthenticatedStudentRouteRoute
+    }
     '/_authenticated/_admin/teachers': {
       id: '/_authenticated/_admin/teachers'
       path: '/teachers'
@@ -442,13 +508,6 @@ declare module '@tanstack/react-router' {
       path: '/lessons'
       fullPath: '/lessons'
       preLoaderRoute: typeof AuthenticatedAdminLessonsRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
-    }
-    '/_authenticated/_admin/groups': {
-      id: '/_authenticated/_admin/groups'
-      path: '/groups'
-      fullPath: '/groups'
-      preLoaderRoute: typeof AuthenticatedAdminGroupsRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
     '/_authenticated/_admin/finances': {
@@ -486,6 +545,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminStudentsIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/_admin/groups/': {
+      id: '/_authenticated/_admin/groups/'
+      path: '/groups'
+      fullPath: '/groups/'
+      preLoaderRoute: typeof AuthenticatedAdminGroupsIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/_admin/corrections/': {
       id: '/_authenticated/_admin/corrections/'
       path: '/corrections'
@@ -519,6 +585,13 @@ declare module '@tanstack/react-router' {
       path: '/present/$lessonId'
       fullPath: '/present/$lessonId'
       preLoaderRoute: typeof AuthenticatedAdminPresentLessonIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/_admin/groups/$groupId': {
+      id: '/_authenticated/_admin/groups/$groupId'
+      path: '/groups/$groupId'
+      fullPath: '/groups/$groupId'
+      preLoaderRoute: typeof AuthenticatedAdminGroupsGroupIdRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
     '/_authenticated/_admin/corrections/$submissionId': {
@@ -556,32 +629,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminStudioHomeworkHomeworkIdRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/_admin/studio/advanced/$groupId/$lessonId': {
+      id: '/_authenticated/_admin/studio/advanced/$groupId/$lessonId'
+      path: '/studio/advanced/$groupId/$lessonId'
+      fullPath: '/studio/advanced/$groupId/$lessonId'
+      preLoaderRoute: typeof AuthenticatedAdminStudioAdvancedGroupIdLessonIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
   }
 }
 
 interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminFinancesRoute: typeof AuthenticatedAdminFinancesRoute
-  AuthenticatedAdminGroupsRoute: typeof AuthenticatedAdminGroupsRoute
   AuthenticatedAdminLessonsRoute: typeof AuthenticatedAdminLessonsRoute
   AuthenticatedAdminModulesRoute: typeof AuthenticatedAdminModulesRoute
   AuthenticatedAdminPartnersRoute: typeof AuthenticatedAdminPartnersRoute
   AuthenticatedAdminTeachersRoute: typeof AuthenticatedAdminTeachersRoute
   AuthenticatedAdminControlLessonIdRoute: typeof AuthenticatedAdminControlLessonIdRoute
   AuthenticatedAdminCorrectionsSubmissionIdRoute: typeof AuthenticatedAdminCorrectionsSubmissionIdRoute
+  AuthenticatedAdminGroupsGroupIdRoute: typeof AuthenticatedAdminGroupsGroupIdRoute
   AuthenticatedAdminPresentLessonIdRoute: typeof AuthenticatedAdminPresentLessonIdRoute
   AuthenticatedAdminStudentsStudentIdRoute: typeof AuthenticatedAdminStudentsStudentIdRoute
   AuthenticatedAdminCorrectionsIndexRoute: typeof AuthenticatedAdminCorrectionsIndexRoute
+  AuthenticatedAdminGroupsIndexRoute: typeof AuthenticatedAdminGroupsIndexRoute
   AuthenticatedAdminStudentsIndexRoute: typeof AuthenticatedAdminStudentsIndexRoute
   AuthenticatedAdminStudioIndexRoute: typeof AuthenticatedAdminStudioIndexRoute
   AuthenticatedAdminStudioHomeworkHomeworkIdRoute: typeof AuthenticatedAdminStudioHomeworkHomeworkIdRoute
   AuthenticatedAdminStudioLessonLessonIdRoute: typeof AuthenticatedAdminStudioLessonLessonIdRoute
   AuthenticatedAdminStudioMaterialLessonIdRoute: typeof AuthenticatedAdminStudioMaterialLessonIdRoute
+  AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute: typeof AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute
 }
 
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
   {
     AuthenticatedAdminFinancesRoute: AuthenticatedAdminFinancesRoute,
-    AuthenticatedAdminGroupsRoute: AuthenticatedAdminGroupsRoute,
     AuthenticatedAdminLessonsRoute: AuthenticatedAdminLessonsRoute,
     AuthenticatedAdminModulesRoute: AuthenticatedAdminModulesRoute,
     AuthenticatedAdminPartnersRoute: AuthenticatedAdminPartnersRoute,
@@ -590,12 +671,14 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
       AuthenticatedAdminControlLessonIdRoute,
     AuthenticatedAdminCorrectionsSubmissionIdRoute:
       AuthenticatedAdminCorrectionsSubmissionIdRoute,
+    AuthenticatedAdminGroupsGroupIdRoute: AuthenticatedAdminGroupsGroupIdRoute,
     AuthenticatedAdminPresentLessonIdRoute:
       AuthenticatedAdminPresentLessonIdRoute,
     AuthenticatedAdminStudentsStudentIdRoute:
       AuthenticatedAdminStudentsStudentIdRoute,
     AuthenticatedAdminCorrectionsIndexRoute:
       AuthenticatedAdminCorrectionsIndexRoute,
+    AuthenticatedAdminGroupsIndexRoute: AuthenticatedAdminGroupsIndexRoute,
     AuthenticatedAdminStudentsIndexRoute: AuthenticatedAdminStudentsIndexRoute,
     AuthenticatedAdminStudioIndexRoute: AuthenticatedAdminStudioIndexRoute,
     AuthenticatedAdminStudioHomeworkHomeworkIdRoute:
@@ -604,6 +687,8 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
       AuthenticatedAdminStudioLessonLessonIdRoute,
     AuthenticatedAdminStudioMaterialLessonIdRoute:
       AuthenticatedAdminStudioMaterialLessonIdRoute,
+    AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute:
+      AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute,
   }
 
 const AuthenticatedAdminRouteRouteWithChildren =
@@ -612,6 +697,8 @@ const AuthenticatedAdminRouteRouteWithChildren =
   )
 
 interface AuthenticatedStudentRouteRouteChildren {
+  AuthenticatedStudentOnboardingRoute: typeof AuthenticatedStudentOnboardingRoute
+  AuthenticatedStudentProfileRoute: typeof AuthenticatedStudentProfileRoute
   AuthenticatedStudentHomeworkHomeworkIdRoute: typeof AuthenticatedStudentHomeworkHomeworkIdRoute
   AuthenticatedStudentLearnLessonIdRoute: typeof AuthenticatedStudentLearnLessonIdRoute
   AuthenticatedStudentHomeworkIndexRoute: typeof AuthenticatedStudentHomeworkIndexRoute
@@ -620,6 +707,8 @@ interface AuthenticatedStudentRouteRouteChildren {
 
 const AuthenticatedStudentRouteRouteChildren: AuthenticatedStudentRouteRouteChildren =
   {
+    AuthenticatedStudentOnboardingRoute: AuthenticatedStudentOnboardingRoute,
+    AuthenticatedStudentProfileRoute: AuthenticatedStudentProfileRoute,
     AuthenticatedStudentHomeworkHomeworkIdRoute:
       AuthenticatedStudentHomeworkHomeworkIdRoute,
     AuthenticatedStudentLearnLessonIdRoute:

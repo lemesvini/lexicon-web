@@ -3,6 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { CopyPlusIcon } from "lucide-react";
 
 import type { Lesson } from "@/lib/lessons";
+import { requireAdmin } from "@/lib/route-guards";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStudioLesson } from "@/features/studio/use-studio-lesson";
@@ -21,7 +22,7 @@ import { studioKind } from "@/features/studio/kinds";
 
 export const Route = createFileRoute(
   "/_authenticated/_admin/studio/material/$lessonId",
-)({ component: MaterialEditorRoute });
+)({ beforeLoad: requireAdmin, component: MaterialEditorRoute });
 
 function MaterialEditorRoute() {
   const { lessonId } = Route.useParams();

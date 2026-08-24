@@ -20,6 +20,8 @@ export type TeacherRow = {
   isAdmin: boolean;
   /** How many students belong to them right now. */
   studentCount: number;
+  /** Whether they may use the advanced context studio. */
+  advancedStudio: boolean;
   createdAt: string;
 };
 
@@ -29,6 +31,7 @@ type TeacherRecord = {
   full_name: string | null;
   role: string | null;
   status: string | null;
+  advanced_studio: boolean | null;
   created_at: string | null;
 };
 
@@ -45,7 +48,7 @@ export async function listTeachers(): Promise<TeacherRow[]> {
   const [{ data, error }, counts] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, email, full_name, role, status, created_at")
+      .select("id, email, full_name, role, status, advanced_studio, created_at")
       .in("role", ["admin", "teacher"])
       .order("created_at", { ascending: true }),
     countStudentsByTeacher(),
@@ -60,6 +63,7 @@ export async function listTeachers(): Promise<TeacherRow[]> {
     status: record.status === "inactive" ? "inactive" : "active",
     isAdmin: record.role === "admin",
     studentCount: counts.get(record.id) ?? 0,
+    advancedStudio: record.role === "admin" || record.advanced_studio === true,
     createdAt: record.created_at ?? "",
   }));
 }
@@ -126,6 +130,19 @@ export async function setTeacherStatus(
   const { error } = await supabase
     .from("profiles")
     .update({ status })
+    .eq("id", teacherId);
+
+  if (error) throw new Error(error.message);
+}
+
+/** Grants or revokes a teacher's access to the advanced context studio. */
+export async function setTeacherAdvancedStudio(
+  teacherId: string,
+  allowed: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from("profiles")
+    .update({ advanced_studio: allowed })
     .eq("id", teacherId);
 
   if (error) throw new Error(error.message);

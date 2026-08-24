@@ -15,6 +15,10 @@ export type StudentAccess = {
   moduleId: string | null;
   /** Name of the module the student is currently allowed into, if any. */
   moduleName: string | null;
+  /** Storage object path of their picture, or "" for none. See @/lib/avatars. */
+  avatarPath: string;
+  /** When they finished the onboarding form, or null if they haven't. */
+  onboardedAt: string | null;
 };
 
 /** The signed-in student's roster row, or null if they have none. */
@@ -25,7 +29,7 @@ export async function fetchMyStudentAccess(): Promise<StudentAccess | null> {
 
   const { data, error } = await supabase
     .from("students")
-    .select("id, full_name, email, status, current_module_id, module:modules (name)")
+    .select("id, full_name, email, status, current_module_id, avatar_path, onboarded_at, module:modules (name)")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -44,5 +48,7 @@ export async function fetchMyStudentAccess(): Promise<StudentAccess | null> {
     status: data.status === "inactive" ? "inactive" : "active",
     moduleId: data.current_module_id ?? null,
     moduleName: module?.name ?? null,
+    avatarPath: data.avatar_path ?? "",
+    onboardedAt: data.onboarded_at ?? null,
   };
 }

@@ -15,6 +15,7 @@ import {
 import {
   StudentPanel,
   StudentPanelEmpty,
+  type PanelSlotProps,
 } from "@/features/students/components/student-panel";
 
 const STATUS_LABEL: Record<SubmissionStatus, string> = {
@@ -109,11 +110,12 @@ function MarksChart({
 export function StudentHomeworkPanel({
   submissions,
   summary,
+  ...slot
 }: {
   /** Newest first, as `fetchStudentDossier` returns them. */
   submissions: StudentSubmission[];
   summary: StudentSummary;
-}) {
+} & PanelSlotProps) {
   // The chart reads left to right in time, which is the reverse of the list.
   const marks = submissions
     .filter((submission) => submission.status === "graded" && submission.score !== null)
@@ -122,6 +124,7 @@ export function StudentHomeworkPanel({
 
   return (
     <StudentPanel
+      {...slot}
       title="Homework"
       meta={
         summary.totalSubmissions === 0

@@ -8,6 +8,10 @@
 // alternative — the same call the module overview makes, for the same reason.
 
 import { listCloudLessons } from "@/lib/lessons-cloud";
+import {
+  listAllGroupLessons,
+  type LibraryAdvancedRow,
+} from "@/features/groups/data/group-lessons";
 import { listHomework } from "./homework";
 import { listMaterials } from "./materials";
 import type { PublishStatus } from "./publishing";
@@ -55,15 +59,20 @@ export type StudioLibrary = {
   lessons: LibraryLessonRow[];
   materials: LibraryMaterialRow[];
   homework: LibraryHomeworkRow[];
+  /** Groups' own copies of lessons — the fourth tab. Not authored from here;
+   *  listed here so a copy can be found without remembering which group it
+   *  belongs to. */
+  advanced: LibraryAdvancedRow[];
   /** Distinct module names in the library, for the tables' module filter. */
   modules: string[];
 };
 
 export async function listStudioLibrary(): Promise<StudioLibrary> {
-  const [lessons, materials, homework] = await Promise.all([
+  const [lessons, materials, homework, advanced] = await Promise.all([
     listCloudLessons(),
     listMaterials(),
     listHomework(),
+    listAllGroupLessons(),
   ]);
 
   const materialByLesson = new Map(materials.map((m) => [m.lessonId, m]));
@@ -84,6 +93,7 @@ export async function listStudioLibrary(): Promise<StudioLibrary> {
 
   return {
     modules,
+    advanced,
 
     lessons: lessons.map((lesson) => ({
       id: lesson.id,

@@ -17,7 +17,22 @@ export type Profile = {
   role: Role;
   /** Only meaningful for a teacher: an inactive one is locked out of the app. */
   status: "active" | "inactive";
+  /** Whether they may use the advanced context studio. Always true for admin. */
+  advancedStudio: boolean;
 };
+
+/**
+ * Whether this profile may open the advanced context studio. The admin grants it
+ * per teacher from the teachers list (see 0011_advanced_studio.sql); the admin
+ * themselves always has it.
+ */
+export function canUseAdvancedStudio(
+  profile: Profile | null | undefined,
+): boolean {
+  if (!profile) return false;
+  if (profile.role === "admin") return true;
+  return isStaff(profile) && profile.advancedStudio;
+}
 
 /**
  * Whether this profile can use the teacher app at all. The client-side mirror of
@@ -59,7 +74,7 @@ supabase.auth.onAuthStateChange((event) => {
 async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, email, full_name, role, status")
+    .select("id, email, full_name, role, status, advanced_studio")
     .eq("id", userId)
     .maybeSingle();
 
@@ -72,6 +87,7 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
     fullName: data.full_name ?? "",
     role: toRole(data.role),
     status: data.status === "inactive" ? "inactive" : "active",
+    advancedStudio: data.advanced_studio === true,
   };
 }
 

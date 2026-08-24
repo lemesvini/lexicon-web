@@ -96,6 +96,8 @@ export function fromLesson(lesson: Lesson): EditorLesson {
         goal: slide.goal ?? "",
         layout: slide.layout,
         hideStage: slide.hideStage,
+        advancedContext: slide.advancedContext,
+        advancedTheme: slide.advancedTheme,
         teacherNotes: slide.teacherNotes ?? [],
       },
       blocks: (slide.blocks ?? []).map(wrapBlock),
@@ -120,6 +122,9 @@ function prune<T extends Record<string, unknown>>(obj: T, keep: string[] = []): 
   return out as T;
 }
 
+// `audience` and `advancedContext` are absent from every keep-list below and
+// survive anyway: both are only ever `true`, and `prune` drops empties, not
+// truths. Adding them would be noise repeated eleven times.
 function serializeBlock(block: LessonBlock): LessonBlock {
   switch (block.type) {
     case "text":
@@ -205,6 +210,10 @@ export function toLesson(editor: EditorLesson): Lesson {
             // untouched slides stay byte-for-byte the same in the export.
             layout: sm.layout === "row" ? "row" : undefined,
             hideStage: sm.hideStage ? true : undefined,
+            // Only a group's copy ever carries this, so `undefined` (pruned
+            // away) is the right shape for every lesson that isn't one.
+            advancedContext: sm.advancedContext ? true : undefined,
+            advancedTheme: sm.advancedTheme,
             teacherNotes: (sm.teacherNotes ?? []).filter(
               (n) => n.trim() !== "",
             ),
@@ -245,6 +254,8 @@ export function parseLesson(json: string): Lesson {
       goal: s.goal ?? "",
       layout: s.layout,
       hideStage: s.hideStage,
+      advancedContext: s.advancedContext,
+      advancedTheme: s.advancedTheme,
       blocks: Array.isArray(s.blocks) ? s.blocks : [],
       teacherNotes: s.teacherNotes,
     })),

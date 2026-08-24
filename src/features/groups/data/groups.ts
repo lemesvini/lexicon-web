@@ -66,6 +66,16 @@ export type GroupRow = {
   lessonTitle: string;
   /** The module that lesson belongs to, for the subtitle. */
   lessonModule: string;
+  /** Free-text description of the class — who they are, what keeps going wrong.
+   *  The group-level counterpart of `students.notes`, and one of the three
+   *  things the advanced-context suggestions are built from. */
+  context: string;
+  /** The module the group is working through, or null. Not the source of truth
+   *  for what they have — `group_lessons` is — just the last choice made on the
+   *  Lessons tab. */
+  moduleId: string | null;
+  /** That module's name, or "" when none is set. */
+  moduleName: string;
   memberCount: number;
   /** Share of all attendance ever recorded that was a yes, 0–1. Null when the
    *  register has never been taken. */
@@ -105,9 +115,44 @@ type GroupRecord = {
   meets_on: number[] | null;
   schedule: string | null;
   status: string | null;
+  context: string | null;
+  module_id: string | null;
   teacher: Embedded<{ full_name?: string | null; email?: string | null }>;
   lesson: Embedded<{ title?: string | null; module?: string | null }>;
+  module: Embedded<{ name?: string | null }>;
 };
+
+/** The columns every group read selects. Spelled once so the row mapper and the
+ *  record type can't drift from what the two callers actually ask for. */
+const GROUP_SELECT =
+  "id, name, teacher_id, current_lesson_id, meets_on, schedule, status, context, module_id, teacher:profiles (full_name, email), lesson:lessons (title, module), module:modules (name)";
+
+function toGroupRow(
+  record: GroupRecord,
+  memberCount: number,
+  tally: { present: number; total: number } | undefined,
+): GroupRow {
+  const teacher = one(record.teacher);
+  const lesson = one(record.lesson);
+
+  return {
+    id: record.id,
+    name: record.name ?? "",
+    teacherId: record.teacher_id,
+    teacher: teacher?.full_name || teacher?.email || NO_TEACHER,
+    meetsOn: record.meets_on ?? [],
+    schedule: record.schedule ?? "",
+    status: record.status === "inactive" ? "inactive" : "active",
+    lessonId: record.current_lesson_id,
+    lessonTitle: lesson?.title ?? "",
+    lessonModule: lesson?.module ?? "",
+    context: record.context ?? "",
+    moduleId: record.module_id,
+    moduleName: one(record.module)?.name ?? "",
+    memberCount,
+    attendanceRate: tally?.total ? tally.present / tally.total : null,
+  };
+}
 
 /** A date as Postgres wants it, in the *browser's* timezone — `toISOString()`
  *  would roll over to tomorrow for anyone east of UTC teaching in the evening. */
@@ -146,9 +191,7 @@ export async function listGroups(): Promise<GroupRow[]> {
   const [groups, members, attendance] = await Promise.all([
     supabase
       .from("groups")
-      .select(
-        "id, name, teacher_id, current_lesson_id, meets_on, schedule, status, teacher:profiles (full_name, email), lesson:lessons (title, module)",
-      )
+      .select(GROUP_SELECT)
       .order("name", { ascending: true }),
     supabase.from("group_students").select("group_id"),
     supabase.from("group_attendance").select("group_id, present"),
@@ -173,26 +216,43 @@ export async function listGroups(): Promise<GroupRow[]> {
     tallies.set(id, tally);
   }
 
-  return ((groups.data ?? []) as GroupRecord[]).map((record) => {
-    const teacher = one(record.teacher);
-    const lesson = one(record.lesson);
-    const tally = tallies.get(record.id);
+  return ((groups.data ?? []) as unknown as GroupRecord[]).map((record) =>
+    toGroupRow(record, counts.get(record.id) ?? 0, tallies.get(record.id)),
+  );
+}
 
-    return {
-      id: record.id,
-      name: record.name ?? "",
-      teacherId: record.teacher_id,
-      teacher: teacher?.full_name || teacher?.email || NO_TEACHER,
-      meetsOn: record.meets_on ?? [],
-      schedule: record.schedule ?? "",
-      status: record.status === "inactive" ? "inactive" : "active",
-      lessonId: record.current_lesson_id,
-      lessonTitle: lesson?.title ?? "",
-      lessonModule: lesson?.module ?? "",
-      memberCount: counts.get(record.id) ?? 0,
-      attendanceRate: tally?.total ? tally.present / tally.total : null,
-    };
-  });
+/**
+ * One group, for the page that is only about that group.
+ *
+ * Separate from `listGroups()` on purpose: opening `/groups/:id` shouldn't read
+ * every group in the school, and — more to the point — a page that can be linked
+ * to directly must not depend on the row happening to be in a list somewhere.
+ * Returns null when the id doesn't resolve, which for RLS includes "exists, but
+ * not yours".
+ */
+export async function fetchGroup(groupId: string): Promise<GroupRow | null> {
+  const [group, members, attendance] = await Promise.all([
+    supabase.from("groups").select(GROUP_SELECT).eq("id", groupId).maybeSingle(),
+    supabase.from("group_students").select("student_id").eq("group_id", groupId),
+    supabase.from("group_attendance").select("present").eq("group_id", groupId),
+  ]);
+
+  if (group.error) throw new Error(group.error.message);
+  if (members.error) throw new Error(members.error.message);
+  if (attendance.error) throw new Error(attendance.error.message);
+  if (!group.data) return null;
+
+  const rows = attendance.data ?? [];
+  const tally = {
+    present: rows.filter((row) => row.present).length,
+    total: rows.length,
+  };
+
+  return toGroupRow(
+    group.data as unknown as GroupRecord,
+    members.data?.length ?? 0,
+    tally,
+  );
 }
 
 type MemberRecord = {
@@ -404,6 +464,35 @@ export async function setGroupLesson(
   const { error } = await supabase
     .from("groups")
     .update({ current_lesson_id: lessonId })
+    .eq("id", groupId);
+
+  if (error) throw new Error(error.message);
+}
+
+/** The class's own context — free text, saved explicitly, never autosaved. It
+ *  feeds the advanced-context suggestions, so an empty one is worth noticing. */
+export async function setGroupContext(
+  groupId: string,
+  context: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("groups")
+    .update({ context: context.trim() || null })
+    .eq("id", groupId);
+
+  if (error) throw new Error(error.message);
+}
+
+/** Records which module the group is working through. Copying that module's
+ *  lessons is a separate step (`addGroupLessons`) — this only moves the pointer,
+ *  and never removes a copy the group already has. */
+export async function setGroupModule(
+  groupId: string,
+  moduleId: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from("groups")
+    .update({ module_id: moduleId })
     .eq("id", groupId);
 
   if (error) throw new Error(error.message);

@@ -4,6 +4,7 @@ import { KeyRoundIcon, MoreHorizontalIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -19,6 +20,7 @@ import {
 import { TempPasswordPanel } from "@/components/temp-password-panel";
 import {
   resetTeacherPassword,
+  setTeacherAdvancedStudio,
   setTeacherStatus,
   type TeacherRow,
 } from "@/features/teachers/data/teachers";
@@ -61,6 +63,18 @@ export function TeacherRowActions({
     }
   };
 
+  const toggleAdvancedStudio = async () => {
+    setBusy(true);
+    try {
+      await setTeacherAdvancedStudio(teacher.id, !teacher.advancedStudio);
+      onChanged();
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const resetPassword = async () => {
     setBusy(true);
     try {
@@ -88,6 +102,17 @@ export function TeacherRowActions({
               <KeyRoundIcon />
               New temporary password
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              checked={teacher.advancedStudio}
+              onSelect={(event) => {
+                // Keeps the menu open, so the tick is visible where it changed.
+                event.preventDefault();
+                void toggleAdvancedStudio();
+              }}
+            >
+              Advanced context studio
+            </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => setConfirmOpen(true)}>
               {isActive ? "Deactivate" : "Activate"}

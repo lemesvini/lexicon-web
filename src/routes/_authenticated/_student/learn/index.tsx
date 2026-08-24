@@ -6,6 +6,7 @@ import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HomeworkCta } from "@/features/learn/components/homework-cta";
+import { OnboardingCta } from "@/features/onboarding/components/onboarding-cta";
 import {
   listMySubmissions,
   listStudentHomework,
@@ -62,6 +63,10 @@ function LearnPage() {
     };
   }, [reloadKey]);
 
+  // The lessons stay shut until the onboarding is answered — the answers are
+  // what the lessons get built around, so reading them first is backwards.
+  const locked = !access.onboardedAt;
+
   const refresh = () => {
     setStatus("loading");
     setReloadKey((k) => k + 1);
@@ -75,7 +80,7 @@ function LearnPage() {
           <p className="font-display text-3xl tracking-wide text-foreground">
             Hello {access.fullName.split(" ")[0] || "there"}!
           </p>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-sm text-muted-foreground font-montserrat">
             Access your classes and homeworks here
           </span>
         </div>
@@ -83,6 +88,7 @@ function LearnPage() {
 
         {/* Above the lessons, below the greeting: what's owed comes before what
             there is to read, but not before being said hello to. */}
+        <OnboardingCta done={!locked} />
         {status === "ready" && (
           <HomeworkCta homework={homework} submissions={submissions} />
         )}
@@ -93,11 +99,20 @@ function LearnPage() {
           <h1 className="text-2xl font-semibold tracking-tight">
             {access.moduleName ?? "No module yet"}
           </h1> */}
-          <h1 className="text-xl font-bold">
+          <h1 className="text-xl font-bold font-montserrat">
             {access.moduleName ?? "not assigned yet"}
           </h1>
         </div>
-        {!access.moduleName ? (
+        {locked ? (
+          <div className="space-y-3 rounded-md border p-6">
+            <p className="text-sm text-muted-foreground font-montserrat">
+              You need to finish the onboarding first.
+            </p>
+            {/* <Button asChild size="sm">
+              <Link to="/onboarding">Start onboarding</Link>
+            </Button> */}
+          </div>
+        ) : !access.moduleName ? (
           <div className="rounded-md border p-6 text-sm text-muted-foreground">
             Your teacher hasn’t assigned you a module yet. Once they do, its
             lessons show up here.

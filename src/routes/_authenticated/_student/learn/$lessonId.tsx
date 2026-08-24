@@ -1,5 +1,5 @@
 import * as React from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { RefreshCwIcon } from "lucide-react";
 
 import { SiteNav } from "@/components/site-nav";
@@ -33,6 +33,11 @@ type Loaded = {
  */
 function LessonPage() {
   const { lessonId } = Route.useParams();
+  const { access } = Route.useRouteContext();
+
+  // Same gate as the lessons list — a student who guesses a URL should meet the
+  // onboarding, not the lesson.
+  const locked = !access.onboardedAt;
 
   const [reloadKey, setReloadKey] = React.useState(0);
   const [loaded, setLoaded] = React.useState<Loaded | null>(null);
@@ -47,6 +52,7 @@ function LessonPage() {
 
   React.useEffect(() => {
     let cancelled = false;
+    if (locked) return;
 
     fetchStudentLesson(lessonId)
       .then((doc) => {
@@ -61,13 +67,22 @@ function LessonPage() {
     return () => {
       cancelled = true;
     };
-  }, [lessonId, token]);
+  }, [lessonId, token, locked]);
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
       <SiteNav backTo="/learn" backLabel="Back to my module" align="narrow" />
       <main className="mx-auto w-full max-w-3xl space-y-8 px-4 pb-16 pt-4">
-        {status === "loading" ? (
+        {locked ? (
+          <div className="space-y-3 rounded-md border p-6">
+            <p className="text-sm text-muted-foreground">
+              You need to finish the onboarding first.
+            </p>
+            <Button asChild size="sm">
+              <Link to="/onboarding">Start onboarding</Link>
+            </Button>
+          </div>
+        ) : status === "loading" ? (
           <div className="space-y-4">
             <Skeleton className="h-9 w-2/3" />
             <Skeleton className="h-32 w-full" />

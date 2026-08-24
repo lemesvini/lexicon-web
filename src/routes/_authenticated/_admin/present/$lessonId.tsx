@@ -8,7 +8,15 @@ import { ConnectionBadge } from '@/features/presenter/components/connection-stat
 import { useLessonDisplay } from '@/features/presenter/use-lesson-display'
 import { useResolvedLesson } from '@/features/presenter/use-resolved-lesson'
 
+type PresentSearch = { groupId?: string }
+
 export const Route = createFileRoute('/_authenticated/_admin/present/$lessonId')({
+  // Presenting *for a group* shows that group's own copy of the lesson — the
+  // shared deck plus whatever advanced context was added for this class. Without
+  // it, the shared lesson, exactly as before.
+  validateSearch: (search: Record<string, unknown>): PresentSearch => ({
+    groupId: typeof search.groupId === 'string' ? search.groupId : undefined,
+  }),
   component: PresentPage,
 })
 
@@ -51,7 +59,8 @@ function FullscreenToggle({ className }: { className?: string }) {
 
 function PresentPage() {
   const { lessonId } = Route.useParams()
-  const { lesson, loading } = useResolvedLesson(lessonId)
+  const { groupId } = Route.useSearch()
+  const { lesson, loading } = useResolvedLesson(lessonId, groupId)
   const { slideIndex, whiteboardActive, elements, status } =
     useLessonDisplay(lessonId, lesson?.slides.length ?? 0)
 

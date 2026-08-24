@@ -1,6 +1,8 @@
 import * as React from "react";
 
 import type { BlockType } from "@/features/blocks";
+import { cn } from "@/lib/utils";
+import type { EditorSlide } from "../model";
 
 import { BlockPalette } from "./block-palette";
 import { RawJsonDrawer } from "./raw-json-drawer";
@@ -50,6 +52,16 @@ export function StudioCanvas({
   canSave,
   teacherContent = true,
   blockTypes,
+  railLayout = "split",
+  slideLocked,
+  drawer,
+  drawerLabel = "Assistant",
+  drawerWidth = "lg:w-[26rem] xl:w-[30rem]",
+  drawerPadding = "lg:pr-[26rem] xl:pr-[30rem]",
+  portable = true,
+  back,
+  compact = false,
+  menuItems,
 }: {
   studio: StudioController;
   label: string;
@@ -63,12 +75,39 @@ export function StudioCanvas({
   teacherContent?: boolean;
   /** Which block types the palette offers; defaults to all of them. */
   blockTypes?: BlockType[];
+  /** "split" puts the palette and the outline on facing rails — the default, and
+   *  the roomier of the two. "stacked" moves both to the left so the right-hand
+   *  side is free for `drawer`. */
+  railLayout?: "split" | "stacked";
+  /** Which slides can only be added to, not changed. The Advanced Context Studio
+   *  passes the base material here; everything else leaves it undefined and
+   *  every slide stays editable. */
+  slideLocked?: (slide: EditorSlide) => boolean;
+  /** A panel that slides in from the right, toggled from the toolbar. */
+  drawer?: React.ReactNode;
+  drawerLabel?: string;
+  /** Spelled out as literal class strings rather than interpolated: Tailwind
+   *  only ships the classes it can see in the source. */
+  drawerWidth?: string;
+  drawerPadding?: string;
+  /** False hides Copy and Export — see `portable` on StudioToolbar. */
+  portable?: boolean;
+  /** Overrides the top-left button — see `back` on StudioToolbar. */
+  back?: { label: string; onClick: () => void };
+  /** Collapse the toolbar's right side to three icons — see `compact` on
+   *  StudioToolbar. */
+  compact?: boolean;
+  /** `DropdownMenuItem`s for the compact toolbar's menu. */
+  menuItems?: React.ReactNode;
 }) {
   const { lesson } = studio;
 
   const [activeKey, setActiveKey] = React.useState<string | null>(null);
   const [rawOpen, setRawOpen] = React.useState(false);
   const [preview, setPreview] = React.useState(readPreviewPreference);
+  // Open from the start when there is one: a drawer you have to find is a drawer
+  // nobody uses, and the editor that has one is the editor that is about it.
+  const [drawerOpen, setDrawerOpen] = React.useState(!!drawer);
 
   const togglePreview = () =>
     setPreview((on) => {
@@ -105,72 +144,124 @@ export function StudioCanvas({
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const stacked = railLayout === "stacked";
+
+  const palette = (
+    <BlockPalette
+      slides={lesson.slides}
+      activeKey={targetKey}
+      blockTypes={blockTypes}
+      stacked={stacked}
+      onAddBlock={(type) => {
+        if (targetKey) studio.addBlock(targetKey, type);
+      }}
+    />
+  );
+
+  const outline = (
+    <SlideOutline
+      slides={lesson.slides}
+      activeKey={targetKey}
+      stacked={stacked}
+      onAddSlide={handleAddSlide}
+      onSelectSlide={handleSelectSlide}
+    />
+  );
+
   return (
     <div className="min-h-svh bg-background text-foreground">
-      <StudioToolbar
-        document={studio.document}
-        label={label}
-        onSave={onSave}
-        saveLabel={saveLabel}
-        canSave={canSave}
-        onToggleRaw={() => setRawOpen((v) => !v)}
-        rawOpen={rawOpen}
-        onTogglePreview={togglePreview}
-        previewOn={preview}
+      <div
+        className={cn(
+          "transition-[padding] duration-200",
+          drawer && drawerOpen && drawerPadding,
+        )}
       >
-        {actions}
-      </StudioToolbar>
+        <StudioToolbar
+          document={studio.document}
+          label={label}
+          onSave={onSave}
+          saveLabel={saveLabel}
+          canSave={canSave}
+          onToggleRaw={() => setRawOpen((v) => !v)}
+          rawOpen={rawOpen}
+          onTogglePreview={togglePreview}
+          previewOn={preview}
+          drawerLabel={drawer ? drawerLabel : undefined}
+          drawerOpen={drawerOpen}
+          onToggleDrawer={() => setDrawerOpen((v) => !v)}
+          portable={portable}
+          back={back}
+          compact={compact}
+          menuItems={menuItems}
+        >
+          {actions}
+        </StudioToolbar>
 
-      <div className="mx-auto flex w-full max-w-[84rem] gap-6 px-4 py-6">
-        {/* Left rail: blocks */}
-        <BlockPalette
-          slides={lesson.slides}
-          activeKey={targetKey}
-          blockTypes={blockTypes}
-          onAddBlock={(type) => {
-            if (targetKey) studio.addBlock(targetKey, type);
-          }}
-        />
+        <div className="mx-auto flex w-full max-w-[84rem] gap-6 px-4 py-6">
+          {/* Rails. Split: blocks here, outline across the canvas. Stacked: both
+              here, blocks on top — the deck list is the thing you scroll, so it
+              takes the bottom half where a scrollbar costs nothing. */}
+          {stacked ? (
+            <aside className="sticky top-20 hidden max-h-[calc(100svh-6rem)] w-56 shrink-0 flex-col gap-5 lg:flex">
+              {palette}
+              {outline}
+            </aside>
+          ) : (
+            palette
+          )}
 
-        {/* Canvas */}
-        <div className="min-w-0 flex-1 space-y-4">
-          {meta}
+          {/* Canvas */}
+          <div className="min-w-0 flex-1 space-y-4">
+            {meta}
 
-          {lesson.slides.map((slide, i) => (
-            <div
-              key={slide.key}
-              onFocusCapture={() => setActiveKey(slide.key)}
-              onMouseDown={() => setActiveKey(slide.key)}
+            {lesson.slides.map((slide, i) => (
+              <div
+                key={slide.key}
+                onFocusCapture={() => setActiveKey(slide.key)}
+                onMouseDown={() => setActiveKey(slide.key)}
+              >
+                <SlideCard
+                  slide={slide}
+                  index={i}
+                  total={lesson.slides.length}
+                  studio={studio}
+                  teacherContent={teacherContent}
+                  preview={preview}
+                  blockTypes={blockTypes}
+                  locked={slideLocked?.(slide) ?? false}
+                />
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={handleAddSlide}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-4 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-foreground"
             >
-              <SlideCard
-                slide={slide}
-                index={i}
-                total={lesson.slides.length}
-                studio={studio}
-                teacherContent={teacherContent}
-                preview={preview}
-                blockTypes={blockTypes}
-              />
-            </div>
-          ))}
+              + Add slide
+            </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={handleAddSlide}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-4 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-foreground"
-          >
-            + Add slide
-          </button>
+          {!stacked && outline}
         </div>
-
-        {/* Right rail: slide outline */}
-        <SlideOutline
-          slides={lesson.slides}
-          activeKey={targetKey}
-          onAddSlide={handleAddSlide}
-          onSelectSlide={handleSelectSlide}
-        />
       </div>
+
+      {/* The drawer, on the same pattern as the student detail rail: fixed to the
+          viewport, translated out when shut, and `inert` so nothing inside it is
+          tabbable while it is. */}
+      {drawer && (
+        <aside
+          inert={!drawerOpen}
+          aria-hidden={!drawerOpen}
+          className={cn(
+            "fixed right-0 top-0 z-40 flex h-[100dvh] w-full flex-col border-l bg-popover transition-transform duration-200",
+            drawerWidth,
+            !drawerOpen && "translate-x-full",
+          )}
+        >
+          {drawer}
+        </aside>
+      )}
 
       <RawJsonDrawer
         open={rawOpen}

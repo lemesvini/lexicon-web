@@ -8,6 +8,7 @@ import type { LessonBlock } from "@/lib/lessons";
 import { cn } from "@/lib/utils";
 import {
   BLOCK_REGISTRY,
+  BlockView,
   IconAction,
   isTeacherOnly,
   type BlockEditorProps,
@@ -37,6 +38,8 @@ export function BlockEditor({
   isFirst,
   isLast,
   teacherContent = true,
+  readOnly = false,
+  labelAdvanced = true,
   onChange,
   onMove,
   onDuplicate,
@@ -48,6 +51,13 @@ export function BlockEditor({
   /** False in a student-facing document, where marking a block "Teacher" would
    *  be offering something the save then silently strips. */
   teacherContent?: boolean;
+  /** Show the block as the room will see it, with no fields and no actions.
+   *  Used by the Advanced Context Studio for the base material a group may add
+   *  to but not change — see @/features/studio/advanced-context. */
+  readOnly?: boolean;
+  /** False when the whole slide is already labelled as advanced context — one
+   *  slide saying it four times says it less clearly than saying it once. */
+  labelAdvanced?: boolean;
   onChange: (b: LessonBlock) => void;
   onMove: (dir: -1 | 1) => void;
   onDuplicate: () => void;
@@ -56,13 +66,17 @@ export function BlockEditor({
   const meta = BLOCK_REGISTRY[block.type].meta;
   const Icon = meta.icon;
   const teacherOnly = isTeacherOnly(block);
+  const advanced = block.advancedContext === true;
 
   return (
     <div
       className={cn(
-        "group/block relative rounded-lg border border-transparent px-3 py-2.5 transition-colors hover:border-border hover:bg-muted/30",
+        "group/block relative rounded-lg border border-transparent px-3 py-2.5 transition-colors",
+        !readOnly && "hover:border-border hover:bg-muted/30",
+        readOnly && "opacity-90",
         teacherOnly &&
           "border-dashed border-amber-300/70 bg-amber-50/40 dark:bg-amber-950/10",
+        advanced && "border-primary/40 bg-primary/[0.03]",
       )}
     >
       {/* Top row: type pill + hover toolbar */}
@@ -75,9 +89,24 @@ export function BlockEditor({
               Teacher only
             </span>
           )}
+          {advanced && labelAdvanced && (
+            <span className="ml-1 rounded bg-primary/15 px-1 py-px text-primary">
+              Advanced context
+            </span>
+          )}
+          {readOnly && (
+            <span className="ml-1 rounded bg-muted px-1 py-px text-muted-foreground">
+              Base material
+            </span>
+          )}
         </span>
 
-        <div className="flex items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/block:opacity-100">
+        <div
+          className={cn(
+            "flex items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/block:opacity-100",
+            readOnly && "hidden",
+          )}
+        >
           {isImage(block) && (
             <button
               type="button"
@@ -131,7 +160,11 @@ export function BlockEditor({
         </div>
       </div>
 
-      <BlockBody block={block} onChange={onChange} />
+      {readOnly ? (
+        <BlockView block={block} audience="teacher" />
+      ) : (
+        <BlockBody block={block} onChange={onChange} />
+      )}
     </div>
   );
 }
