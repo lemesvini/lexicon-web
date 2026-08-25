@@ -187,11 +187,15 @@ export default function PresenterMenu() {
           </div>
 
           {view === "module" ? (
-            <ModulesGallery rows={rows} emptyMessage="No classes match." />
+            <ModulesGallery
+              rows={rows}
+              revealedModules={selectedModules}
+              emptyMessage="No classes match."
+            />
           ) : view === "gallery" ? (
             <ClassesGallery
               rows={rows}
-              showEveryUnit={query.trim() !== ""}
+              showEveryModule={query.trim() !== ""}
               emptyMessage="No classes match."
             />
           ) : (
