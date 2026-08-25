@@ -10,6 +10,7 @@ import { imageBlock } from "./image";
 import { titleBlock } from "./title";
 import { finishSentenceBlock } from "./finish-sentence";
 import { chooseDescriptionBlock } from "./choose-description";
+import { findMistakeBlock } from "./find-mistake";
 import { longAnswerBlock } from "./long-answer";
 
 /** Maps each block type to its definition, preserving the per-type generic so
@@ -29,6 +30,7 @@ export const BLOCK_REGISTRY: Registry = {
   image: imageBlock,
   "finish-sentence": finishSentenceBlock,
   "choose-description": chooseDescriptionBlock,
+  "find-mistake": findMistakeBlock,
   "long-answer": longAnswerBlock,
 };
 
@@ -54,6 +56,7 @@ export const BLOCK_ORDER: BlockType[] = [
 export const EXERCISE_BLOCK_ORDER: BlockType[] = [
   "finish-sentence",
   "choose-description",
+  "find-mistake",
   "long-answer",
 ];
 

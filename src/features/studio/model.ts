@@ -174,6 +174,8 @@ function serializeBlock(block: LessonBlock): LessonBlock {
       return prune(block, ["type", "id", "sentence", "options"]);
     case "choose-description":
       return prune(block, ["type", "id", "text", "options"]);
+    case "find-mistake":
+      return prune(block, ["type", "id", "sentence"]);
     case "long-answer":
       return prune(block, ["type", "id", "question"]);
   }

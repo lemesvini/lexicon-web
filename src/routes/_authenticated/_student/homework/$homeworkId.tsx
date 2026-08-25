@@ -7,6 +7,13 @@ import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ExerciseStepper } from "@/features/learn/components/exercise-stepper";
 import {
   ExerciseView,
@@ -53,6 +60,8 @@ function HomeworkPage({ homeworkId }: { homeworkId: string }) {
   const [dirty, setDirty] = React.useState(false);
   const [reloadKey, setReloadKey] = React.useState(0);
   const [submitting, setSubmitting] = React.useState(false);
+  const [confirming, setConfirming] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -97,18 +106,19 @@ function HomeworkPage({ homeworkId }: { homeworkId: string }) {
     setAnswers((prev) => ({ ...prev, [blockId]: value }));
   };
 
+  const items = React.useMemo(
+    () => exerciseItems(loaded?.homework.document ?? emptyDocument),
+    [loaded],
+  );
+  const blank =
+    items.filter((i) => i.answerable).length - answeredCount(items, answers);
+
+  // Confirmed in the app's own dialog rather than `window.confirm`. A browser
+  // that has suppressed a page's dialogs makes `confirm` return false without
+  // drawing anything, and hand-in — the one irreversible thing a student does
+  // here — then looks like a dead button.
   const submit = async () => {
-    const items = exerciseItems(loaded?.homework.document ?? emptyDocument);
-    const total = items.filter((i) => i.answerable).length;
-    const blank = total - answeredCount(items, answers);
-
-    const warning =
-      blank > 0
-        ? `${blank} question${blank === 1 ? " is" : "s are"} still blank. Hand it in anyway? You won't be able to change your answers afterwards.`
-        : "Hand this in? You won't be able to change your answers afterwards.";
-
-    if (!window.confirm(warning)) return;
-
+    setConfirming(false);
     setSubmitting(true);
     try {
       // The full set goes with the submit, so a pending autosave being in
@@ -118,7 +128,7 @@ function HomeworkPage({ homeworkId }: { homeworkId: string }) {
       // handed-in submission looks like, and it withholds the marking.
       setReloadKey((k) => k + 1);
     } catch (err) {
-      alert((err as Error).message);
+      setSubmitError((err as Error).message);
     } finally {
       setSubmitting(false);
     }
@@ -190,7 +200,7 @@ function HomeworkPage({ homeworkId }: { homeworkId: string }) {
                   document={loaded.homework.document}
                   answers={answers}
                   onAnswer={setAnswer}
-                  onSubmit={() => void submit()}
+                  onSubmit={() => setConfirming(true)}
                   saveState={saveState}
                   submitting={submitting}
                 />
@@ -208,6 +218,43 @@ function HomeworkPage({ homeworkId }: { homeworkId: string }) {
           )
         )}
       </main>
+
+      <Dialog open={confirming} onOpenChange={setConfirming}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hand this in?</DialogTitle>
+            <DialogDescription>
+              {blank > 0
+                ? `${blank} question${blank === 1 ? " is" : "s are"} still blank. `
+                : ""}
+              You won't be able to change your answers afterwards.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setConfirming(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => void submit()} disabled={submitting}>
+              Hand in
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={submitError !== null}
+        onOpenChange={(open) => !open && setSubmitError(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Couldn't hand it in</DialogTitle>
+            <DialogDescription>{submitError}</DialogDescription>
+          </DialogHeader>
+          <div className="mt-6 flex justify-end">
+            <Button onClick={() => setSubmitError(null)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

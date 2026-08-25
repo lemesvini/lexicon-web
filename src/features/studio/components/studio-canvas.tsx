@@ -36,8 +36,8 @@ function readPreviewPreference(): boolean {
  * Slides, blocks, the two rails and the JSON drawer are identical for a
  * presentation, a student material and a homework — they are all the same
  * document shape. The two things that aren't identical arrive as slots: the meta
- * editor above the slides (`meta`), and the kind-specific toolbar buttons
- * (`actions`).
+ * editor above the slides (`meta`), and the kind-specific toolbar actions
+ * (`menuItems`).
  *
  * Owning `rawOpen` here rather than in the routes is what keeps the JSON toggle
  * and the drawer it opens from being wired up three times.
@@ -46,7 +46,6 @@ export function StudioCanvas({
   studio,
   label,
   meta,
-  actions,
   onSave,
   saveLabel,
   canSave,
@@ -60,13 +59,11 @@ export function StudioCanvas({
   drawerPadding = "lg:pr-[26rem] xl:pr-[30rem]",
   portable = true,
   back,
-  compact = false,
   menuItems,
 }: {
   studio: StudioController;
   label: string;
   meta: React.ReactNode;
-  actions?: React.ReactNode;
   onSave: () => Promise<void>;
   saveLabel?: string;
   canSave?: boolean;
@@ -94,10 +91,8 @@ export function StudioCanvas({
   portable?: boolean;
   /** Overrides the top-left button — see `back` on StudioToolbar. */
   back?: { label: string; onClick: () => void };
-  /** Collapse the toolbar's right side to three icons — see `compact` on
+  /** `DropdownMenuItem`s for the toolbar's menu — see `menuItems` on
    *  StudioToolbar. */
-  compact?: boolean;
-  /** `DropdownMenuItem`s for the compact toolbar's menu. */
   menuItems?: React.ReactNode;
 }) {
   const { lesson } = studio;
@@ -191,11 +186,8 @@ export function StudioCanvas({
           onToggleDrawer={() => setDrawerOpen((v) => !v)}
           portable={portable}
           back={back}
-          compact={compact}
           menuItems={menuItems}
-        >
-          {actions}
-        </StudioToolbar>
+        />
 
         <div className="mx-auto flex w-full max-w-[84rem] gap-6 px-4 py-6">
           {/* Rails. Split: blocks here, outline across the canvas. Stacked: both

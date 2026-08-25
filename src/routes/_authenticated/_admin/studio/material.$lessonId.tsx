@@ -5,11 +5,12 @@ import { CopyPlusIcon } from "lucide-react";
 import type { Lesson } from "@/lib/lessons";
 import { requireAdmin } from "@/lib/route-guards";
 import { Button } from "@/components/ui/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStudioLesson } from "@/features/studio/use-studio-lesson";
 import { StudioCanvas } from "@/features/studio/components/studio-canvas";
 import { MaterialMetaEditor } from "@/features/studio/components/material-meta-editor";
-import { PublishToggle } from "@/features/studio/components/publish-toggle";
+import { PublishMenuItem } from "@/features/studio/components/publish-menu-item";
 import {
   fetchMaterial,
   saveMaterial,
@@ -161,13 +162,13 @@ function MaterialEditor({ lessonId }: { lessonId: string }) {
           onIntroChange={(context) => studio.updateMeta({ context })}
         />
       }
-      actions={
+      menuItems={
         <>
-          <Button variant="ghost" size="sm" onClick={copyFromPresentation}>
+          <DropdownMenuItem onSelect={copyFromPresentation}>
             <CopyPlusIcon />
             Copy from presentation
-          </Button>
-          <PublishToggle
+          </DropdownMenuItem>
+          <PublishMenuItem
             status={state.status}
             onChange={async (status) => {
               await setMaterialStatus(lessonId, status);

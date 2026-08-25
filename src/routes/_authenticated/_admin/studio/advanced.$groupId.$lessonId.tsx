@@ -277,7 +277,6 @@ function AdvancedEditor({
           scheduledOn={state.scheduledOn}
         />
       }
-      compact
       menuItems={
         baseIsNewer ? (
           <DropdownMenuItem onSelect={refreshFromBase}>

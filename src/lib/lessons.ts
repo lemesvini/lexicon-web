@@ -189,6 +189,26 @@ export type ChooseDescriptionBlock = BlockBase & {
   note?: string;
 };
 
+/**
+ * A sentence with one wrong word in it, found by clicking the word.
+ *
+ * The options are the sentence's own words, so there is no `options` array:
+ * `answer` is an index into the sentence split on whitespace. Punctuation
+ * travels with the word it is attached to — "school." is one token, and the
+ * student clicks the word rather than the letters — which keeps the tokens the
+ * author sees in the editor and the ones the index counts the same list.
+ */
+export type FindMistakeBlock = BlockBase & {
+  type: "find-mistake";
+  id: string;
+  label?: string;
+  /** The sentence, containing exactly one mistake. */
+  sentence: string;
+  /** Index into `sentence` split on whitespace. Absent in the student's copy. */
+  answer?: number;
+  note?: string;
+};
+
 /** A question answered in the student's own words. Marked by hand. */
 export type LongAnswerBlock = BlockBase & {
   type: "long-answer";
@@ -203,6 +223,7 @@ export type LongAnswerBlock = BlockBase & {
 export type ExerciseBlock =
   | FinishSentenceBlock
   | ChooseDescriptionBlock
+  | FindMistakeBlock
   | LongAnswerBlock;
 
 export type LessonBlock =

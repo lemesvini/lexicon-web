@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useStudioLesson } from "@/features/studio/use-studio-lesson";
 import { StudioCanvas } from "@/features/studio/components/studio-canvas";
 import { HomeworkMetaEditor } from "@/features/studio/components/homework-meta-editor";
-import { PublishToggle } from "@/features/studio/components/publish-toggle";
+import { PublishMenuItem } from "@/features/studio/components/publish-menu-item";
 import {
   fetchHomework,
   saveHomework,
@@ -217,8 +217,8 @@ function HomeworkEditor({ homeworkId }: { homeworkId: string }) {
           }}
         />
       }
-      actions={
-        <PublishToggle
+      menuItems={
+        <PublishMenuItem
           status={state.status}
           onChange={async (status) => {
             await setHomeworkStatus(slug, status);

@@ -4,14 +4,8 @@ import {
   ArrowLeftIcon,
   CheckIcon,
   CloudUploadIcon,
-  CopyIcon,
-  DownloadIcon,
-  EyeIcon,
-  EyeOffIcon,
-  FileJsonIcon,
   Loader2Icon,
   MoreHorizontalIcon,
-  SparklesIcon,
 } from "lucide-react";
 
 import type { Lesson } from "@/lib/lessons";
@@ -28,12 +22,12 @@ import {
 import { copyLesson, downloadLesson } from "../export";
 
 /**
- * The editor's top bar, shared by all three kinds of document.
+ * The editor's top bar, shared by every kind of document.
  *
- * What every kind gets: back to the library, the JSON drawer, copy, save,
- * export. What differs — where a document is opened from, whether it can be
- * published, what it is called — arrives through `children` and `label`, so the
- * three editors share this chrome instead of each growing their own.
+ * Two buttons and no more: a menu holding everything that isn't urgent — the
+ * previews and JSON toggles, copy and export, and whatever the kind adds
+ * through `menuItems` — and Save. Six labelled buttons ran into the centred
+ * wordmark and read as a different editor in each kind; one menu doesn't.
  *
  * Saving is a prop rather than a fixed call to the cloud, but the idle → saving
  * → saved cycle stays here: it is the same three states with the same timing in
@@ -54,9 +48,7 @@ export function StudioToolbar({
   onToggleDrawer,
   portable = true,
   back,
-  compact = false,
   menuItems,
-  children,
 }: {
   document: Lesson;
   /** What this editor is working on, e.g. "Presentation". */
@@ -91,20 +83,8 @@ export function StudioToolbar({
    * somewhere they weren't.
    */
   back?: { label: string; onClick: () => void };
-  /**
-   * Collapse the right-hand side to three icons: a menu holding everything that
-   * isn't urgent, Save, and the assistant.
-   *
-   * For the editors where the toolbar has to share the top of the screen with a
-   * drawer. Six labelled buttons in half the width run into the centred wordmark;
-   * three icons don't.
-   */
-  compact?: boolean;
-  /** Extra `DropdownMenuItem`s for the compact menu — the kind-specific actions
-   *  that would otherwise be `children`. Ignored when `compact` is false. */
+  /** The kind-specific actions, as `DropdownMenuItem`s for the menu. */
   menuItems?: React.ReactNode;
-  /** Kind-specific actions, rendered before the shared ones. */
-  children?: React.ReactNode;
 }) {
   const [copied, setCopied] = React.useState(false);
   const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">(
@@ -158,117 +138,53 @@ export function StudioToolbar({
         </span>
       </div>
 
-      {compact ? (
-        <div className="ml-auto flex items-center gap-1.5">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" title="More">
-                <MoreHorizontalIcon />
-                <span className="sr-only">More options</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuCheckboxItem
-                checked={previewOn}
-                onCheckedChange={onTogglePreview}
-              >
-                Slide previews
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={rawOpen}
-                onCheckedChange={onToggleRaw}
-              >
-                JSON
-              </DropdownMenuCheckboxItem>
-              {portable && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => void handleCopy()}>
-                    {copied ? "Copied" : "Copy"}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => downloadLesson(document)}>
-                    Export
-                  </DropdownMenuItem>
-                </>
-              )}
-              {menuItems && (
-                <>
-                  <DropdownMenuSeparator />
-                  {menuItems}
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleSave}
-            disabled={saveState === "saving" || !canSave}
-            title={saveLabel}
-          >
-            {saveState === "saving" ? (
-              <Loader2Icon className="animate-spin" />
-            ) : saveState === "saved" ? (
-              <CheckIcon />
-            ) : (
-              <CloudUploadIcon />
-            )}
-            <span className="sr-only">{saveLabel}</span>
-          </Button>
-
-          {drawerLabel && onToggleDrawer && (
-            <Button
-              variant={drawerOpen ? "secondary" : "ghost"}
-              size="icon"
-              aria-pressed={drawerOpen}
-              onClick={onToggleDrawer}
-              title={drawerLabel}
-            >
-              <ClaudeMark className="size-5" />
-              <span className="sr-only">{drawerLabel}</span>
-            </Button>
-          )}
-        </div>
-      ) : (
       <div className="ml-auto flex items-center gap-1.5">
-        {children}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" title="More">
+              <MoreHorizontalIcon />
+              <span className="sr-only">More options</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuCheckboxItem
+              checked={previewOn}
+              onCheckedChange={onTogglePreview}
+            >
+              Slide previews
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={rawOpen}
+              onCheckedChange={onToggleRaw}
+            >
+              JSON
+            </DropdownMenuCheckboxItem>
+            {portable && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => void handleCopy()}>
+                  {copied ? "Copied" : "Copy"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => downloadLesson(document)}>
+                  Export
+                </DropdownMenuItem>
+              </>
+            )}
+            {menuItems && (
+              <>
+                <DropdownMenuSeparator />
+                {menuItems}
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Button
-          variant={previewOn ? "secondary" : "ghost"}
-          size="sm"
-          onClick={onTogglePreview}
-          title={
-            previewOn
-              ? "Slide previews shown — click to hide them"
-              : "Slide previews hidden — click to show them"
-          }
-        >
-          {previewOn ? <EyeIcon /> : <EyeOffIcon />}
-          Preview
-        </Button>
-
-        <Button
-          variant={rawOpen ? "secondary" : "ghost"}
-          size="sm"
-          onClick={onToggleRaw}
-        >
-          <FileJsonIcon />
-          JSON
-        </Button>
-
-        {portable && (
-          <Button variant="outline" size="sm" onClick={handleCopy}>
-            {copied ? <CheckIcon /> : <CopyIcon />}
-            {copied ? "Copied" : "Copy"}
-          </Button>
-        )}
-
-        <Button
-          variant="outline"
-          size="sm"
+          variant="ghost"
+          size="icon"
           onClick={handleSave}
           disabled={saveState === "saving" || !canSave}
+          title={saveLabel}
         >
           {saveState === "saving" ? (
             <Loader2Icon className="animate-spin" />
@@ -277,35 +193,22 @@ export function StudioToolbar({
           ) : (
             <CloudUploadIcon />
           )}
-          {saveState === "saving"
-            ? "Saving…"
-            : saveState === "saved"
-              ? "Saved"
-              : saveLabel}
+          <span className="sr-only">{saveLabel}</span>
         </Button>
 
-        {portable && (
-          <Button size="sm" onClick={() => downloadLesson(document)}>
-            <DownloadIcon />
-            Export
-          </Button>
-        )}
-
-        {/* Last, and the only filled button when the exports are gone: in the
-            editor that has one, the agent is the thing the editor is about. */}
         {drawerLabel && onToggleDrawer && (
           <Button
-            variant={drawerOpen ? "secondary" : "default"}
-            size="sm"
+            variant={drawerOpen ? "secondary" : "ghost"}
+            size="icon"
             aria-pressed={drawerOpen}
             onClick={onToggleDrawer}
+            title={drawerLabel}
           >
-            <SparklesIcon />
-            {drawerLabel}
+            <ClaudeMark className="size-5" />
+            <span className="sr-only">{drawerLabel}</span>
           </Button>
         )}
       </div>
-      )}
     </header>
   );
 }

@@ -122,6 +122,51 @@ export function SentenceSlot({
   );
 }
 
+/**
+ * One word of a sentence, tappable — the `find-mistake` counterpart to
+ * OptionButton, sharing its state vocabulary so a right answer is the same
+ * green wherever a student meets one.
+ *
+ * Idle is drawn borderless: a sentence where every word already wears a box is
+ * a list of words, and the student is meant to read it as a sentence first. The
+ * border is held (transparent) rather than added on hover so nothing reflows
+ * under the cursor.
+ */
+const WORD_CLASS: Record<OptionState, string> = {
+  idle: "border-transparent hover:border-primary/40 hover:bg-accent",
+  chosen: "border-primary bg-primary/10",
+  correct:
+    "border-emerald-500/60 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200",
+  incorrect: "border-destructive/60 bg-destructive/10 text-destructive",
+};
+
+export function WordChip({
+  state,
+  disabled,
+  onClick,
+  children,
+}: {
+  state: OptionState;
+  disabled?: boolean;
+  onClick?: () => void;
+  children: React.ReactNode;
+}) {
+  const shared = cn(
+    "rounded-lg border-2 px-1.5 py-0.5 transition-colors",
+    WORD_CLASS[state],
+  );
+
+  if (disabled) {
+    return <span className={cn(shared, "cursor-default")}>{children}</span>;
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={shared}>
+      {children}
+    </button>
+  );
+}
+
 /** Marks the right option in the teacher's own views. */
 export function AnswerKeyMark({ isAnswer }: { isAnswer: boolean }) {
   return (

@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useStudioLesson } from "@/features/studio/use-studio-lesson";
 import { StudioCanvas } from "@/features/studio/components/studio-canvas";
 import { LessonMetaEditor } from "@/features/studio/components/lesson-meta-editor";
-import { LessonSourceMenu } from "@/features/studio/components/lesson-source-menu";
+import { LessonSourceMenuItems } from "@/features/studio/components/lesson-source-menu";
 import { openLessonForEditing } from "@/features/studio/data/open-lesson";
 import { NEW_DOCUMENT_ID as NEW, studioKind } from "@/features/studio/kinds";
 
@@ -144,7 +144,7 @@ function LessonEditor({ lessonId }: { lessonId: string }) {
             onChange={studio.updateMeta}
           />
         }
-        actions={<LessonSourceMenu onLoad={load} />}
+        menuItems={<LessonSourceMenuItems onLoad={load} />}
       />
     </>
   );

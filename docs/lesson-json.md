@@ -25,10 +25,12 @@ broken import or a silently wrong slide.
    on a title block **crashes the render** (`Cannot destructure property
    'background' of TITLE_COLORS[...]`). See [Colour](#colour).
 2. **`list` blocks must have `style`.** It is not optional and has no default.
-3. **Exercise blocks (`finish-sentence`, `choose-description`, `long-answer`)
-   need a stable `id`,** and only ever appear in homework. See
+3. **Exercise blocks (`finish-sentence`, `choose-description`, `find-mistake`,
+   `long-answer`) need a stable `id`,** and only ever appear in homework. See
    [Which blocks go where](#which-blocks-go-where).
 4. **`answer` is an index into `options`, not the answer text.** Zero-based.
+   On `find-mistake` there are no `options`: it indexes the sentence's own
+   words, split on whitespace.
 5. **`image` blocks cannot be authored from scratch.** `path` points at a file
    already uploaded to Supabase Storage. Do not invent one. See [image](#image).
 6. **Write UTF-8.** Portuguese in these lessons is full of accented characters,
@@ -413,6 +415,26 @@ A passage in English, and descriptions of it **in the student's own language**.
 `mono` when the passage's own layout is part of the reading: an email, a chat, a
 form. Three options is the usual shape.
 
+### find-mistake
+
+```json
+{
+  "type": "find-mistake",
+  "id": "…",
+  "sentence": "She go to school every day.",
+  "answer": 1
+}
+```
+
+One sentence with exactly one wrong word in it; every word is clickable and the
+student clicks the wrong one. There is no `options` array — the words *are* the
+options, so `answer` indexes `sentence.split(/\s+/)`: `0` is `She`, `1` is `go`,
+and `6` is `day.` Punctuation travels with the word it is attached to.
+
+Count the index by hand against the whitespace-split words, and recount it after
+any edit to the sentence — inserting a word before the mistake shifts the key.
+No inline markdown here: the words are drawn as chips, not as prose.
+
 ### long-answer
 
 ```json
@@ -461,7 +483,8 @@ and a `text` block longer than three lines will not be read at all.
 - [ ] Every `list` block has a `style`
 - [ ] Every `table` block's columns have equal row counts
 - [ ] Every exercise block has a unique `id`, and `answer` indexes into
-      `options` (0-based, in range)
+      `options` (0-based, in range) — or, on `find-mistake`, into the
+      sentence's whitespace-split words
 - [ ] No exercise blocks in a presentation or material; no `image` block with an
       invented `path`
 - [ ] Top-level `id`, `unit`, `module`, `title`, `context`, `minorCanDo`,
