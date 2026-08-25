@@ -72,7 +72,7 @@ function LessonPage() {
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
       <SiteNav backTo="/learn" backLabel="Back to my module" align="narrow" />
-      <main className="mx-auto w-full max-w-3xl space-y-8 px-4 pb-16 pt-4">
+      <main className="mx-auto w-full max-w-3xl lg:max-w-5xl space-y-8 px-4 pb-16 pt-4">
         {locked ? (
           <div className="space-y-3 rounded-md border p-6">
             <p className="text-sm text-muted-foreground">

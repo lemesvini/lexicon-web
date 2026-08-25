@@ -63,16 +63,16 @@ export function HomeworkCta({
       </span>
 
       <span className="min-w-0 flex-1">
-        <span className="block font-medium">
+        <span className="block font-medium font-montserrat">
           {waiting
-            ? `${todo} homework to do`
+            ? `${todo} assignments waiting`
             : "You're up to date on homework"}
-        </span>
-        <span className="block text-sm text-muted-foreground">
+        </span> 
+        <span className="block text-sm text-muted-foreground font-montserrat">
           {marked > 0
             ? `${marked} marked — see how you did`
             : waiting
-              ? "Open them whenever you're ready"
+              ? "Seu progresso fica salvo automaticamente "
               : "Nothing waiting on you"}
         </span>
       </span>
