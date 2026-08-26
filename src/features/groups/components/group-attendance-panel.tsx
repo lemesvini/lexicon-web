@@ -30,12 +30,16 @@ export function GroupAttendancePanel({
   onPickDate,
   /** Bumped by the page after any write, so the history follows the register. */
   reloadKey,
+  /** Drops the frame and the title: the drawer that holds this panel already
+   *  has both, and a heading under a heading reads as two panels. */
+  bare = false,
 }: {
   group: GroupRow;
   /** The date the register is on, highlighted here so the two tabs agree. */
   classDate: string;
   onPickDate: (classDate: string) => void;
   reloadKey: number;
+  bare?: boolean;
 }) {
   const [days, setDays] = React.useState<AttendanceDay[]>([]);
   const [status, setStatus] = React.useState<"loading" | "ready" | "error">(
@@ -76,10 +80,14 @@ export function GroupAttendancePanel({
   );
 
   return (
-    <section className="rounded-md border">
-      <header className="border-b px-4 py-3">
+    <section
+      className={cn(
+        bare ? "flex min-h-0 flex-1 flex-col" : "rounded-md border",
+      )}
+    >
+      <header className={cn("px-4 py-3", bare ? "px-0 pt-0" : "border-b")}>
         <div className="min-w-0 space-y-0.5">
-          <h2 className="text-sm font-medium">Attendance</h2>
+          {!bare && <h2 className="text-sm font-medium">Attendance</h2>}
           <p className="text-xs text-muted-foreground">
             {status === "ready"
               ? // `totals.total` can be zero even with days on the list — a day
@@ -119,7 +127,12 @@ export function GroupAttendancePanel({
           here.
         </p>
       ) : (
-        <ul className="max-h-[32rem] divide-y overflow-y-auto">
+        <ul
+          className={cn(
+            "no-scrollbar divide-y overflow-y-auto",
+            bare ? "-mx-6 min-h-0 flex-1 border-t" : "max-h-[32rem]",
+          )}
+        >
           {days.map((day) => {
             const isCurrent = day.classDate === classDate;
             return (

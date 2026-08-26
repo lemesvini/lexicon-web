@@ -302,7 +302,7 @@ function StudioLibraryPage() {
                 <DataTable
                   columns={advancedColumns()}
                   data={advanced}
-                  emptyMessage="No group has its own copy of a lesson yet. Assign a module on a group's Lessons tab."
+                  emptyMessage="No group has its own copy of a lesson yet. Assign a module in a group's studio."
                   countLabel={(n) => `${n} cop${n === 1 ? "y" : "ies"}`}
                 />
               )}

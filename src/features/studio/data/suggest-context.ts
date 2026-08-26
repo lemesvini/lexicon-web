@@ -75,21 +75,106 @@ const tableBlock = z.object({
     .min(1),
 });
 
-const suggestedBlock = z.discriminatedUnion("type", [
-  textBlock,
-  listBlock,
-  calloutBlock,
-  dialogBlock,
-  tableBlock,
-]);
+/** The four exercise kinds, for a homework copy. `id` is optional here and
+ *  minted on insert: a stable id matters (it keys the answer and the mark), and
+ *  the editor already has the one thing that can guarantee uniqueness within a
+ *  document — itself. `answer` is a 0-based index into `options`. */
+const finishSentenceBlock = z.object({
+  type: z.literal("finish-sentence"),
+  id: z.string().optional(),
+  label,
+  // The gap is written `___`; a prompt without one has nothing to fill in.
+  sentence: z.string().includes("___"),
+  options: z.array(z.string()).min(2),
+  answer: z.number().int().nonnegative(),
+  note,
+});
 
-const suggestion = z.object({
-  /** The id of the existing slide the new one goes after. */
+const chooseDescriptionBlock = z.object({
+  type: z.literal("choose-description"),
+  id: z.string().optional(),
+  label,
+  text: z.string().min(1),
+  font: z.enum(["sans", "mono"]).optional(),
+  options: z.array(z.string()).min(2),
+  answer: z.number().int().nonnegative(),
+  note,
+});
+
+const findMistakeBlock = z.object({
+  type: z.literal("find-mistake"),
+  id: z.string().optional(),
+  label,
+  sentence: z.string().min(1),
+  // An index into the sentence split on whitespace, not into an options array.
+  answer: z.number().int().nonnegative(),
+  note,
+});
+
+const longAnswerBlock = z.object({
+  type: z.literal("long-answer"),
+  id: z.string().optional(),
+  label,
+  question: z.string().min(1),
+  hint: z.string().optional(),
+  note,
+});
+
+/** What may be proposed, by what is being edited. A homework is exercises and a
+ *  presentation is content — offering either set to the other kind produces
+ *  blocks its editor has no palette for. */
+const BLOCKS_BY_KIND = {
+  lesson: z.discriminatedUnion("type", [
+    textBlock,
+    listBlock,
+    calloutBlock,
+    dialogBlock,
+    tableBlock,
+  ]),
+  material: z.discriminatedUnion("type", [
+    textBlock,
+    listBlock,
+    calloutBlock,
+    dialogBlock,
+    tableBlock,
+  ]),
+  homework: z.discriminatedUnion("type", [
+    finishSentenceBlock,
+    chooseDescriptionBlock,
+    findMistakeBlock,
+    longAnswerBlock,
+  ]),
+} as const;
+
+/** Which of a group's three documents is being added to. */
+export type SuggestKind = keyof typeof BLOCKS_BY_KIND;
+
+/**
+ * How many blocks one suggestion may carry.
+ *
+ * Higher for homework because a set of exercises is a set: "one of each kind,
+ * plus another find-the-mistake" is five, and a teacher who asks for that should
+ * get it rather than watch the whole answer be dropped for being one over.
+ */
+const MAX_BLOCKS: Record<SuggestKind, number> = {
+  lesson: 6,
+  material: 6,
+  homework: 8,
+};
+
+/**
+ * The suggestion around its blocks.
+ *
+ * Blocks are `unknown` here and checked one at a time below. Validating the
+ * whole thing in one pass meant a single bad block — an exercise the model
+ * forgot the answer on — threw away the four good ones beside it and the
+ * teacher got nothing.
+ */
+const envelope = z.object({
   afterSlideId: z.string().min(1),
-  /** The new slide's stage name — content, not an administrative label. */
   stage: z.string().min(1),
-  rationale: z.string(),
-  blocks: z.array(suggestedBlock).min(1).max(4),
+  rationale: z.string().default(""),
+  blocks: z.array(z.unknown()).min(1),
 });
 
 /** One proposed slide, ready to preview and insert. */
@@ -105,6 +190,11 @@ export type SuggestionResult = {
   /** How many the model returned that didn't survive validation. Shown rather
    *  than swallowed: a run where half were dropped is worth knowing about. */
   discarded: number;
+  /** One line per dropped suggestion, naming it and saying what was wrong with
+   *  it. "Malformed" on its own sends the teacher to ask again and get the same
+   *  answer; "too many blocks" tells them to ask for fewer, and tells whoever
+   *  maintains this which rule the model keeps tripping over. */
+  problems: string[];
 };
 
 /** One earlier turn of this conversation, as the model should read it back. */
@@ -125,7 +215,7 @@ export type SuggestOptions = {
 };
 
 /**
- * Asks the edge function for slides to add to this group's copy of this lesson.
+ * Asks the edge function for slides to add to this group's copy of a document.
  *
  * The function does the reading — the class's context, every student's notes,
  * unit reports and handed-in homework, and what has already been added for this
@@ -134,8 +224,11 @@ export type SuggestOptions = {
  * lesson, whatever the teacher typed, and the conversation so far.
  */
 export async function suggestAdvancedContext(
+  kind: SuggestKind,
   groupId: string,
-  lessonId: string,
+  /** The lesson id for a presentation or a material; the homework's slug for a
+   *  homework. */
+  documentId: string,
   options: SuggestOptions = {},
 ): Promise<SuggestionResult> {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -152,8 +245,13 @@ export async function suggestAdvancedContext(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        kind,
         groupId,
-        lessonId,
+        documentId,
+        // The old name for `documentId`, still sent so a browser running new
+        // code against a not-yet-redeployed function keeps working for the kind
+        // that function knows about.
+        lessonId: documentId,
         teacherPrompt: options.teacherPrompt,
         history: options.history,
       }),
@@ -193,7 +291,7 @@ export async function suggestAdvancedContext(
   }
 
   const raw = await readSuggestions(response.body, options.onThinking);
-  return validate(raw);
+  return validate(kind, raw);
 }
 
 /**
@@ -252,8 +350,7 @@ async function readSuggestions(
         const delta = (data as { delta?: unknown }).delta;
         if (typeof delta === "string") onThinking?.(delta);
       } else if (event === "result") {
-        const value = (data as { suggestions?: unknown }).suggestions;
-        suggestions = Array.isArray(value) ? value : [];
+        suggestions = toList((data as { suggestions?: unknown }).suggestions);
       } else if (event === "error") {
         const message = (data as { error?: unknown }).error;
         failure = typeof message === "string" ? message : "The model call failed.";
@@ -271,23 +368,112 @@ async function readSuggestions(
   return suggestions;
 }
 
-function validate(raw: unknown[]): SuggestionResult {
+/**
+ * The suggestions as a list, however they arrived.
+ *
+ * A forced tool call is supposed to hand back an array. It does not always: the
+ * model sometimes fills an array-typed parameter with a JSON *string* of that
+ * array, and the whole answer — anchors, blocks, answer keys, all of it valid —
+ * was landing as "nothing to suggest" because it wasn't literally an Array.
+ *
+ * Parsed here as well as in the function, deliberately. This half needs no
+ * deploy, and it is the half that decides what the teacher sees.
+ */
+function toList(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function validate(kind: SuggestKind, raw: unknown[]): SuggestionResult {
+  const blockSchema = BLOCKS_BY_KIND[kind];
   const suggestions: ContextSuggestion[] = [];
+  const problems: string[] = [];
   let discarded = 0;
 
   for (const item of raw) {
-    const parsed = suggestion.safeParse(item);
-    if (parsed.success) {
-      suggestions.push({
-        afterSlideId: parsed.data.afterSlideId,
-        stage: parsed.data.stage,
-        rationale: parsed.data.rationale,
-        blocks: parsed.data.blocks as LessonBlock[],
-      });
-    } else {
+    const shell = envelope.safeParse(item);
+    if (!shell.success) {
       discarded += 1;
+      problems.push(describe(item, shell.error));
+      continue;
     }
+
+    const name = `“${shell.data.stage}”`;
+    const blocks: LessonBlock[] = [];
+    const rejected: string[] = [];
+
+    for (const [index, block] of shell.data.blocks.entries()) {
+      const parsed = blockSchema.safeParse(block);
+      if (parsed.success) {
+        blocks.push(parsed.data as LessonBlock);
+      } else {
+        rejected.push(`block ${index + 1} (${blockType(block)}) — ${first(parsed.error)}`);
+      }
+    }
+
+    if (blocks.length === 0) {
+      discarded += 1;
+      problems.push(`${name}: ${rejected[0] ?? "no usable blocks"}`);
+      continue;
+    }
+
+    // Over the ceiling, trim rather than refuse: the extra blocks are the
+    // model's enthusiasm, not a defect, and losing four good exercises to keep
+    // a limit is the wrong trade in both directions.
+    const kept = blocks.slice(0, MAX_BLOCKS[kind]);
+    if (blocks.length > kept.length) {
+      problems.push(
+        `${name}: kept the first ${kept.length} of ${blocks.length} blocks.`,
+      );
+    }
+    if (rejected.length > 0) {
+      problems.push(`${name}: ${rejected.join("; ")}`);
+    }
+
+    suggestions.push({
+      afterSlideId: shell.data.afterSlideId,
+      stage: shell.data.stage,
+      rationale: shell.data.rationale,
+      blocks: kept,
+    });
   }
 
-  return { suggestions, discarded };
+  return { suggestions, discarded, problems };
+}
+
+/** The `type` a rejected block claimed, for naming it in the report. */
+function blockType(block: unknown): string {
+  return typeof block === "object" && block !== null && "type" in block
+    ? String((block as { type: unknown }).type)
+    : "no type";
+}
+
+/** The first issue only — a block that fails its type check fails every other
+ *  member of the union too, and the list of near-misses is noise. */
+function first(error: z.ZodError): string {
+  const issue = error.issues[0];
+  if (!issue) return "rejected";
+  const where = issue.path.join(".");
+  return `${where ? `${where}: ` : ""}${issue.message.toLowerCase()}`;
+}
+
+/** A suggestion dropped before its blocks were even reached — no anchor, no
+ *  stage, nothing to put anywhere. */
+function describe(item: unknown, error: z.ZodError): string {
+  const name =
+    typeof item === "object" && item !== null && "stage" in item &&
+    typeof (item as { stage?: unknown }).stage === "string" &&
+    (item as { stage: string }).stage !== ""
+      ? `“${(item as { stage: string }).stage}”`
+      : "one suggestion";
+
+  return `${name}: ${first(error)}`;
 }

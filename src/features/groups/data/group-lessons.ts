@@ -23,7 +23,7 @@ import { fetchCloudLesson, type CloudLessonSummary } from "@/lib/lessons-cloud";
 
 import { fromDateKey, toDateKey } from "./groups";
 
-/** One lesson a group has a copy of, as the Lessons tab lists it. */
+/** One lesson a group has a copy of, as the group's studio lists it. */
 export type GroupLessonRow = {
   id: string;
   groupId: string;
@@ -218,7 +218,7 @@ export async function listScheduledOn(
 }
 
 /** One group's copy of one lesson, for the editor. Null when the group has no
- *  copy of it — which is not an error: copies are made on the Lessons tab. */
+ *  copy of it — which is not an error: copies are made in the group's studio. */
 export async function fetchGroupLesson(
   groupId: string,
   lessonId: string,

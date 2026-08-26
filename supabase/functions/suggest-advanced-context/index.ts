@@ -1,5 +1,12 @@
-// Asks Claude what this particular class needs on top of a shared lesson, and
+// Asks Claude what this particular class needs on top of a shared document, and
 // streams the reasoning back while it works.
+//
+// Three documents, one function: the presentation a group is taught from, the
+// material they read afterwards, and the homework they hand in. `kind` picks
+// which — see SOURCES. The question is the same in all three ("what does THIS
+// class need that the shared version doesn't give them?"), the evidence is the
+// same, and only what may be proposed differs: content blocks for the first two,
+// exercises for the third.
 //
 // Here rather than in the browser for the usual reason plus one more: the
 // ANTHROPIC_API_KEY has nowhere safe to live in a Vite SPA, and the input to the
@@ -7,7 +14,8 @@
 // hand, the teacher's own remarks about them — is exactly the material that should
 // be assembled server-side and never handed to the client to assemble for itself.
 //
-// The output is whole SLIDES, not blocks dropped into existing ones. A block
+// The output is whole SLIDES (sections, for the two student-facing kinds), not
+// blocks dropped into existing ones. A block
 // wedged into a slide built for something else reads as an interruption; a slide
 // of its own gets a name and a place in the running order, which is what the
 // teacher actually wanted.
@@ -23,7 +31,7 @@
 // caching matches on the cumulative prefix and each breakpoint caches everything
 // up to it:
 //
-//   1. STATIC_RULES   cached   identical for every call this deployment ever makes
+//   1. rulesFor(kind) cached   identical for every call of that kind, forever
 //   2. bookOverview   cached   identical until the curriculum changes
 //   3. classDossier   cached   identical until something about THIS class changes
 //   4. lessonNote     uncached changes per lesson, and is a couple of lines
@@ -46,6 +54,13 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 import { corsHeaders, HttpError, json, requireStaff } from "../_shared/admin.ts";
 import { ALEX_CANON, BOOK_ONE_GRAMMAR, CANON_PROVIDED } from "./canon.ts";
+// The three prompts live with the rest of the Studio, one file per kind, so they
+// can be read and edited as prose rather than as an interpolation buried in this
+// file. They import nothing themselves — the canon is passed in — so they bundle
+// as plain strings.
+import { lessonRules } from "../../../src/features/studio/prompts/lesson.ts";
+import { materialRules } from "../../../src/features/studio/prompts/material.ts";
+import { homeworkRules } from "../../../src/features/studio/prompts/homework.ts";
 
 const MODEL = "claude-sonnet-5";
 
@@ -61,6 +76,45 @@ const HOMEWORK_PER_STUDENT = 5;
  *  exchanges — enough for "no, the other student" to make sense, short enough
  *  that a long session doesn't drag its whole history behind it. */
 const MAX_HISTORY_MESSAGES = 6;
+
+/**
+ * Which of a group's three copies is being added to, and where each lives.
+ *
+ * One function rather than three because the question is the same question: what
+ * does THIS class need on top of the shared version? The class dossier, the
+ * homework digest and the caching layout are identical whichever document is
+ * open. Only three things vary — the table the copy is read from, the blocks a
+ * suggestion may use, and what the document is FOR — and all three are here.
+ */
+type Kind = "lesson" | "material" | "homework";
+
+const SOURCES: Record<
+  Kind,
+  { table: string; key: string; noun: string; historyNoun: string }
+> = {
+  lesson: {
+    table: "group_lessons",
+    key: "lesson_id",
+    noun: "presentation",
+    historyNoun: "lessons",
+  },
+  material: {
+    table: "group_lesson_materials",
+    key: "lesson_id",
+    noun: "student material",
+    historyNoun: "materials",
+  },
+  homework: {
+    table: "group_homework",
+    key: "homework_id",
+    noun: "homework",
+    historyNoun: "homeworks",
+  },
+};
+
+function isKind(value: unknown): value is Kind {
+  return value === "lesson" || value === "material" || value === "homework";
+}
 
 /** The block types a suggestion may use.
  *
@@ -135,10 +189,125 @@ const BLOCK_SCHEMA = {
   },
 } as const;
 
-const TOOL = {
+/**
+ * What a homework may be made of. Nothing else marks: `homework_submissions`
+ * keys every answer by a block id, and the three objective kinds carry the
+ * `answer` the marking runs against (migration 0005).
+ *
+ * `id` is deliberately absent — the client mints one on insert. A model asked
+ * for unique ids across a document it can only partly see would sooner or later
+ * repeat one, and two blocks with the same id share a student's answer.
+ */
+const EXERCISE_SCHEMA = {
+  // `anyOf`, one branch per kind, rather than one flat object with everything
+  // optional. The flat version could only ask for `answer` in prose — "required
+  // for these three types" — and prose is advice: a model that writes four good
+  // exercises and forgets the answer on the second one has broken the only
+  // thing that makes an exercise markable, and the whole suggestion is refused
+  // on the way in. Branching makes the requirement structural.
+  anyOf: [
+    {
+      type: "object",
+      additionalProperties: false,
+      required: ["type", "sentence", "options", "answer"],
+      properties: {
+        type: { type: "string", const: "finish-sentence" },
+        label: { type: "string", description: "Optional small heading." },
+        note: { type: "string", description: "Optional quiet line beneath." },
+        sentence: {
+          type: "string",
+          description: "The sentence, with the gap written as ___",
+        },
+        options: {
+          type: "array",
+          minItems: 2,
+          items: { type: "string" },
+          description: "The words to choose between. Exactly one is right.",
+        },
+        answer: {
+          type: "integer",
+          description: "0-based index into `options` of the right word.",
+        },
+      },
+    },
+    {
+      type: "object",
+      additionalProperties: false,
+      required: ["type", "text", "options", "answer"],
+      properties: {
+        type: { type: "string", const: "choose-description" },
+        label: { type: "string" },
+        note: { type: "string" },
+        text: {
+          type: "string",
+          description:
+            "The passage the student reads, in English. Block markdown.",
+        },
+        font: {
+          type: "string",
+          enum: ["sans", "mono"],
+          description:
+            "\"mono\" when the passage's own layout is part of the reading — an email, a chat, a form.",
+        },
+        options: {
+          type: "array",
+          minItems: 2,
+          items: { type: "string" },
+          description:
+            "Descriptions of the passage, in the student's own language. Exactly one is true.",
+        },
+        answer: {
+          type: "integer",
+          description: "0-based index into `options` of the true one.",
+        },
+      },
+    },
+    {
+      type: "object",
+      additionalProperties: false,
+      required: ["type", "sentence", "answer"],
+      properties: {
+        type: { type: "string", const: "find-mistake" },
+        label: { type: "string" },
+        note: { type: "string" },
+        sentence: {
+          type: "string",
+          description: "The sentence, containing exactly one wrong word.",
+        },
+        answer: {
+          type: "integer",
+          description:
+            "0-based index of the wrong word in the sentence split on spaces. Count it word by word.",
+        },
+      },
+    },
+    {
+      type: "object",
+      additionalProperties: false,
+      // No `answer` — this is the one the teacher marks by hand.
+      required: ["type", "question"],
+      properties: {
+        type: { type: "string", const: "long-answer" },
+        label: { type: "string" },
+        note: { type: "string" },
+        question: { type: "string" },
+        hint: {
+          type: "string",
+          description: "The expected shape, e.g. \"3–5 sentences\".",
+        },
+      },
+    },
+  ],
+} as const;
+
+const toolFor = (kind: Kind) => ({
   name: "propose_slides",
   description:
-    "Propose whole slides of advanced context for this class, each anchored after an existing slide of the lesson.",
+    kind === "homework"
+      ? "Propose whole sections of extra exercises for this class, each anchored after an existing section of the homework."
+      : kind === "material"
+        ? "Propose whole extra sections for this class to read, each anchored after an existing section of the material."
+        : "Propose whole slides of advanced context for this class, each anchored after an existing slide of the lesson.",
   input_schema: {
     type: "object",
     additionalProperties: false,
@@ -169,8 +338,13 @@ const TOOL = {
             },
             blocks: {
               type: "array",
-              maxItems: 4,
-              items: BLOCK_SCHEMA,
+              // Higher for homework because a set of exercises is a set: "one
+              // of each kind, plus another find-the-mistake" is five. Keep in
+              // step with MAX_BLOCKS in src/features/studio/data/suggest-context.ts,
+              // which is what actually decides — a suggestion over the ceiling
+              // is dropped whole on the way in, not trimmed.
+              maxItems: kind === "homework" ? 8 : 6,
+              items: kind === "homework" ? EXERCISE_SCHEMA : BLOCK_SCHEMA,
               description: "The full content of the new slide.",
             },
           },
@@ -178,52 +352,23 @@ const TOOL = {
       },
     },
   },
-} as const;
+});
 
 // ── The system prompt ────────────────────────────────────────────────────────
-// Block 1 of 4, and the one that never changes. Everything variable is kept out
-// of it on purpose: a single interpolated value here would invalidate the cache
-// prefix for every call in the system, not just this one.
+// Block 1 of 4, and the one that never changes within a kind. The text itself
+// lives in src/features/studio/prompts, one file per kind — it is prose, it is
+// edited as prose, and it had no business being interleaved with the schemas and
+// the queries. Nothing variable is interpolated into it beyond the canon: a
+// value that changed per call would invalidate the cache prefix for every call
+// in the system, not just this one.
 
-const STATIC_RULES = `You help an English teacher adapt a shared lesson for one specific class.
+const RULES: Record<Kind, (alexCanon: string) => string> = {
+  lesson: lessonRules,
+  material: materialRules,
+  homework: homeworkRules,
+};
 
-You are given the class, its students, their per-unit progress reports, the homework they have handed in, everything that has already been added for this class in earlier lessons, and the lesson as it stands. You propose whole extra SLIDES — "advanced context" — each anchored after an existing slide. The teacher reviews each one and inserts the ones they want.
-
-## What makes a good suggestion
-
-- It comes from something concrete in the input: a student's stated interest, a low test score, a mistake they actually made in a homework, a pattern across their reports. Say which, in the rationale.
-- The concrete fact has to be IN THE SLIDE, not only in the rationale. A dialogue that mentions Marina's climbing is personalization; a generic dialogue with a rationale saying "Marina likes climbing" is not.
-- It ADDS. The base lesson is not yours to rewrite, and the teacher cannot remove it. Extra examples, a harder variant, vocabulary this class keeps missing, a dialogue set in their world.
-- It sits after a slide where it belongs, by that slide's id.
-- The stage name is content, not a label: "Marina's Weekend", "Two Ways to Say No", "Diego's Trail Run" — never "Advanced Context", "Extra Practice", or "Personalized Slide".
-- It is in English, at the level the lesson is pitched at.
-- Do not repeat something already on the lesson's slides, and do not repeat something already in this class's advanced-context history.
-
-Fewer, sharper suggestions beat more. If the input does not support a suggestion, propose nothing rather than inventing a reason.
-
-## The conversation
-
-This is a conversation with the teacher, and the turns above are yours and theirs. Read them: a follow-up like "not that one, do Diego instead" or "shorter" refers to what you just proposed. Do not repeat a slide you have already proposed in this conversation unless you are asked to revise it — and when you revise, say what changed in the rationale. If the teacher's message says which suggestions they inserted, take that as the strongest available signal about what this teacher wants.
-
-## Personalization
-
-- A student's PERSONAL interest comes from their own context line. Use it in a slide aimed at that student, and name them.
-- A SHARED interest comes from the class's context. Use it when the slide is for the whole room.
-- Never attribute one student's interest to another, and never invent an interest that is not written down.
-
-## Alex
-
-${ALEX_CANON}
-
-Before proposing a dialog with Alex, check the class's advanced-context history. If Alex has already engaged with this student's interest in an earlier lesson, either build on it explicitly (a callback the class will recognise) or deliberately take a different angle — never repeat the same joke or scenario as if it were new.
-
-## Block rules — these matter, because nothing validates them at render time
-
-- \`list\` MUST have \`style\`: "numbered", "bullet" or "checklist". There is no default.
-- \`callout\` colours are blue_bg / green_bg / yellow_bg / gray_bg / red_bg, and nothing else.
-- \`table\` is column-major: \`columns: [{ title, rows: [...] }]\`, one entry per COLUMN.
-- \`text\` and \`callout\` need \`body\`; \`callout\` also needs \`title\`.
-- Body text is block markdown: paragraphs, line breaks, headings and lists survive as typed.`;
+const rulesFor = (kind: Kind) => RULES[kind](ALEX_CANON);
 
 // ── Summaries ────────────────────────────────────────────────────────────────
 
@@ -306,28 +451,46 @@ type Student = {
  */
 async function buildGroupHistory(
   service: SupabaseClient,
+  kind: Kind,
   groupId: string,
-  currentLessonId: string,
+  currentId: string,
 ): Promise<string> {
+  const source = SOURCES[kind];
+
+  // Only this kind's own copies. A presentation's history is the other
+  // presentations: what was said out loud to this class is a different thread
+  // from what they were sent home to read, and mixing the two is how a callback
+  // lands on a class that never saw the thing being called back to.
+  //
+  // `position` is a `group_lessons` column; the other two are ordered by when
+  // the copy was last touched instead, which for a term's work is the same
+  // order.
+  const columns =
+    kind === "lesson"
+      ? `${source.key}, document, position`
+      : `${source.key}, document, updated_at`;
+
   const { data, error } = await service
-    .from("group_lessons")
-    .select("lesson_id, document, position")
+    .from(source.table)
+    .select(columns)
     .eq("group_id", groupId)
-    .neq("lesson_id", currentLessonId);
+    .neq(source.key, currentId);
 
   if (error) throw new HttpError(500, error.message);
 
   type Entry = { lessonId: string; position: number; lines: string[] };
   const entries: Entry[] = [];
 
-  for (const row of (data ?? []) as {
-    lesson_id: string;
-    document: { slides?: Slide[] } | null;
-    position: number | null;
-  }[]) {
+  for (const [index, row] of (
+    (data ?? []) as unknown as Record<string, unknown>[]
+  ).entries()) {
+    const documentId = String(row[source.key] ?? "");
+    const document = row.document as { slides?: Slide[] } | null;
+    const position =
+      typeof row.position === "number" ? row.position : index + 1;
     const lines: string[] = [];
 
-    for (const slide of row.document?.slides ?? []) {
+    for (const slide of document?.slides ?? []) {
       if (slide.advancedContext) {
         // A whole slide the class was given: name it, and say what is on it.
         const kinds = (slide.blocks ?? [])
@@ -355,11 +518,7 @@ async function buildGroupHistory(
     }
 
     if (lines.length > 0) {
-      entries.push({
-        lessonId: row.lesson_id,
-        position: row.position ?? 0,
-        lines,
-      });
+      entries.push({ lessonId: documentId, position, lines });
     }
   }
 
@@ -541,16 +700,29 @@ Deno.serve(async (req: Request) => {
   try {
     const caller = await requireStaff(req);
 
-    const { groupId, lessonId, teacherPrompt, history } = (await req
-      .json()
-      .catch(() => ({}))) as {
+    const payload = (await req.json().catch(() => ({}))) as {
+      kind?: string;
       groupId?: string;
+      documentId?: string;
+      /** What `documentId` was called before this function knew about the two
+       *  student-facing kinds. Still accepted, so an older browser tab keeps
+       *  working against a redeployed function. */
       lessonId?: string;
       teacherPrompt?: string;
       history?: { role?: string; content?: string }[];
     };
-    if (!groupId || !lessonId) {
-      throw new HttpError(400, "groupId and lessonId are required.");
+
+    // `conversation`, not `history`: further down, `history` is the block of
+    // prose describing what this class has already been given. Two different
+    // things under one name in one scope is not a shadowing subtlety here — a
+    // second `const` of the same name in the same block is a SyntaxError, and
+    // the whole function fails to load.
+    const { groupId, teacherPrompt, history: conversation } = payload;
+    const kind: Kind = isKind(payload.kind) ? payload.kind : "lesson";
+    const documentId = payload.documentId ?? payload.lessonId;
+
+    if (!groupId || !documentId) {
+      throw new HttpError(400, "groupId and documentId are required.");
     }
 
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
@@ -578,16 +750,21 @@ Deno.serve(async (req: Request) => {
       throw new HttpError(403, "That group isn't yours.");
     }
 
+    const source = SOURCES[kind];
+
     const { data: copy, error: copyError } = await service
-      .from("group_lessons")
+      .from(source.table)
       .select("document")
       .eq("group_id", groupId)
-      .eq("lesson_id", lessonId)
+      .eq(source.key, documentId)
       .maybeSingle();
 
     if (copyError) throw new HttpError(500, copyError.message);
     if (!copy?.document) {
-      throw new HttpError(404, "This group has no copy of that lesson.");
+      throw new HttpError(
+        404,
+        `This group has no copy of that ${source.noun}.`,
+      );
     }
 
     const { data: members, error: membersError } = await service
@@ -640,12 +817,18 @@ Deno.serve(async (req: Request) => {
       slides?: Slide[];
     };
 
+    // A slide's own id when it has one, its position when it doesn't. Only
+    // presentations are hand-authored with ids; the Studio's own editor leaves
+    // the field empty, so requiring one meant the agent had nothing to anchor to
+    // in a material or a homework and refused the whole request. The client
+    // resolves `#3` back to the third slide by the same rule (`anchorId` in
+    // src/features/studio/advanced-context.ts) — keep the two in step.
     const slides = (doc.slides ?? [])
-      .filter((slide) => (slide.id ?? "") !== "")
-      .map((slide) => {
+      .map((slide, index) => {
+        const id = slide.id || `#${index + 1}`;
         const blocks = (slide.blocks ?? []).map(summariseBlock).join("\n");
         return [
-          `  slide id: ${slide.id}`,
+          `  slide id: ${id}`,
           `  stage: ${slide.stage ?? ""}`,
           slide.goal ? `  goal: ${slide.goal}` : "",
           blocks ? `  blocks:\n${blocks}` : "  blocks: (none)",
@@ -658,7 +841,7 @@ Deno.serve(async (req: Request) => {
     if (!slides) {
       throw new HttpError(
         422,
-        "None of this lesson's slides have an id, so there is nothing to anchor a suggestion to.",
+        `This ${source.noun} has no slides yet, so there is nothing to anchor a suggestion to.`,
       );
     }
 
@@ -669,7 +852,7 @@ Deno.serve(async (req: Request) => {
 ${BOOK_ONE_GRAMMAR}`;
 
     const [history, homework] = await Promise.all([
-      buildGroupHistory(service, groupId, lessonId),
+      buildGroupHistory(service, kind, groupId, documentId),
       buildHomeworkDigest(service, students),
     ]);
 
@@ -711,13 +894,13 @@ ${studentBlock}`,
     const lessonNote = CANON_PROVIDED
       ? `# This lesson
 
-"${doc.title ?? lessonId}" (${lessonId}), unit ${doc.unit ?? "?"}. Use only structure unlocked at or before this lesson in the progression above.`
+"${doc.title ?? documentId}" (${documentId}), unit ${doc.unit ?? "?"}. Use only structure unlocked at or before this lesson in the progression above.`
       : "";
 
     // The lesson opens the conversation and never changes within it, so it sits
     // in the first user message where the cache breakpoint below can cover it —
     // rather than being restated in every turn's prompt.
-    const lessonMessage = `# The lesson you are adding to
+    const lessonMessage = `# The ${source.noun} you are adding to
 
 title: ${doc.title ?? ""}
 unit: ${doc.unit ?? ""}
@@ -731,13 +914,13 @@ ${slides}`;
 
     const prompt =
       teacherPrompt?.trim() ||
-      "Suggest advanced context for this lesson. Use your judgement about what this class needs most.";
+      `Suggest advanced context for this ${source.noun}. Use your judgement about what this class needs most.`;
 
     // Earlier turns of this conversation, so a follow-up can say "not that one,
     // the other student" and be understood. Sanitised rather than trusted: this
     // arrives from the browser, and a malformed entry would fail the whole call
     // with an error about a message shape the teacher can do nothing about.
-    const priorTurns = (Array.isArray(history) ? history : [])
+    const priorTurns = (Array.isArray(conversation) ? conversation : [])
       .filter(
         (entry): entry is { role: "user" | "assistant"; content: string } =>
           (entry?.role === "user" || entry?.role === "assistant") &&
@@ -778,12 +961,17 @@ ${slides}`;
     );
 
     const system = [
-      { type: "text" as const, text: STATIC_RULES, cache_control: { type: "ephemeral" as const } },
+      {
+        type: "text" as const,
+        text: rulesFor(kind),
+        cache_control: { type: "ephemeral" as const },
+      },
       { type: "text" as const, text: bookOverview, cache_control: { type: "ephemeral" as const } },
       { type: "text" as const, text: classDossier, cache_control: { type: "ephemeral" as const } },
       ...(lessonNote ? [{ type: "text" as const, text: lessonNote }] : []),
     ];
 
+    const tool = toolFor(kind);
     const anthropic = new Anthropic({ apiKey });
 
     const stream = anthropic.messages.stream({
@@ -801,8 +989,8 @@ ${slides}`;
       // is how you end up parsing JSON out of a paragraph of preamble. (Forced
       // tool choice alongside thinking is fine on the Claude API; only Bedrock
       // requires thinking to be off.)
-      tool_choice: { type: "tool", name: TOOL.name },
-      tools: [TOOL],
+      tool_choice: { type: "tool", name: tool.name },
+      tools: [tool],
       messages: cachedMessages,
     });
 
@@ -841,8 +1029,23 @@ ${slides}`;
           if (!use || use.type !== "tool_use") {
             send("error", { error: "The model didn't return any suggestions." });
           } else {
-            const input = use.input as { suggestions?: unknown[] };
-            send("result", { suggestions: input.suggestions ?? [] });
+            // Normally an array. Sometimes a JSON string OF that array — a
+            // forced tool call filling an array-typed parameter with its own
+            // serialization. Parsed here so the client is handed the shape the
+            // event claims to carry, whichever way it came back.
+            const raw = (use.input as { suggestions?: unknown }).suggestions;
+            let list: unknown[] = Array.isArray(raw) ? raw : [];
+            if (typeof raw === "string") {
+              try {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) list = parsed;
+              } catch {
+                console.warn(
+                  "[suggest] suggestions came back as an unparseable string",
+                );
+              }
+            }
+            send("result", { suggestions: list });
           }
         } catch (err) {
           console.error(err);

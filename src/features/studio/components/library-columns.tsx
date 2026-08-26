@@ -190,7 +190,7 @@ export function materialColumns({
 
 // ── Advanced context ─────────────────────────────────────────────────────────
 // A group's own copy of a lesson. Read-only from here apart from Edit: a copy is
-// created and removed on the group's Lessons tab, where the group it belongs to
+// created and removed in the group's studio, where the group it belongs to
 // is the thing you are looking at.
 
 export function advancedColumns(): ColumnDef<LibraryAdvancedRow>[] {

@@ -45,6 +45,10 @@ function groupByModule<T>(
  * The library as covers rather than rows: one section per module, every one of
  * them open.
  *
+ * Exported along with `LibraryCard` because a group's studio draws the same
+ * gallery over its own copies — the tiles differ in where they link and what
+ * their badges say, and in nothing else.
+ *
  * The homepage's gallery collapses to the first unit because a teacher opens it
  * to start the class they are teaching now. This one is where authoring starts —
  * the question is "which of these am I writing", and hiding all but the first
@@ -54,7 +58,7 @@ function groupByModule<T>(
  * first appearance is its place in the course and each section is already
  * sequenced.
  */
-function Gallery<T>({
+export function Gallery<T>({
   rows,
   moduleOf,
   keyOf,
@@ -112,7 +116,7 @@ function Gallery<T>({
  * here to be written, so the biggest thing on the card is the thing you came to
  * press — the same bargain the homepage's card makes with Present.
  */
-function LibraryCard({
+export function LibraryCard({
   title,
   meta,
   editLink,
@@ -168,7 +172,7 @@ function LibraryCard({
   );
 }
 
-function StatusBadge({ status }: { status: PublishStatus }) {
+export function StatusBadge({ status }: { status: PublishStatus }) {
   return status === "published" ? (
     <Badge variant="secondary">Published</Badge>
   ) : (
@@ -178,7 +182,7 @@ function StatusBadge({ status }: { status: PublishStatus }) {
   );
 }
 
-function EditButton({ children }: { children: React.ReactNode }) {
+export function EditButton({ children }: { children: React.ReactNode }) {
   return (
     <Button variant="ghost" size="icon-sm" className="text-primary" asChild>
       {children}
@@ -321,7 +325,7 @@ export function AdvancedGallery({ rows }: { rows: LibraryAdvancedRow[] }) {
       rows={rows}
       moduleOf={(row) => row.module}
       keyOf={(row) => row.id}
-      emptyMessage="No group has its own copy of a lesson yet. Assign a module on a group's Lessons tab."
+      emptyMessage="No group has its own copy of a lesson yet. Assign a module in a group's studio."
       renderCard={(row) => (
         <LibraryCard
           title={row.title || row.lessonId}

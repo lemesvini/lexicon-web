@@ -1,6 +1,10 @@
 import * as React from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { MoreHorizontalIcon, RefreshCwIcon } from "lucide-react";
+import {
+  CalendarCheckIcon,
+  MoreHorizontalIcon,
+  RefreshCwIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,10 +21,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GroupAttendancePanel } from "@/features/groups/components/group-attendance-panel";
-import { GroupLessonsTab } from "@/features/groups/components/group-lessons-tab";
 import { GroupRegisterTab } from "@/features/groups/components/group-register-tab";
 import {
   deleteGroup,
@@ -31,37 +40,23 @@ import {
   type GroupRow,
 } from "@/features/groups/data/groups";
 import { listStudents, type StudentRow } from "@/features/students/data/students";
+import { useAuth } from "@/hooks/use-auth";
+import { canUseAdvancedStudio } from "@/lib/profile";
 import { listCloudLessons, type CloudLessonSummary } from "@/lib/lessons-cloud";
 
-/** The tabs, and the value the URL carries. */
-export const GROUP_TABS = ["register", "attendance", "lessons"] as const;
-export type GroupTab = (typeof GROUP_TABS)[number];
-
-/** Coerces whatever is in `?tab=` to a real tab. */
-export function toGroupTab(value: unknown): GroupTab {
-  return GROUP_TABS.includes(value as GroupTab)
-    ? (value as GroupTab)
-    : "register";
-}
-
 /**
- * One group, everything about it.
+ * One group: who is in it, and who was there today.
  *
- * The tab lives in the URL rather than in state so the back button, a reload and
- * a pasted link all land where they were pointed — the group page is now the
- * thing people link each other to, which the old selected-row board never was.
+ * The page is the register now. What a group is *taught* — the module, the
+ * dates, and its own copies of every document — moved to the group's studio,
+ * which does all of it and the student-facing kinds besides; keeping a thinner
+ * version of the same thing here would only be two places to plan from.
  *
- * `classDate` is owned here because two tabs move it: the register marks a day,
- * and clicking a class in the history jumps the register onto that day. Two
- * controls on one date only agree if neither of them owns it.
+ * `classDate` is still owned here because two things move it: the register
+ * marks a day, and picking a class in the attendance drawer jumps the register
+ * onto that day. Two controls on one date only agree if neither owns it.
  */
-export function GroupPage({
-  groupId,
-  tab,
-}: {
-  groupId: string;
-  tab: GroupTab;
-}) {
+export function GroupPage({ groupId }: { groupId: string }) {
   const navigate = useNavigate();
 
   const [group, setGroup] = React.useState<GroupRow | null>(null);
@@ -74,6 +69,11 @@ export function GroupPage({
   const [reloadKey, setReloadKey] = React.useState(0);
   const [busy, setBusy] = React.useState(false);
   const [confirmingDelete, setConfirmingDelete] = React.useState(false);
+  const [attendanceOpen, setAttendanceOpen] = React.useState(false);
+
+  // The group's own studio is the advanced editor by another door, so it is the
+  // same per-teacher permission — hidden here, enforced by the route guard.
+  const studioAllowed = canUseAdvancedStudio(useAuth().profile);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -98,14 +98,6 @@ export function GroupPage({
   }, [groupId, reloadKey]);
 
   const reload = React.useCallback(() => setReloadKey((k) => k + 1), []);
-
-  const setTab = (next: string) =>
-    void navigate({
-      to: "/groups/$groupId",
-      params: { groupId },
-      search: { tab: toGroupTab(next) },
-      replace: true,
-    });
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -177,35 +169,50 @@ export function GroupPage({
           </p>
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" disabled={busy}>
-              <MoreHorizontalIcon />
-              <span className="sr-only">Actions for {group.name}</span>
+        <div className="flex shrink-0 items-center gap-2">
+          {studioAllowed && (
+            <Button size="sm" className="font-display" asChild>
+              <Link to="/studio/group/$groupId" params={{ groupId }}>
+                Studio
+              </Link>
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onSelect={() =>
-                void run(() =>
-                  setGroupStatus(
-                    group.id,
-                    group.status === "active" ? "inactive" : "active",
-                  ),
-                )
-              }
-            >
-              {group.status === "active" ? "Archive group" : "Reactivate"}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={() => setConfirmingDelete(true)}
-            >
-              Delete group
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" disabled={busy}>
+                <MoreHorizontalIcon />
+                <span className="sr-only">Actions for {group.name}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setAttendanceOpen(true)}>
+                <CalendarCheckIcon />
+                Attendance
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() =>
+                  void run(() =>
+                    setGroupStatus(
+                      group.id,
+                      group.status === "active" ? "inactive" : "active",
+                    ),
+                  )
+                }
+              >
+                {group.status === "active" ? "Archive group" : "Reactivate"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => setConfirmingDelete(true)}
+              >
+                Delete group
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </header>
 
       {/* A sibling of the menu rather than a child of it — a dialog rendered
@@ -217,10 +224,10 @@ export function GroupPage({
           <DialogHeader>
             <DialogTitle>Delete {group.name}?</DialogTitle>
             <DialogDescription>
-              The group goes, and with it its attendance record and every copy of
-              a lesson made for it — including any advanced context added to
-              those copies. The students stay on the roster, and the shared
-              lessons are untouched.
+              The group goes, and with it its attendance record and every copy
+              made for it — presentations, student material and homework alike,
+              including any advanced context added to them. The students stay on
+              the roster, and the shared lessons are untouched.
             </DialogDescription>
           </DialogHeader>
 
@@ -249,55 +256,46 @@ export function GroupPage({
         </DialogContent>
       </Dialog>
 
-      <Tabs value={tab} onValueChange={setTab} className="gap-4">
-        <TabsList>
-          <TabsTrigger value="register" className="px-3">
-            Register
-          </TabsTrigger>
-          <TabsTrigger value="attendance" className="px-3">
-            Attendance
-          </TabsTrigger>
-          <TabsTrigger value="lessons" className="px-3">
-            Lessons
-          </TabsTrigger>
-        </TabsList>
+      {/* The register, and nothing else. Everything a group's plan used to be
+          answered on the Lessons tab — the module, the dates, the copies — now
+          lives in the group's studio, which has all of it and the two
+          student-facing kinds besides. */}
+      <GroupRegisterTab
+        group={group}
+        classDate={classDate}
+        onClassDateChange={setClassDate}
+        lessons={lessons}
+        students={students}
+        onChanged={reload}
+      />
 
-        <TabsContent value="register">
-          <GroupRegisterTab
-            group={group}
-            classDate={classDate}
-            onClassDateChange={setClassDate}
-            lessons={lessons}
-            students={students}
-            onChanged={reload}
-          />
-        </TabsContent>
-
-        <TabsContent value="attendance">
+      {/* Attendance, as a drawer off the header menu. Left-hand side on
+          purpose: it is the record behind the register you are looking at, and
+          a panel that slides in over the far edge of a page you are still
+          reading reads as a different screen. */}
+      <Sheet open={attendanceOpen} onOpenChange={setAttendanceOpen}>
+        <SheetContent side="left" className="max-w-md">
+          <SheetHeader>
+            <SheetTitle>Attendance</SheetTitle>
+            <SheetDescription>{group.name}</SheetDescription>
+          </SheetHeader>
           <GroupAttendancePanel
+            bare
             group={group}
             classDate={classDate}
             // Picking a class is asking to see who was in it, so it moves the
-            // register and follows you there.
+            // register onto that day and gets out of the way.
             onPickDate={(date) => {
               setClassDate(date);
-              setTab("register");
+              setAttendanceOpen(false);
             }}
             // The page's own reload counter: every write in the register bumps
-            // it, so the history follows without the two tabs knowing about
-            // each other.
+            // it, so the history follows without the two knowing about each
+            // other.
             reloadKey={reloadKey}
           />
-        </TabsContent>
-
-        <TabsContent value="lessons">
-          <GroupLessonsTab
-            group={group}
-            lessons={lessons}
-            onChanged={reload}
-          />
-        </TabsContent>
-      </Tabs>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

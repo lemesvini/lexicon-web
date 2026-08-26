@@ -52,6 +52,24 @@ export function advancedSlideId(stage: string, used: Iterable<string>): string {
   return candidate;
 }
 
+/**
+ * What a suggestion anchors to, for a slide that may have no id of its own.
+ *
+ * Presentations are hand-authored JSON and their slides carry ids. The other two
+ * kinds are built in the Studio, where `createSlide` leaves the id empty and
+ * nothing asks the author to fill it — so anchoring on ids alone meant the agent
+ * had nowhere to put anything, and said so.
+ *
+ * The fallback is positional and derived, never stored: `#3` is "after the third
+ * slide as it stands". Both sides compute it the same way from the same list, so
+ * they agree without either writing to the document. It is only good for the
+ * length of one exchange, which is exactly how long an anchor needs to live —
+ * the inserted slide gets an id of its own (see `advancedSlideId`).
+ */
+export function anchorId(slideId: string, index: number): string {
+  return slideId || `#${index + 1}`;
+}
+
 /** Every block a group has added, across the whole document — what the Lessons
  *  tab counts and the drawer uses to avoid suggesting the same thing twice. */
 export function advancedBlocks(doc: Lesson): LessonBlock[] {

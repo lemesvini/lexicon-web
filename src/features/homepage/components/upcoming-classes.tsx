@@ -188,7 +188,6 @@ function ClassRow({
       <Link
         to="/groups/$groupId"
         params={{ groupId: group.id }}
-        search={{ tab: "register" }}
         className="absolute inset-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
         <span className="sr-only">Open {group.name}</span>
@@ -230,7 +229,7 @@ function ClassRow({
         </div>
 
         {/* The launch pair only means anything once there is a lesson to put on
-            the screen; without one the row points at the group's Lessons tab,
+            the screen; without one the row points at the group's studio,
             which is where a date gets set. Both links carry `groupId`, so what
             opens is THIS class's copy — advanced context included — rather than
             the lesson every other group gets. */}
@@ -263,11 +262,9 @@ function ClassRow({
           </div>
         ) : (
           <Button variant="ghost" size="sm" asChild className="relative z-10 shrink-0">
-            <Link
-              to="/groups/$groupId"
-              params={{ groupId: group.id }}
-              search={{ tab: "lessons" }}
-            >
+            {/* Planning is the studio's job now: the module a group works
+                through, and the dates it falls on, live there. */}
+            <Link to="/studio/group/$groupId" params={{ groupId: group.id }}>
               Plan a lesson
             </Link>
           </Button>

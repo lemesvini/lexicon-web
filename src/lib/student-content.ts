@@ -38,6 +38,8 @@ export type StudentHomework = {
    *  its own rather than under the lesson. */
   lessonTitle: string;
   module: string;
+  /** Its lesson's place in the module — what the list is ordered by. */
+  position: number;
   document: Lesson;
   updatedAt: string;
 };
@@ -135,6 +137,7 @@ type HomeworkRecord = {
   lesson_id: string;
   lesson_title: string | null;
   module: string | null;
+  position: number | null;
   document: Lesson;
   updated_at: string | null;
 };
@@ -143,6 +146,7 @@ function toHomework(row: HomeworkRecord): StudentHomework {
   return {
     id: row.id,
     title: row.title ?? "",
+    position: row.position ?? 0,
     lessonId: row.lesson_id,
     lessonTitle: row.lesson_title ?? "",
     module: row.module ?? "",
@@ -152,10 +156,10 @@ function toHomework(row: HomeworkRecord): StudentHomework {
 }
 
 const HOMEWORK_COLUMNS =
-  "id, title, lesson_id, lesson_title, module, document, updated_at";
+  "id, title, lesson_id, lesson_title, module, position, document, updated_at";
 
 /**
- * Every homework the student can reach, oldest first.
+ * Every homework the student can reach, in course order.
  *
  * Scoped by module, not by lesson: homework has its own place in the student's
  * app, but it still reaches them *through* a lesson — the view joins on
@@ -166,7 +170,11 @@ export async function listStudentHomework(): Promise<StudentHomework[]> {
   const { data, error } = await supabase
     .from("student_homework")
     .select(HOMEWORK_COLUMNS)
-    .order("updated_at", { ascending: true });
+    // Its lesson's place in the module, then its own title — the order the
+    // course is taught in. It used to be `updated_at`, which is the order things
+    // were last edited: re-saving lesson two's homework sent it to the bottom.
+    .order("position", { ascending: true })
+    .order("title", { ascending: true });
 
   if (error) throw new Error(error.message);
   return ((data ?? []) as HomeworkRecord[]).map(toHomework);

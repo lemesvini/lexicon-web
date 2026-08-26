@@ -73,7 +73,7 @@ export function StudioToolbar({
    * "situation-one.json" that is actually one class's version of it is a trap:
    * re-import it and you have quietly replaced the lesson every other class is
    * taught. The copy belongs to the group, and the way to move it is to make
-   * another copy from the group's Lessons tab.
+   * another copy from the group's studio.
    */
   portable?: boolean;
   /**

@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { MenuIcon } from "lucide-react";
 import { BackButton } from "@/components/back-button";
@@ -37,11 +38,24 @@ const FOCUS_RING =
  * there is nowhere for it to go, so it opens the menu, which is the thing it
  * flies into. Anywhere else it is the mark on every website ever built: a link
  * home. The menu is still one button to its left, and still ⌘K.
+ *
+ * A page about one named thing can put that name here instead (`title`). It
+ * takes the mark's place rather than sitting beside it: two display-face words
+ * in one bar read as a lockup, and the page's subject is the more useful of the
+ * two to a reader already inside the app. It still goes home when pressed.
+ *
+ * `titlePrefix` and `titleSuffix` sit flush against it in Montserrat at the same
+ * size, so a bar can read "TesteStudio" as one lockup — the name in the body
+ * face, what you are doing to it in the display one. The change of face is the
+ * seam; there is no space, and none is added.
  */
 export function SiteNav({
   backTo,
   backLabel = "Back",
   align = "wide",
+  title,
+  titlePrefix,
+  titleSuffix,
 }: {
   /** Where the back arrow goes. Omitted on the home page, which is where the
    *  rest of the app already points. */
@@ -55,6 +69,16 @@ export function SiteNav({
    * the viewport either way.
    */
   align?: keyof typeof COLUMN;
+  /**
+   * The name of the thing this page is about — a group, say — shown in the
+   * mark's place. Omit it and the bar says "lexicon", which is what every other
+   * page does.
+   */
+  title?: string;
+  /** Body-face words before the title — a group's name, say. */
+  titlePrefix?: string;
+  /** Body-face words after it. */
+  titleSuffix?: string;
 } = {}) {
   const { toggle, open, flying, registerWordmark } = useSidebar();
   const { profile, isLoading } = useAuth();
@@ -76,7 +100,22 @@ export function SiteNav({
   // keeps its size, so the header doesn't twitch as the mark leaves and returns.
   // `flying` outlasts `open` on the way back, which is what stops the mark
   // reappearing here before it has landed.
-  const wordmark = (
+  //
+  // A personalized title registers nothing and hides for nothing: the mark that
+  // flies into the panel says "lexicon", and flying it out of a word that says
+  // something else would be an animation between two different things. The
+  // sidebar already handles having nowhere to fly from — several pages have no
+  // header at all — and simply arrives with the panel.
+  const named = title !== undefined;
+  const wordmark = named ? (
+    // Baselines, not centres: the two faces are different sizes, and a bar whose
+    // words sit on one line is the whole point of mixing them.
+    <span className="flex max-w-[60vw] items-baseline">
+      {titlePrefix && <TitleAffix>{titlePrefix}</TitleAffix>}
+      <span className={cn(WORDMARK, "truncate")}>{title}</span>
+      {titleSuffix && <TitleAffix>{titleSuffix}</TitleAffix>}
+    </span>
+  ) : (
     <span
       ref={registerWordmark}
       className={cn(WORDMARK, (open || flying) && "invisible")}
@@ -144,5 +183,18 @@ export function SiteNav({
         )}
       </div>
     </header>
+  );
+}
+
+/** One half of a personalized title that isn't the title: the body face, a size
+ *  down, so the display word stays the one being read. */
+function TitleAffix({ children }: { children: React.ReactNode }) {
+  return (
+    // Same size, colour and baseline as the title — `WORDMARK` with the face
+    // swapped. Spelled out rather than merged onto that constant: two font
+    // families in one `cn` is a bet on which utility the stylesheet emits last.
+    <span className="truncate font-montserrat text-3xl leading-none font-medium text-primary">
+      {children}
+    </span>
   );
 }

@@ -223,7 +223,7 @@ export function GroupRegisterTab({
         <div className="space-y-2">
           <Label htmlFor="group-lesson">Lesson</Label>
           {planned ? (
-            // Planned on the Lessons tab, so it is read-only here — two places to
+            // Planned in the group's studio, so it is read-only here — two places to
             // set the same thing is how they end up disagreeing. Shown rather than
             // left implicit because this is what the register is about to record.
             <div
@@ -263,7 +263,7 @@ export function GroupRegisterTab({
           )}
           <p className="text-xs text-muted-foreground">
             {planned
-              ? "Planned for this date on the Lessons tab — the register records it."
+              ? "Planned for this date in the group's studio — the register records it."
               : "Nothing planned for this date, so the register records the group’s current lesson."}
           </p>
         </div>

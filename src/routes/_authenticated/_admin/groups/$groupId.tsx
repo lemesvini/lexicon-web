@@ -1,27 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { SiteNav } from "@/components/site-nav";
-import {
-  GroupPage,
-  toGroupTab,
-  type GroupTab,
-} from "@/features/groups/components/group-page";
-
-type GroupSearch = { tab: GroupTab };
+import { GroupPage } from "@/features/groups/components/group-page";
 
 export const Route = createFileRoute("/_authenticated/_admin/groups/$groupId")({
-  // The tab is in the URL so back, reload and a pasted link all land where they
-  // were pointed. Anything unrecognised falls back to the register rather than
-  // erroring — a stale link is not a broken page.
-  validateSearch: (search: Record<string, unknown>): GroupSearch => ({
-    tab: toGroupTab(search.tab),
-  }),
+  // No search params: the page is the register, and everything the old `?tab=`
+  // pointed at is in the group's studio now. An old link keeps working — an
+  // unvalidated param is dropped, not an error.
   component: GroupDetailRoute,
 });
 
 function GroupDetailRoute() {
   const { groupId } = Route.useParams();
-  const { tab } = Route.useSearch();
 
   // Keyed on the group so nothing transient — a half-typed date, an open
   // confirm — follows you from one group to the next.
@@ -29,7 +19,7 @@ function GroupDetailRoute() {
     <div className="min-h-[100dvh] bg-background">
       <SiteNav backTo="/groups" backLabel="Back to groups" />
       <main className="mx-auto w-full max-w-6xl px-4 py-10">
-        <GroupPage key={groupId} groupId={groupId} tab={tab} />
+        <GroupPage key={groupId} groupId={groupId} />
       </main>
     </div>
   );

@@ -67,7 +67,7 @@ export const STUDIO_KINDS: readonly StudioKindMeta[] = [
  * from here.
  *
  * It is deliberately outside `STUDIO_KINDS`: a copy exists because a group was
- * given a module (see the group's Lessons tab), not because somebody pressed
+ * given a module (see the group's studio), not because somebody pressed
  * Create. Listing it in the "what are you making?" dialog would offer a choice
  * that has no answer at that point — there is no group to make it for.
  */

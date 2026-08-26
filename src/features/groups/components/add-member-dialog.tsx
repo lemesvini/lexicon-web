@@ -109,7 +109,7 @@ export function AddMemberDialog({
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <div className="max-h-72 divide-y overflow-y-auto rounded-md border">
+          <div className="no-scrollbar max-h-72 divide-y overflow-y-auto rounded-md border">
             {available.length === 0 ? (
               <p className="p-4 text-center text-sm text-muted-foreground">
                 {addable.length === 0

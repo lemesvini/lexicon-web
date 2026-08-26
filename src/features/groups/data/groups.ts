@@ -71,8 +71,8 @@ export type GroupRow = {
    *  things the advanced-context suggestions are built from. */
   context: string;
   /** The module the group is working through, or null. Not the source of truth
-   *  for what they have — `group_lessons` is — just the last choice made on the
-   *  Lessons tab. */
+   *  for what they have — `group_lessons` is — just the last choice made in the
+   *  group's studio. */
   moduleId: string | null;
   /** That module's name, or "" when none is set. */
   moduleName: string;
@@ -311,6 +311,51 @@ export async function listGroupMembers(
         present: onTheDay.get(record.student_id) ?? null,
         attendanceRate: tally?.total ? tally.present / tally.total : null,
         sessions: tally?.total ?? 0,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** One student in the group, with the note the teacher keeps on them. */
+export type GroupStudentContext = {
+  studentId: string;
+  name: string;
+  /** `students.notes` — the student-level twin of `groups.context`, and the
+   *  second of the three things the block suggestions are built from. Empty
+   *  when nothing has been written. */
+  notes: string;
+};
+
+/**
+ * The group's students and their notes, for the context panel.
+ *
+ * Separate from `listGroupMembers` rather than a column added to it: that one is
+ * the register's list and is fetched per class date with a second query behind
+ * it, and asking for it to answer "who has no notes yet" would drag attendance
+ * arithmetic into a question that has nothing to do with attendance.
+ */
+export async function listGroupContexts(
+  groupId: string,
+): Promise<GroupStudentContext[]> {
+  const { data, error } = await supabase
+    .from("group_students")
+    .select("student_id, student:students (full_name, notes)")
+    .eq("group_id", groupId);
+
+  if (error) throw new Error(error.message);
+
+  return (
+    (data ?? []) as unknown as {
+      student_id: string;
+      student: Embedded<{ full_name?: string | null; notes?: string | null }>;
+    }[]
+  )
+    .map((record) => {
+      const student = one(record.student);
+      return {
+        studentId: record.student_id,
+        name: student?.full_name ?? "",
+        notes: student?.notes ?? "",
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));

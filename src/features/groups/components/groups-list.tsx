@@ -139,7 +139,6 @@ export function GroupsList() {
               void navigate({
                 to: "/groups/$groupId",
                 params: { groupId },
-                search: { tab: "register" },
               })
             }
           />
@@ -159,7 +158,6 @@ export function GroupsList() {
               <Link
                 to="/groups/$groupId"
                 params={{ groupId: group.id }}
-                search={{ tab: "register" }}
                 className={cn(
                   "flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent",
                   group.status === "inactive" && "opacity-60",

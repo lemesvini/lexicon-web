@@ -14,12 +14,8 @@ import { useAdvancedStudio } from "@/features/studio/use-advanced-studio";
 import { StudioCanvas } from "@/features/studio/components/studio-canvas";
 import { AdvancedMetaEditor } from "@/features/studio/components/advanced-meta-editor";
 import { AdvancedContextDrawer } from "@/features/studio/components/advanced-context-drawer";
-import {
-  advancedSlideId,
-  isBase,
-  rebaseOnto,
-} from "@/features/studio/advanced-context";
-import type { ContextSuggestion } from "@/features/studio/data/suggest-context";
+import { isBase, rebaseOnto } from "@/features/studio/advanced-context";
+import { insertSuggestion } from "@/features/studio/insert-suggestion";
 import { studioKind } from "@/features/studio/kinds";
 import { openLessonForEditing } from "@/features/studio/data/open-lesson";
 import {
@@ -73,7 +69,7 @@ type State = {
  * fork drifts silently and the next teacher to open the shared lesson would have
  * no idea which classes had quietly stopped following it.
  *
- * The copy is made on the group's Lessons tab, not here — which is why a missing
+ * The copy is made in the group's studio, not here — which is why a missing
  * row sends you back there rather than offering to create one. There is no
  * meaningful "new" state for a document that only exists as a copy of another.
  */
@@ -92,7 +88,7 @@ function AdvancedEditor({
   /**
    * Back to wherever this was opened from.
    *
-   * A copy is reached from two places — the group's Lessons tab and the Studio
+   * A copy is reached from two places — the group's studio and the main Studio
    * library — so there is no one right destination, and history is the only thing
    * that knows which it was. The fallback is not optional: on a pasted link or a
    * refresh there is nothing to go back to, and `history.back()` would either sit
@@ -103,11 +99,7 @@ function AdvancedEditor({
       router.history.back();
       return;
     }
-    void navigate({
-      to: "/groups/$groupId",
-      params: { groupId },
-      search: { tab: "lessons" },
-    });
+    void navigate({ to: "/studio/group/$groupId", params: { groupId } });
   };
 
   const [state, setState] = React.useState<State>({
@@ -187,38 +179,6 @@ function AdvancedEditor({
     setState((s) => ({ ...s, baseSyncedAt: s.baseUpdatedAt }));
   };
 
-  /**
-   * Adds a suggested slide after its anchor. False when the anchor has since gone
-   * — the model was shown the document as it was when the drawer asked.
-   *
-   * The slide comes through the controller, so `useAdvancedStudio` stamps it as
-   * advanced context; its blocks need the stamp applied by hand because
-   * `updateBlock` isn't wrapped. The id is minted rather than left empty: an
-   * unanchored slide is orphaned by the first Refresh from base.
-   */
-  const insertSuggestion = (suggestion: ContextSuggestion): boolean => {
-    const anchor = studio.lesson.slides.find(
-      (s) => s.meta.id === suggestion.afterSlideId,
-    );
-    if (!anchor) return false;
-
-    const used = studio.lesson.slides.map((s) => s.meta.id).filter(Boolean);
-    const slideKey = studio.addSlide(anchor.key);
-    studio.updateSlideMeta(slideKey, {
-      id: advancedSlideId(suggestion.stage, used),
-      stage: suggestion.stage,
-    });
-
-    for (const block of suggestion.blocks) {
-      const blockKey = studio.addBlock(slideKey, block.type);
-      studio.updateBlock(slideKey, blockKey, {
-        ...block,
-        advancedContext: true,
-      });
-    }
-    return true;
-  };
-
   if (state.phase === "loading") {
     return (
       <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-10">
@@ -232,16 +192,12 @@ function AdvancedEditor({
     return (
       <div className="mx-auto flex min-h-svh w-full max-w-lg flex-col items-center justify-center gap-4 px-4 text-center">
         <p className="text-sm text-muted-foreground">
-          This group has no copy of “{lessonId}”. Copies are made on the group’s
-          Lessons tab — assign the module there and it’ll show up.
+          This group has no copy of “{lessonId}”. Copies are made in the group’s
+          studio — assign the module there and it’ll show up.
         </p>
         <Button variant="outline" size="sm" asChild>
-          <Link
-            to="/groups/$groupId"
-            params={{ groupId }}
-            search={{ tab: "lessons" }}
-          >
-            Back to the group
+          <Link to="/studio/group/$groupId" params={{ groupId }}>
+            Back to the group’s studio
           </Link>
         </Button>
       </div>
@@ -261,11 +217,12 @@ function AdvancedEditor({
       drawerLabel="LexStudio Agent"
       drawer={
         <AdvancedContextDrawer
+          kind="lesson"
           groupId={groupId}
-          lessonId={lessonId}
+          documentId={lessonId}
           groupName={group.name}
           slides={studio.lesson.slides}
-          onInsert={insertSuggestion}
+          onInsert={(suggestion) => insertSuggestion(studio, suggestion)}
         />
       }
       onSave={save}

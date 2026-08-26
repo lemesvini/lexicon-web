@@ -100,7 +100,8 @@ function toRow(record: Record_): SubmissionRow {
  * rather than shared: the detail view wants the homework's `document` too, and
  * naming the same embed alias twice in one select is an error, not a merge.
  */
-const BASE_COLUMNS = "id, homework_id, status, score, submitted_at, graded_at";
+const BASE_COLUMNS =
+  "id, homework_id, student_id, status, score, submitted_at, graded_at";
 
 /** The lesson comes through the homework's own foreign key — a submission has
  *  no link to a lesson of its own, and shouldn't grow one. */
@@ -143,6 +144,7 @@ export async function fetchSubmission(
   type DetailHomework = HomeworkEmbed & { document: Lesson };
 
   const record = data as Omit<Record_, "homework"> & {
+    student_id: string;
     answers: Record<string, AnswerValue> | null;
     answer_key: Record<string, AnswerValue> | null;
     marks: Record<string, boolean> | null;
@@ -151,6 +153,16 @@ export async function fetchSubmission(
     homework: DetailHomework | DetailHomework[] | null;
   };
 
+  // The questions come from the document this student was given, which is the
+  // base homework only when their group had no copy of it (see
+  // supabase/migrations/0013_group_student_content.sql). Marking a group's
+  // answers against the shared wording is the one way this screen can be
+  // confidently, invisibly wrong.
+  const { data: given } = await supabase.rpc("submission_document", {
+    p_homework_id: record.homework_id,
+    p_student: record.student_id,
+  });
+
   return {
     ...toRow(record),
     answers: record.answers ?? {},
@@ -158,7 +170,8 @@ export async function fetchSubmission(
     marks: record.marks ?? {},
     feedback: record.feedback ?? "",
     blockNotes: record.block_notes ?? {},
-    document: one(record.homework)?.document ?? {
+    document: (given as Lesson | null) ??
+      one(record.homework)?.document ?? {
       id: "",
       unit: "",
       module: "",

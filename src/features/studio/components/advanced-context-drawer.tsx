@@ -15,6 +15,7 @@ import {
   suggestAdvancedContext,
   type ChatMessage,
   type ContextSuggestion,
+  type SuggestKind,
 } from "../data/suggest-context";
 import type { EditorSlide } from "../model";
 
@@ -52,6 +53,8 @@ type Turn = {
   /** Stage names the teacher accepted — the clearest signal of what they want. */
   inserted: string[];
   discarded: number;
+  /** Why each dropped suggestion was dropped. */
+  problems: string[];
   error: string;
   status: "running" | "done" | "failed" | "stopped";
 };
@@ -119,14 +122,21 @@ function toHistory(turns: Turn[]): ChatMessage[] {
  * appeared without being asked for is a slide nobody quite owns.
  */
 export function AdvancedContextDrawer({
+  kind = "lesson",
   groupId,
-  lessonId,
+  documentId,
   groupName,
   slides,
   onInsert,
 }: {
+  /** Which of the group's three copies is being added to. It decides what the
+   *  agent may propose — content blocks for what you project and what they
+   *  read, exercises for what they hand in. */
+  kind?: SuggestKind;
   groupId: string;
-  lessonId: string;
+  /** The lesson id for a presentation or a material; the homework's slug for a
+   *  homework. */
+  documentId: string;
   groupName: string;
   /** For naming the anchor slide by its stage rather than its id. */
   slides: EditorSlide[];
@@ -192,13 +202,14 @@ export function AdvancedContextDrawer({
         pending: [],
         inserted: [],
         discarded: 0,
+        problems: [],
         error: "",
         status: "running",
       },
     ]);
 
     try {
-      const result = await suggestAdvancedContext(groupId, lessonId, {
+      const result = await suggestAdvancedContext(kind, groupId, documentId, {
         teacherPrompt: prompt || undefined,
         history,
         signal: controller.signal,
@@ -213,6 +224,7 @@ export function AdvancedContextDrawer({
         proposed: result.suggestions,
         pending: result.suggestions,
         discarded: result.discarded,
+        problems: result.problems,
         status: "done",
       });
     } catch (err) {
@@ -264,8 +276,11 @@ export function AdvancedContextDrawer({
               lexicon
             </p>
             <p className="mx-auto max-w-xs text-sm text-muted-foreground font-montserrat">
-              Ask for advanced context and it’ll come back as whole slides, each
-              with the slide it goes after and why it was proposed.
+              {kind === "homework"
+                ? "Ask for advanced context and it’ll come back as whole sets of exercises, each with the section it goes after and why it was proposed."
+                : kind === "material"
+                  ? "Ask for advanced context and it’ll come back as whole sections for this group to read, each with the one it goes after and why it was proposed."
+                  : "Ask for advanced context and it’ll come back as whole slides, each with the slide it goes after and why it was proposed."}
             </p>
             <p className="mx-auto max-w-xs text-sm text-muted-foreground font-montserrat">
               Built from {groupName}’s context, each student’s notes, their
@@ -323,21 +338,45 @@ export function AdvancedContextDrawer({
               </div>
             )}
 
-            {turn.discarded > 0 && (
-              <p className="flex items-start gap-2 text-xs text-muted-foreground">
-                <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
-                {turn.discarded} suggestion
-                {turn.discarded === 1 ? " was" : "s were"} malformed and left out.
-              </p>
+            {/* What was dropped, and why. The reason is the whole point: a
+                teacher told only that something was "malformed" asks again and
+                gets the same answer back. */}
+            {turn.problems.length > 0 && (
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p className="flex items-start gap-2">
+                  <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                  {turn.discarded > 0
+                    ? `${turn.discarded} suggestion${
+                        turn.discarded === 1 ? " was" : "s were"
+                      } left out:`
+                    : "Some of what came back didn’t survive the check:"}
+                </p>
+                <ul className="ml-5 list-disc space-y-0.5">
+                  {turn.problems.map((problem, index) => (
+                    <li key={index}>{problem}</li>
+                  ))}
+                </ul>
+              </div>
             )}
 
-            {turn.status === "done" && turn.proposed.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Nothing to suggest — which is a real answer. Fill in the class’s
-                context, a unit report or two, or mark some homework, and ask
-                again.
-              </p>
-            )}
+            {turn.status === "done" &&
+              turn.proposed.length === 0 &&
+              // Only when the answer really was empty. Everything having been
+              // rejected is a different fact, and telling the teacher to go
+              // write more context would send them off to fix the wrong thing.
+              (turn.discarded === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nothing to suggest — which is a real answer. Fill in the
+                  class’s context, a unit report or two, or mark some homework,
+                  and ask again.
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Everything it proposed this turn was rejected on the way in.
+                  Ask again — saying what to change, if the reason above says
+                  what.
+                </p>
+              ))}
 
             {turn.pending.map((suggestion, index) => (
               <article

@@ -39,7 +39,10 @@ import { Route as AuthenticatedAdminControlLessonIdRouteImport } from './routes/
 import { Route as AuthenticatedAdminStudioMaterialLessonIdRouteImport } from './routes/_authenticated/_admin/studio/material.$lessonId'
 import { Route as AuthenticatedAdminStudioLessonLessonIdRouteImport } from './routes/_authenticated/_admin/studio/lesson.$lessonId'
 import { Route as AuthenticatedAdminStudioHomeworkHomeworkIdRouteImport } from './routes/_authenticated/_admin/studio/homework.$homeworkId'
+import { Route as AuthenticatedAdminStudioGroupGroupIdIndexRouteImport } from './routes/_authenticated/_admin/studio/group.$groupId.index'
 import { Route as AuthenticatedAdminStudioAdvancedGroupIdLessonIdRouteImport } from './routes/_authenticated/_admin/studio/advanced.$groupId.$lessonId'
+import { Route as AuthenticatedAdminStudioGroupGroupIdMaterialLessonIdRouteImport } from './routes/_authenticated/_admin/studio/group.$groupId.material.$lessonId'
+import { Route as AuthenticatedAdminStudioGroupGroupIdHomeworkHomeworkIdRouteImport } from './routes/_authenticated/_admin/studio/group.$groupId.homework.$homeworkId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -213,10 +216,28 @@ const AuthenticatedAdminStudioHomeworkHomeworkIdRoute =
     path: '/studio/homework/$homeworkId',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminStudioGroupGroupIdIndexRoute =
+  AuthenticatedAdminStudioGroupGroupIdIndexRouteImport.update({
+    id: '/studio/group/$groupId/',
+    path: '/studio/group/$groupId/',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute =
   AuthenticatedAdminStudioAdvancedGroupIdLessonIdRouteImport.update({
     id: '/studio/advanced/$groupId/$lessonId',
     path: '/studio/advanced/$groupId/$lessonId',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminStudioGroupGroupIdMaterialLessonIdRoute =
+  AuthenticatedAdminStudioGroupGroupIdMaterialLessonIdRouteImport.update({
+    id: '/studio/group/$groupId/material/$lessonId',
+    path: '/studio/group/$groupId/material/$lessonId',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminStudioGroupGroupIdHomeworkHomeworkIdRoute =
+  AuthenticatedAdminStudioGroupGroupIdHomeworkHomeworkIdRouteImport.update({
+    id: '/studio/group/$groupId/homework/$homeworkId',
+    path: '/studio/group/$groupId/homework/$homeworkId',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
 
@@ -249,6 +270,9 @@ export interface FileRoutesByFullPath {
   '/studio/lesson/$lessonId': typeof AuthenticatedAdminStudioLessonLessonIdRoute
   '/studio/material/$lessonId': typeof AuthenticatedAdminStudioMaterialLessonIdRoute
   '/studio/advanced/$groupId/$lessonId': typeof AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute
+  '/studio/group/$groupId/': typeof AuthenticatedAdminStudioGroupGroupIdIndexRoute
+  '/studio/group/$groupId/homework/$homeworkId': typeof AuthenticatedAdminStudioGroupGroupIdHomeworkHomeworkIdRoute
+  '/studio/group/$groupId/material/$lessonId': typeof AuthenticatedAdminStudioGroupGroupIdMaterialLessonIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -279,6 +303,9 @@ export interface FileRoutesByTo {
   '/studio/lesson/$lessonId': typeof AuthenticatedAdminStudioLessonLessonIdRoute
   '/studio/material/$lessonId': typeof AuthenticatedAdminStudioMaterialLessonIdRoute
   '/studio/advanced/$groupId/$lessonId': typeof AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute
+  '/studio/group/$groupId': typeof AuthenticatedAdminStudioGroupGroupIdIndexRoute
+  '/studio/group/$groupId/homework/$homeworkId': typeof AuthenticatedAdminStudioGroupGroupIdHomeworkHomeworkIdRoute
+  '/studio/group/$groupId/material/$lessonId': typeof AuthenticatedAdminStudioGroupGroupIdMaterialLessonIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -313,6 +340,9 @@ export interface FileRoutesById {
   '/_authenticated/_admin/studio/lesson/$lessonId': typeof AuthenticatedAdminStudioLessonLessonIdRoute
   '/_authenticated/_admin/studio/material/$lessonId': typeof AuthenticatedAdminStudioMaterialLessonIdRoute
   '/_authenticated/_admin/studio/advanced/$groupId/$lessonId': typeof AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute
+  '/_authenticated/_admin/studio/group/$groupId/': typeof AuthenticatedAdminStudioGroupGroupIdIndexRoute
+  '/_authenticated/_admin/studio/group/$groupId/homework/$homeworkId': typeof AuthenticatedAdminStudioGroupGroupIdHomeworkHomeworkIdRoute
+  '/_authenticated/_admin/studio/group/$groupId/material/$lessonId': typeof AuthenticatedAdminStudioGroupGroupIdMaterialLessonIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -345,6 +375,9 @@ export interface FileRouteTypes {
     | '/studio/lesson/$lessonId'
     | '/studio/material/$lessonId'
     | '/studio/advanced/$groupId/$lessonId'
+    | '/studio/group/$groupId/'
+    | '/studio/group/$groupId/homework/$homeworkId'
+    | '/studio/group/$groupId/material/$lessonId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -375,6 +408,9 @@ export interface FileRouteTypes {
     | '/studio/lesson/$lessonId'
     | '/studio/material/$lessonId'
     | '/studio/advanced/$groupId/$lessonId'
+    | '/studio/group/$groupId'
+    | '/studio/group/$groupId/homework/$homeworkId'
+    | '/studio/group/$groupId/material/$lessonId'
   id:
     | '__root__'
     | '/'
@@ -408,6 +444,9 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/studio/lesson/$lessonId'
     | '/_authenticated/_admin/studio/material/$lessonId'
     | '/_authenticated/_admin/studio/advanced/$groupId/$lessonId'
+    | '/_authenticated/_admin/studio/group/$groupId/'
+    | '/_authenticated/_admin/studio/group/$groupId/homework/$homeworkId'
+    | '/_authenticated/_admin/studio/group/$groupId/material/$lessonId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -629,11 +668,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminStudioHomeworkHomeworkIdRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/_admin/studio/group/$groupId/': {
+      id: '/_authenticated/_admin/studio/group/$groupId/'
+      path: '/studio/group/$groupId'
+      fullPath: '/studio/group/$groupId/'
+      preLoaderRoute: typeof AuthenticatedAdminStudioGroupGroupIdIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/_admin/studio/advanced/$groupId/$lessonId': {
       id: '/_authenticated/_admin/studio/advanced/$groupId/$lessonId'
       path: '/studio/advanced/$groupId/$lessonId'
       fullPath: '/studio/advanced/$groupId/$lessonId'
       preLoaderRoute: typeof AuthenticatedAdminStudioAdvancedGroupIdLessonIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/_admin/studio/group/$groupId/material/$lessonId': {
+      id: '/_authenticated/_admin/studio/group/$groupId/material/$lessonId'
+      path: '/studio/group/$groupId/material/$lessonId'
+      fullPath: '/studio/group/$groupId/material/$lessonId'
+      preLoaderRoute: typeof AuthenticatedAdminStudioGroupGroupIdMaterialLessonIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/_admin/studio/group/$groupId/homework/$homeworkId': {
+      id: '/_authenticated/_admin/studio/group/$groupId/homework/$homeworkId'
+      path: '/studio/group/$groupId/homework/$homeworkId'
+      fullPath: '/studio/group/$groupId/homework/$homeworkId'
+      preLoaderRoute: typeof AuthenticatedAdminStudioGroupGroupIdHomeworkHomeworkIdRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
   }
@@ -658,6 +718,9 @@ interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminStudioLessonLessonIdRoute: typeof AuthenticatedAdminStudioLessonLessonIdRoute
   AuthenticatedAdminStudioMaterialLessonIdRoute: typeof AuthenticatedAdminStudioMaterialLessonIdRoute
   AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute: typeof AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute
+  AuthenticatedAdminStudioGroupGroupIdIndexRoute: typeof AuthenticatedAdminStudioGroupGroupIdIndexRoute
+  AuthenticatedAdminStudioGroupGroupIdHomeworkHomeworkIdRoute: typeof AuthenticatedAdminStudioGroupGroupIdHomeworkHomeworkIdRoute
+  AuthenticatedAdminStudioGroupGroupIdMaterialLessonIdRoute: typeof AuthenticatedAdminStudioGroupGroupIdMaterialLessonIdRoute
 }
 
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
@@ -689,6 +752,12 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
       AuthenticatedAdminStudioMaterialLessonIdRoute,
     AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute:
       AuthenticatedAdminStudioAdvancedGroupIdLessonIdRoute,
+    AuthenticatedAdminStudioGroupGroupIdIndexRoute:
+      AuthenticatedAdminStudioGroupGroupIdIndexRoute,
+    AuthenticatedAdminStudioGroupGroupIdHomeworkHomeworkIdRoute:
+      AuthenticatedAdminStudioGroupGroupIdHomeworkHomeworkIdRoute,
+    AuthenticatedAdminStudioGroupGroupIdMaterialLessonIdRoute:
+      AuthenticatedAdminStudioGroupGroupIdMaterialLessonIdRoute,
   }
 
 const AuthenticatedAdminRouteRouteWithChildren =
