@@ -1,11 +1,12 @@
 import * as React from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { RefreshCwIcon } from "lucide-react";
+import { PresentationIcon, RefreshCwIcon } from "lucide-react";
 
 import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DocumentView } from "@/features/learn/components/document-view";
+import { LessonSlides } from "@/features/learn/components/slides-viewer";
 import {
   fetchStudentLesson,
   type StudentLesson,
@@ -40,6 +41,10 @@ function LessonPage() {
   const locked = !access.onboardedAt;
 
   const [reloadKey, setReloadKey] = React.useState(0);
+  // Which lesson's deck is open, rather than a bare boolean: navigating to
+  // another lesson then closes it by itself, with no reset in the effect.
+  const [slidesFor, setSlidesFor] = React.useState<string | null>(null);
+
   const [loaded, setLoaded] = React.useState<Loaded | null>(null);
 
   // Which request the screen is currently showing the answer to. Deriving
@@ -71,7 +76,30 @@ function LessonPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <SiteNav backTo="/learn" backLabel="Back to my module" align="narrow" />
+      <SiteNav
+        backTo="/learn"
+        backLabel="Back to my module"
+        align="narrow"
+        actions={
+          // Only once the lesson is on the screen: an action in the bar over a
+          // page that is still loading, or that turned out not to be theirs, is
+          // a button onto nothing.
+          lesson && (
+            // Available on every screen: the viewer scales the deck to whatever
+            // it is being read on rather than reflowing it, so a phone gets the
+            // slide the class saw, smaller.
+            <Button
+              size="icon"
+              aria-label="View the class slides"
+              title="View the class slides"
+              className="rounded-full"
+              onClick={() => setSlidesFor(lessonId)}
+            >
+              <PresentationIcon />
+            </Button>
+          )
+        }
+      />
       <main className="mx-auto w-full max-w-3xl lg:max-w-5xl space-y-8 px-4 pb-16 pt-4">
         {locked ? (
           <div className="space-y-3 rounded-md border p-6">
@@ -128,6 +156,10 @@ function LessonPage() {
           )
         )}
       </main>
+
+      {slidesFor === lessonId && (
+        <LessonSlides lessonId={lessonId} onClose={() => setSlidesFor(null)} />
+      )}
     </div>
   );
 }

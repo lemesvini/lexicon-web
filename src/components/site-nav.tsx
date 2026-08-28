@@ -21,8 +21,8 @@ const FOCUS_RING =
   "rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 /**
- * The app's top bar: the menu button, the wordmark, and a way back out of a page
- * that has one.
+ * The app's top bar: the menu button, the wordmark, a way back out of a page
+ * that has one, and whatever else that page can do (`actions`).
  *
  * The menu button opens the sidebar (see @/components/nav-sidebar) — as does
  * brushing the left edge of the screen, or ⌘K. It sits next to the wordmark
@@ -56,6 +56,7 @@ export function SiteNav({
   title,
   titlePrefix,
   titleSuffix,
+  actions,
 }: {
   /** Where the back arrow goes. Omitted on the home page, which is where the
    *  rest of the app already points. */
@@ -79,6 +80,14 @@ export function SiteNav({
   titlePrefix?: string;
   /** Body-face words after it. */
   titleSuffix?: string;
+  /**
+   * What this page can do — round icon buttons, drawn like {@link BackButton},
+   * at the right-hand edge of the same content column the back arrow starts at.
+   * A page's own control belongs here rather than in its heading for the reason
+   * the back arrow does: a control that moves between pages has to be found
+   * again on each one.
+   */
+  actions?: React.ReactNode;
 } = {}) {
   const { toggle, open, flying, registerWordmark } = useSidebar();
   const { profile, isLoading } = useAuth();
@@ -164,6 +173,20 @@ export function SiteNav({
               label={backLabel}
               className="pointer-events-auto"
             />
+          )}
+
+          {/* Pushed to the far edge of the same column the menu and the back
+              arrow start at, so the bar reads as "where you came from" on the
+              left and "what you can do here" on the right, both lined up with
+              the content below.
+
+              The cluster is `pointer-events-none` so it can lie across the bar
+              without eating clicks meant for the wordmark behind it; anything
+              interactive in it has to switch them back on. */}
+          {actions && (
+            <div className="pointer-events-auto ml-auto flex items-center gap-2">
+              {actions}
+            </div>
           )}
         </div>
 

@@ -1,11 +1,12 @@
 // What a student reads: their lessons' material, and the homework attached to
 // it.
 //
-// Everything here goes through the `student_lessons` / `student_homework` views
-// (see supabase/migrations/0004_student_materials_and_homework.sql), never the
-// underlying tables — those are admin-only. The views are already filtered to
-// the caller's module and to published rows, so there is nothing to filter here
-// and no client-side check to get wrong.
+// Everything here goes through the `student_lessons` / `student_homework` /
+// `student_presentations` views (see 0004_student_materials_and_homework.sql and
+// 0018_student_presentations.sql), never the underlying tables — those are
+// admin-only. The views are already filtered to the caller's module and to
+// published rows, so there is nothing to filter here and no client-side check to
+// get wrong.
 //
 // Sibling to @/lib/lessons-cloud, which is the admin's view of the same library.
 
@@ -129,6 +130,28 @@ export async function fetchStudentLesson(
     ...toSummary(data as SummaryRecord),
     document: (data as { document: Lesson }).document,
   };
+}
+
+/**
+ * The deck the class was actually shown: their group's copy of the presentation
+ * when the group has one, else the shared lesson — scrubbed of teacher notes and
+ * answer keys by the view itself (see migration 0018).
+ *
+ * Returns null when the student may not read it, which is the same set of
+ * lessons `fetchStudentLesson` returns null for: `student_presentations` gates
+ * on `student_lessons`, so a lesson with no page has no deck.
+ */
+export async function fetchStudentPresentation(
+  lessonId: string,
+): Promise<Lesson | null> {
+  const { data, error } = await supabase
+    .from("student_presentations")
+    .select("document")
+    .eq("id", lessonId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data ? ((data as { document: Lesson }).document ?? null) : null;
 }
 
 type HomeworkRecord = {
