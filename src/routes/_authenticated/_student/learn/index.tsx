@@ -1,18 +1,20 @@
 import * as React from "react";
-import { Link, createFileRoute } from "@tanstack/react-router";
-import { ChevronRightIcon, RefreshCwIcon } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import {
+  BookOpenIcon,
+  DumbbellIcon,
+  NotebookPenIcon,
+  SparklesIcon,
+} from "lucide-react";
 
 import { SiteNav } from "@/components/site-nav";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { HomeworkCta } from "@/features/learn/components/homework-cta";
+import { DashboardCard } from "@/features/learn/components/dashboard-card";
 import { OnboardingCta } from "@/features/onboarding/components/onboarding-cta";
 import {
   listMySubmissions,
   listStudentHomework,
-  listStudentLessons,
+  listStudentSyllabus,
   type StudentHomework,
-  type StudentLessonSummary,
   type StudentSubmission,
 } from "@/lib/student-content";
 
@@ -21,17 +23,19 @@ export const Route = createFileRoute("/_authenticated/_student/learn/")({
 });
 
 /**
- * The student's homepage: the module they've been given, and its lessons.
+ * The student's homepage: what's waiting on them, then the four places their
+ * app goes.
  *
- * Nothing is filtered here — `student_lessons` is a view scoped to the caller's
- * module and to published material (see 0004), so what comes back is exactly
- * what they're allowed to read. A lesson whose material is still a draft is
- * absent, not greyed out.
+ * The lesson list used to be here. It isn't a homepage — it is one of the
+ * things a homepage points at, and a student arriving to do their homework had
+ * to read past it. The counts are fetched here rather than on the cards so the
+ * page makes one round trip; a card whose count hasn't landed says nothing
+ * rather than a zero it would have to take back.
  */
 function LearnPage() {
   const { access } = Route.useRouteContext();
 
-  const [lessons, setLessons] = React.useState<StudentLessonSummary[]>([]);
+  const [lessons, setLessons] = React.useState<number | null>(null);
   const [homework, setHomework] = React.useState<StudentHomework[]>([]);
   const [submissions, setSubmissions] = React.useState<
     Map<string, StudentSubmission>
@@ -39,18 +43,17 @@ function LearnPage() {
   const [status, setStatus] = React.useState<"loading" | "ready" | "error">(
     "loading",
   );
-  const [reloadKey, setReloadKey] = React.useState(0);
 
   React.useEffect(() => {
     let cancelled = false;
     Promise.all([
-      listStudentLessons(),
+      listStudentSyllabus(),
       listStudentHomework(),
       listMySubmissions(),
     ])
       .then(([lessonRows, homeworkRows, mine]) => {
         if (cancelled) return;
-        setLessons(lessonRows);
+        setLessons(lessonRows.length);
         setHomework(homeworkRows);
         setSubmissions(mine);
         setStatus("ready");
@@ -61,21 +64,37 @@ function LearnPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, []);
 
   // The lessons stay shut until the onboarding is answered — the answers are
   // what the lessons get built around, so reading them first is backwards.
   const locked = !access.onboardedAt;
 
-  const refresh = () => {
-    setStatus("loading");
-    setReloadKey((k) => k + 1);
-  };
+  const todo = homework.filter((task) => {
+    const submission = submissions.get(task.id);
+    return !submission || submission.status === "in_progress";
+  }).length;
+
+  // The module's name is the useful half; how many lessons are in it goes in
+  // the card's badge, where a number reads faster than it does in a sentence.
+  // A module name is a name — "Book One" stays "Book One" in either language.
+  const lessonsLine = locked
+    ? "Termine seu onboarding para liberar"
+    : (access.moduleName ?? "Nenhum módulo atribuído ainda");
+
+  const homeworkLine =
+    status !== "ready"
+      ? "Suas tarefas do módulo"
+      : todo > 0
+        ? `${todo} esperando por você`
+        : homework.length === 0
+          ? "Nada passado ainda"
+          : "Você está em dia";
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <SiteNav align="narrow" />
-      <main className="mx-auto w-full max-w-3xl lg:max-w-5xl space-y-6 px-4 py-10">
+      <SiteNav align="mid" />
+      <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-10">
         <div>
           <p className="font-display text-3xl tracking-wide text-foreground">
             Hello {access.fullName.split(" ")[0] || "there"}!
@@ -85,84 +104,48 @@ function LearnPage() {
           </span>
         </div>
 
-
-        {/* Above the lessons, below the greeting: what's owed comes before what
-            there is to read, but not before being said hello to. */}
+        {/* The one banner left on the page. It stays a banner because it is not
+            a place to go — it is the thing that has to happen before the cards
+            under it work. */}
         <OnboardingCta done={!locked} />
-        {status === "ready" && (
-          <HomeworkCta homework={homework} submissions={submissions} />
-        )}
-        <div className="space-y-1">
-          {/* <p className="text-sm text-muted-foreground">
-            Hi {access.fullName.split(" ")[0] || "there"} — your module
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {access.moduleName ?? "No module yet"}
-          </h1> */}
-          <h1 className="text-xl font-bold font-montserrat">
-            {access.moduleName ?? "not assigned yet"}
-          </h1>
-        </div>
-        {locked ? (
-          <div className="space-y-3 rounded-md border p-6">
-            <p className="text-sm text-muted-foreground font-montserrat">
-              You need to finish the onboarding first.
-            </p>
-            {/* <Button asChild size="sm">
-              <Link to="/onboarding">Start onboarding</Link>
-            </Button> */}
-          </div>
-        ) : !access.moduleName ? (
-          <div className="rounded-md border p-6 text-sm text-muted-foreground">
-            Your teacher hasn’t assigned you a module yet. Once they do, its
-            lessons show up here.
-          </div>
-        ) : status === "loading" ? (
-          <div className="space-y-px overflow-hidden rounded-md border p-2">
-            {Array.from({ length: 4 }, (_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
-        ) : status === "error" ? (
-          <div className="flex h-40 flex-col items-center justify-center gap-3 rounded-md border text-center">
-            <p className="text-sm text-muted-foreground">
-              Couldn’t load your lessons.
-            </p>
-            <Button variant="outline" size="sm" onClick={refresh}>
-              <RefreshCwIcon />
-              Try again
-            </Button>
-          </div>
-        ) : lessons.length === 0 ? (
-          <div className="rounded-md border p-6 text-sm text-muted-foreground">
-            No lessons in this module yet.
-          </div>
-        ) : (
-          <ul className="divide-y overflow-hidden rounded-md border">
-            {lessons.map((lesson) => (
-              <li key={lesson.id}>
-                <Link
-                  to="/learn/$lessonId"
-                  params={{ lessonId: lesson.id }}
-                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">
-                      {lesson.title || lesson.id}
-                    </span>
-                    {lesson.unit && (
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {lesson.unit}
-                      </span>
-                    )}
-                  </span>
 
-                  <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+        {/* Same grid as the module gallery on the staff homepage: two up on a
+            phone, four across on a desktop. */}
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <DashboardCard
+            to="/my-lessons"
+            icon={BookOpenIcon}
+            title="My lessons"
+            description={lessonsLine}
+            badge={
+              locked
+                ? "Bloqueado"
+                : lessons
+                  ? `${lessons} ${lessons === 1 ? "aula" : "aulas"}`
+                  : undefined
+            }
+          />
+          <DashboardCard
+            to="/my-homework"
+            icon={NotebookPenIcon}
+            title="My homework"
+            description={homeworkLine}
+            badge={todo > 0 ? `${todo} a fazer` : undefined}
+          />
+          <DashboardCard
+            to="/my-context"
+            icon={SparklesIcon}
+            title="My context"
+            description="Para o Advanced Context "
+          />
+          <DashboardCard
+            to="/practice"
+            icon={DumbbellIcon}
+            title="Practice"
+            description="Exercícios entre as aulas"
+            badge="Em breve"
+          />
+        </div>
       </main>
     </div>
   );

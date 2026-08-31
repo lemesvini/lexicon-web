@@ -38,14 +38,40 @@ export function formatDays(days: readonly number[]): string {
     .join(", ");
 }
 
-/** A group's schedule in one line: the days, then whatever `schedule` adds. */
+/**
+ * A Postgres `time` as a clock reads it — "19:00".
+ *
+ * PostgREST hands back the full "19:00:00"; the seconds are noise on a
+ * timetable, and trimming them here means no caller has to know they were ever
+ * there. Null (no fixed hour) formats as "" so it drops out of a joined line.
+ */
+export function formatTime(startsAt: string | null): string {
+  return startsAt ? startsAt.slice(0, 5) : "";
+}
+
+/** A group's schedule in one line: the days, then the time it starts. */
 export function formatSchedule(group: {
   meetsOn: number[];
-  schedule: string;
+  startsAt: string | null;
 }): string {
-  return [formatDays(group.meetsOn), group.schedule]
+  return [formatDays(group.meetsOn), formatTime(group.startsAt)]
     .filter(Boolean)
     .join(" · ");
+}
+
+/**
+ * Groups in the order a day runs: earliest first, and the ones with no fixed
+ * hour after everything that has one — an unscheduled class is not a 00:00 one.
+ *
+ * A plain string compare does the sorting, which is the whole point of the
+ * column being a `time`: "09:00" < "19:00" as text exactly because the hour is
+ * zero-padded and fixed-width.
+ */
+export function byStartTime(a: { startsAt: string | null }, b: { startsAt: string | null }): number {
+  if (a.startsAt === b.startsAt) return 0;
+  if (!a.startsAt) return 1;
+  if (!b.startsAt) return -1;
+  return a.startsAt < b.startsAt ? -1 : 1;
 }
 
 /** A group as it appears in the left-hand list. */
@@ -58,8 +84,9 @@ export type GroupRow = {
   /** Days of the week it meets, `Date.getDay()` numbering. Empty for a group
    *  with no fixed schedule. */
   meetsOn: number[];
-  /** Free text alongside the days — normally the time. Empty when unset. */
-  schedule: string;
+  /** The time class starts, "HH:MM:SS" as Postgres stores it, or null for a
+   *  group with no fixed hour. Format it with {@link formatTime}. */
+  startsAt: string | null;
   status: GroupStatus;
   lessonId: string | null;
   /** The lesson's title, or "" when there is no lesson set. */
@@ -113,7 +140,7 @@ type GroupRecord = {
   teacher_id: string | null;
   current_lesson_id: string | null;
   meets_on: number[] | null;
-  schedule: string | null;
+  starts_at: string | null;
   status: string | null;
   context: string | null;
   module_id: string | null;
@@ -125,7 +152,7 @@ type GroupRecord = {
 /** The columns every group read selects. Spelled once so the row mapper and the
  *  record type can't drift from what the two callers actually ask for. */
 const GROUP_SELECT =
-  "id, name, teacher_id, current_lesson_id, meets_on, schedule, status, context, module_id, teacher:profiles (full_name, email), lesson:lessons (title, module), module:modules (name)";
+  "id, name, teacher_id, current_lesson_id, meets_on, starts_at, status, context, module_id, teacher:profiles (full_name, email), lesson:lessons (title, module), module:modules (name)";
 
 function toGroupRow(
   record: GroupRecord,
@@ -141,7 +168,7 @@ function toGroupRow(
     teacherId: record.teacher_id,
     teacher: teacher?.full_name || teacher?.email || NO_TEACHER,
     meetsOn: record.meets_on ?? [],
-    schedule: record.schedule ?? "",
+    startsAt: record.starts_at,
     status: record.status === "inactive" ? "inactive" : "active",
     lessonId: record.current_lesson_id,
     lessonTitle: lesson?.title ?? "",
@@ -426,7 +453,8 @@ export type NewGroup = {
   teacherId: string;
   /** Days of the week, `Date.getDay()` numbering. Empty is allowed. */
   meetsOn?: number[];
-  schedule?: string;
+  /** "HH:MM" as the time input produces it. Omitted for no fixed hour. */
+  startsAt?: string | null;
   lessonId?: string | null;
 };
 
@@ -445,7 +473,7 @@ export async function createGroup(input: NewGroup): Promise<string> {
       name: input.name.trim(),
       teacher_id: input.teacherId,
       meets_on: cleanDays(input.meetsOn),
-      schedule: input.schedule?.trim() || null,
+      starts_at: input.startsAt || null,
       current_lesson_id: input.lessonId || null,
     })
     .select("id")
@@ -453,6 +481,19 @@ export async function createGroup(input: NewGroup): Promise<string> {
 
   if (error) throw new Error(error.message);
   return data.id as string;
+}
+
+/** Changes the time class starts. "" (the empty time input) clears it. */
+export async function setGroupTime(
+  groupId: string,
+  startsAt: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("groups")
+    .update({ starts_at: startsAt || null })
+    .eq("id", groupId);
+
+  if (error) throw new Error(error.message);
 }
 
 /** Changes the days a group meets on. */
@@ -614,6 +655,30 @@ export async function setAttendance(input: {
     },
     { onConflict: "group_id,student_id,class_date" },
   );
+
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Un-records one student for one day — the third click of the register's cycle.
+ *
+ * A real delete rather than a third state in the column, because "not marked" is
+ * the absence of a row, not a value: that is what makes an untaken register
+ * empty rather than a set of absences, and re-adding the row as null would make
+ * the two indistinguishable. Deleting is also what the rate is counted out of,
+ * so a mis-click taken back doesn't quietly drag a student's percentage with it.
+ */
+export async function clearAttendance(input: {
+  groupId: string;
+  studentId: string;
+  classDate: string;
+}): Promise<void> {
+  const { error } = await supabase
+    .from("group_attendance")
+    .delete()
+    .eq("group_id", input.groupId)
+    .eq("student_id", input.studentId)
+    .eq("class_date", input.classDate);
 
   if (error) throw new Error(error.message);
 }

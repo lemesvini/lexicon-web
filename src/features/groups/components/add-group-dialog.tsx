@@ -53,7 +53,7 @@ export function AddGroupDialog({
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [meetsOn, setMeetsOn] = React.useState<number[]>([]);
-  const [schedule, setSchedule] = React.useState("");
+  const [startsAt, setStartsAt] = React.useState("");
   const [teacherId, setTeacherId] = React.useState(currentTeacherId);
   const [lessonId, setLessonId] = React.useState(NO_LESSON_VALUE);
   const [busy, setBusy] = React.useState(false);
@@ -66,7 +66,7 @@ export function AddGroupDialog({
     if (next) return;
     setName("");
     setMeetsOn([]);
-    setSchedule("");
+    setStartsAt("");
     setTeacherId(currentTeacherId);
     setLessonId(NO_LESSON_VALUE);
     setError(null);
@@ -88,7 +88,7 @@ export function AddGroupDialog({
         // when there was a choice to make.
         teacherId: canPickTeacher ? teacherId : currentTeacherId,
         meetsOn,
-        schedule,
+        startsAt,
         lessonId: lessonId === NO_LESSON_VALUE ? null : lessonId,
       });
       onCreated(groupId);
@@ -146,12 +146,16 @@ export function AddGroupDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="group-schedule">Time (optional)</Label>
+            <Label htmlFor="group-starts-at">Time (optional)</Label>
+            {/* A real time input rather than free text: the column is a
+                `time`, and the browser's own picker is the shortest way to
+                guarantee it gets one. */}
             <Input
-              id="group-schedule"
-              placeholder="19:00"
-              value={schedule}
-              onChange={(event) => setSchedule(event.target.value)}
+              id="group-starts-at"
+              type="time"
+              className="w-40"
+              value={startsAt}
+              onChange={(event) => setStartsAt(event.target.value)}
             />
           </div>
 

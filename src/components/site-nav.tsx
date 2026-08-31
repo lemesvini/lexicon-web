@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
  *  interpolated, because Tailwind only ships classes it can see in the source. */
 const COLUMN = {
   wide: "max-w-6xl",
+  /** The student app's column — every one of its screens is this wide. */
+  mid: "max-w-5xl",
   narrow: "max-w-3xl",
 } as const;
 

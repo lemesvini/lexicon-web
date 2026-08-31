@@ -77,9 +77,9 @@ function LessonPage() {
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
       <SiteNav
-        backTo="/learn"
-        backLabel="Back to my module"
-        align="narrow"
+        backTo="/my-lessons"
+        backLabel="Back to my lessons"
+        align="mid"
         actions={
           // Only once the lesson is on the screen: an action in the bar over a
           // page that is still loading, or that turned out not to be theirs, is
@@ -100,7 +100,7 @@ function LessonPage() {
           )
         }
       />
-      <main className="mx-auto w-full max-w-3xl lg:max-w-5xl space-y-8 px-4 pb-16 pt-4">
+      <main className="mx-auto w-full max-w-5xl space-y-8 px-4 pb-16 pt-4">
         {locked ? (
           <div className="space-y-3 rounded-md border p-6">
             <p className="text-sm text-muted-foreground">

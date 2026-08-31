@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  formatTime,
   listGroups,
   toDateKey,
   type GroupRow,
@@ -198,7 +199,7 @@ function ClassRow({
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <UsersRoundIcon className="size-3.5 shrink-0" />
           {group.memberCount} student{group.memberCount === 1 ? "" : "s"}
-          {group.schedule && ` · ${group.schedule}`}
+          {group.startsAt && ` · ${formatTime(group.startsAt)}`}
         </p>
       </div>
 

@@ -136,8 +136,8 @@ function HomeworkPage({ homeworkId }: { homeworkId: string }) {
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <SiteNav backTo="/homework" backLabel="Back to homework" align="narrow" />
-      <main className="mx-auto w-full max-w-3xl space-y-8 px-4 pb-24 pt-4">
+      <SiteNav backTo="/my-homework" backLabel="Back to homework" align="mid" />
+      <main className="mx-auto w-full max-w-5xl space-y-8 px-4 pb-24 pt-4">
         {phase === "loading" ? (
           <div className="space-y-4">
             <Skeleton className="h-9 w-2/3" />

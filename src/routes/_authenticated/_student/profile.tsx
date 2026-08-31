@@ -55,9 +55,9 @@ function ProfileRoute() {
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <SiteNav align="narrow" />
+      <SiteNav align="mid" />
 
-      <main className="mx-auto w-full max-w-3xl px-4 pt-4 pb-24">
+      <main className="mx-auto w-full max-w-5xl px-4 pt-4 pb-24">
         <div className="flex flex-col items-center gap-4 py-6 text-center">
           <StudentAvatarUpload
             studentId={access.id}

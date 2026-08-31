@@ -5,14 +5,18 @@
 // can't drift out of step.
 
 import {
+  CalendarDaysIcon,
   ClipboardCheckIcon,
+  DumbbellIcon,
   GraduationCapIcon,
   HandshakeIcon,
+  HouseIcon,
   KeyRoundIcon,
   LibraryIcon,
   NotebookPenIcon,
   PaletteIcon,
   PresentationIcon,
+  SparklesIcon,
   UserRoundIcon,
   UserCogIcon,
   UsersIcon,
@@ -24,6 +28,7 @@ import type { Role } from "@/lib/profile";
 
 export type LinkTo =
   | "/lessons"
+  | "/schedule"
   | "/studio"
   | "/modules"
   | "/students"
@@ -33,7 +38,10 @@ export type LinkTo =
   | "/finances"
   | "/corrections"
   | "/learn"
-  | "/homework"
+  | "/my-lessons"
+  | "/my-homework"
+  | "/my-context"
+  | "/practice"
   | "/profile"
   | "/change-password";
 
@@ -43,8 +51,8 @@ export type NavLink = { label: string; to: LinkTo; icon: LucideIcon };
  *  one group — a lone label names nothing the reader can't already see. */
 export type NavSection = { label?: string; links: readonly NavLink[] };
 
-// Running a class, in the order the work happens: pick the lesson, write one,
-// file it, mark what came back. "/lessons" is the presenter's launcher, so it is
+// Running a class, in the order the work happens: see when it is, pick the
+// lesson, write one, file it, mark what came back. "/lessons" is the presenter's launcher, so it is
 // Lessons here rather than a dashboard — nothing about it is a summary.
 // Studio and Modules are the admin's: both edit the library the whole school
 // shares. A teacher shapes a lesson for their own group through the advanced
@@ -52,6 +60,7 @@ export type NavSection = { label?: string; links: readonly NavLink[] };
 function classes(role: Role): readonly NavLink[] {
   return [
     { label: "Lessons", to: "/lessons", icon: PresentationIcon },
+    { label: "Schedule", to: "/schedule", icon: CalendarDaysIcon },
     ...(role === "admin"
       ? ([
           { label: "Studio", to: "/studio", icon: PaletteIcon },
@@ -86,13 +95,17 @@ function administration(role: Role): readonly NavLink[] {
   ];
 }
 
-// A student's whole app is their module, so their menu is that plus the account
-// items every user gets — one short list, and nothing to sort it into.
+// The student's app is four places plus the account items every user gets. The
+// home screen shows the same four as cards; the sidebar lists them so a student
+// two pages in doesn't have to go back through it to move sideways.
 const STUDENT_SECTIONS: readonly NavSection[] = [
   {
     links: [
-      { label: "My module", to: "/learn", icon: GraduationCapIcon },
-      { label: "Homework", to: "/homework", icon: NotebookPenIcon },
+      { label: "Home", to: "/learn", icon: HouseIcon },
+      { label: "My lessons", to: "/my-lessons", icon: GraduationCapIcon },
+      { label: "My homework", to: "/my-homework", icon: NotebookPenIcon },
+      { label: "My context", to: "/my-context", icon: SparklesIcon },
+      { label: "Practice", to: "/practice", icon: DumbbellIcon },
       { label: "My profile", to: "/profile", icon: UserRoundIcon },
       { label: "Change password", to: "/change-password", icon: KeyRoundIcon },
     ],

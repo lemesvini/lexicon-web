@@ -4,6 +4,7 @@ import { RefreshCwIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { GroupCard } from "@/features/groups/components/group-card";
 import {
   fromDateKey,
   listGroupAttendance,
@@ -19,10 +20,13 @@ const dayFormat = new Intl.DateTimeFormat(undefined, {
 
 /**
  * The group's attendance, class by class — the history behind the single day the
- * Register tab is showing.
+ * register beside it is showing.
  *
- * Each day is a button that moves the register onto that date and switches back
- * to it, so a thin-looking class is one click from the names behind it.
+ * Each day is a button that moves the register onto that date, so a thin-looking
+ * class is one click from the names behind it. A panel on the page rather than a
+ * drawer off a menu, which is what it was: the register and the record it builds
+ * up are the same subject, and reading one against the other was two clicks and
+ * a screen that slid over the answer.
  */
 export function GroupAttendancePanel({
   group,
@@ -30,16 +34,12 @@ export function GroupAttendancePanel({
   onPickDate,
   /** Bumped by the page after any write, so the history follows the register. */
   reloadKey,
-  /** Drops the frame and the title: the drawer that holds this panel already
-   *  has both, and a heading under a heading reads as two panels. */
-  bare = false,
 }: {
   group: GroupRow;
-  /** The date the register is on, highlighted here so the two tabs agree. */
+  /** The date the register is on, highlighted here so the two panels agree. */
   classDate: string;
   onPickDate: (classDate: string) => void;
   reloadKey: number;
-  bare?: boolean;
 }) {
   const [days, setDays] = React.useState<AttendanceDay[]>([]);
   const [status, setStatus] = React.useState<"loading" | "ready" | "error">(
@@ -80,33 +80,28 @@ export function GroupAttendancePanel({
   );
 
   return (
-    <section
-      className={cn(
-        bare ? "flex min-h-0 flex-1 flex-col" : "rounded-md border",
-      )}
+    <GroupCard
+      title="Attendance"
+      action={
+        <p className="text-xs text-muted-foreground">
+          {status === "ready"
+            ? // `totals.total` can be zero even with days on the list — a day
+              // every student was left unmarked has rows but nothing counted —
+              // so the guard is on the divisor, not on `days.length`.
+              days.length === 0
+              ? "No classes recorded yet"
+              : `${days.length} class${days.length === 1 ? "" : "es"}${
+                  totals.total > 0
+                    ? ` · ${Math.round((totals.present / totals.total) * 100)}% overall`
+                    : ""
+                }`
+            : " "}
+        </p>
+      }
     >
-      <header className={cn("px-4 py-3", bare ? "px-0 pt-0" : "border-b")}>
-        <div className="min-w-0 space-y-0.5">
-          {!bare && <h2 className="text-sm font-medium">Attendance</h2>}
-          <p className="text-xs text-muted-foreground">
-            {status === "ready"
-              ? // `totals.total` can be zero even with days on the list — a day
-                // every student was left unmarked has rows but nothing counted —
-                // so the guard is on the divisor, not on `days.length`.
-                days.length === 0
-                ? "No classes recorded yet"
-                : `${days.length} class${days.length === 1 ? "" : "es"}${
-                    totals.total > 0
-                      ? ` · ${Math.round((totals.present / totals.total) * 100)}% overall`
-                      : ""
-                  }`
-              : group.name}
-          </p>
-        </div>
-      </header>
 
       {status === "loading" ? (
-        <div className="space-y-3 p-4">
+        <div className="space-y-3 p-5">
           {Array.from({ length: 4 }).map((_, index) => (
             <Skeleton key={index} className="h-8 w-full" />
           ))}
@@ -127,12 +122,7 @@ export function GroupAttendancePanel({
           here.
         </p>
       ) : (
-        <ul
-          className={cn(
-            "no-scrollbar divide-y overflow-y-auto",
-            bare ? "-mx-6 min-h-0 flex-1 border-t" : "max-h-[32rem]",
-          )}
-        >
+        <ul className="no-scrollbar max-h-[32rem] divide-y overflow-y-auto">
           {days.map((day) => {
             const isCurrent = day.classDate === classDate;
             return (
@@ -142,7 +132,7 @@ export function GroupAttendancePanel({
                   onClick={() => onPickDate(day.classDate)}
                   aria-current={isCurrent ? "true" : undefined}
                   className={cn(
-                    "w-full space-y-0.5 px-4 py-2.5 text-left transition-colors hover:bg-accent",
+                    "w-full space-y-0.5 px-5 py-2.5 text-left transition-colors hover:bg-accent",
                     isCurrent && "bg-accent",
                   )}
                 >
@@ -163,6 +153,6 @@ export function GroupAttendancePanel({
           })}
         </ul>
       )}
-    </section>
+    </GroupCard>
   );
 }

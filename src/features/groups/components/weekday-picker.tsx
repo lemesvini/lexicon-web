@@ -8,6 +8,10 @@ import { WEEKDAYS } from "@/features/groups/data/groups";
  * they never change, and the answer is something you want to read at a glance
  * afterwards — all of which a dropdown is worse at than a row of buttons.
  *
+ * Seven equal columns rather than a wrapping flex row: a week that breaks after
+ * the fifth day and puts the weekend on a second line stops reading as a week,
+ * and does it at whatever width the narrowest panel happens to be.
+ *
  * Each is a real toggle button (`aria-pressed`) rather than a checkbox, because
  * the label is the control: a three-letter box with a tick beside it would be
  * wider than the thing it labels.
@@ -33,7 +37,11 @@ export function WeekdayPicker({
   };
 
   return (
-    <div className="flex flex-wrap gap-1.5" role="group" aria-labelledby={labelledBy}>
+    <div
+      className="grid grid-cols-7 gap-1"
+      role="group"
+      aria-labelledby={labelledBy}
+    >
       {WEEKDAYS.map((weekday) => {
         const selected = value.includes(weekday.day);
         return (
@@ -44,7 +52,7 @@ export function WeekdayPicker({
             aria-pressed={selected}
             onClick={() => toggle(weekday.day)}
             className={cn(
-              "rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
+              "rounded-md border px-0 py-1.5 text-center text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
               selected
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-input text-muted-foreground hover:bg-accent hover:text-foreground",

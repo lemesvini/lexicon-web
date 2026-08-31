@@ -94,18 +94,62 @@ function toSummary(record: SummaryRecord): StudentLessonSummary {
 }
 
 /**
- * The lessons in the student's module that have published material, in
- * curriculum order. A lesson whose material is still a draft simply isn't here.
+ * Curriculum order: `course_order` ascending, with unplaced rows last.
+ *
+ * Not `position` — that restarts at 1 inside each unit, so sorting by it deals
+ * the units into each other (see 0020). Not the database's job either: `order
+ * by course_order` puts every unplaced 0 first, and PostgREST has nowhere to put
+ * the expression that wouldn't. A module is a few dozen rows.
  */
-export async function listStudentLessons(): Promise<StudentLessonSummary[]> {
+function byCourseOrder(
+  a: { course_order: number | null; title: string | null },
+  b: { course_order: number | null; title: string | null },
+): number {
+  const rank = (order: number | null) =>
+    order && order > 0 ? order : Number.MAX_SAFE_INTEGER;
+  return (
+    rank(a.course_order) - rank(b.course_order) ||
+    (a.title ?? "").localeCompare(b.title ?? "")
+  );
+}
+
+/** A lesson as the syllabus lists it: in the module, whether or not it can be
+ *  opened yet. */
+export type StudentSyllabusEntry = Omit<StudentLessonSummary, "updatedAt"> & {
+  /** Whether material has been published for it. A lesson that isn't available
+   *  is listed and greyed out — it is the course the student was sold, not a
+   *  lesson being withheld. */
+  available: boolean;
+};
+
+/**
+ * Every lesson in the student's module, in curriculum order, open or not.
+ *
+ * The list the student sees. `student_syllabus` (0020) carries no document, so
+ * a lesson that isn't `available` is a title and nothing more — reading one
+ * still goes through {@link fetchStudentLesson}, which answers from
+ * `student_lessons` and so refuses.
+ */
+export async function listStudentSyllabus(): Promise<StudentSyllabusEntry[]> {
   const { data, error } = await supabase
-    .from("student_lessons")
-    .select(SUMMARY_COLUMNS)
-    .order("position", { ascending: true })
-    .order("title", { ascending: true });
+    .from("student_syllabus")
+    .select("id, title, unit, module, position, course_order, available");
 
   if (error) throw new Error(error.message);
-  return ((data ?? []) as SummaryRecord[]).map(toSummary);
+
+  type Record_ = SummaryRecord & { course_order: number | null; available: boolean };
+
+  // The view carries no `updated_at` — there is nothing to date about a lesson
+  // that hasn't been written yet — so the summary is built by hand rather than
+  // through `toSummary`, which would only invent one.
+  return ((data ?? []) as Record_[]).sort(byCourseOrder).map((record) => ({
+    id: record.id,
+    title: record.title ?? "",
+    unit: record.unit ?? "",
+    module: record.module ?? "",
+    position: record.position ?? 0,
+    available: record.available,
+  }));
 }
 
 /**
@@ -161,6 +205,7 @@ type HomeworkRecord = {
   lesson_title: string | null;
   module: string | null;
   position: number | null;
+  course_order: number | null;
   document: Lesson;
   updated_at: string | null;
 };
@@ -179,7 +224,7 @@ function toHomework(row: HomeworkRecord): StudentHomework {
 }
 
 const HOMEWORK_COLUMNS =
-  "id, title, lesson_id, lesson_title, module, position, document, updated_at";
+  "id, title, lesson_id, lesson_title, module, position, course_order, document, updated_at";
 
 /**
  * Every homework the student can reach, in course order.
@@ -192,15 +237,14 @@ const HOMEWORK_COLUMNS =
 export async function listStudentHomework(): Promise<StudentHomework[]> {
   const { data, error } = await supabase
     .from("student_homework")
-    .select(HOMEWORK_COLUMNS)
-    // Its lesson's place in the module, then its own title — the order the
-    // course is taught in. It used to be `updated_at`, which is the order things
-    // were last edited: re-saving lesson two's homework sent it to the bottom.
-    .order("position", { ascending: true })
-    .order("title", { ascending: true });
+    .select(HOMEWORK_COLUMNS);
 
   if (error) throw new Error(error.message);
-  return ((data ?? []) as HomeworkRecord[]).map(toHomework);
+
+  // Its lesson's place in the course, then its own title — the order the course
+  // is taught in. It used to be `updated_at`, which is the order things were
+  // last edited: re-saving lesson two's homework sent it to the bottom.
+  return ((data ?? []) as HomeworkRecord[]).sort(byCourseOrder).map(toHomework);
 }
 
 /** One homework, or null when it isn't the student's to open. */

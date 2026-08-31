@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   formatDays,
+  formatTime,
   fromDateKey,
 } from "@/features/groups/data/groups";
 import type {
@@ -149,7 +150,7 @@ export function StudentGroupsPanel({
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                {[formatDays(group.meetsOn), group.schedule]
+                {[formatDays(group.meetsOn), formatTime(group.startsAt)]
                   .filter(Boolean)
                   .join(" · ") || "No fixed schedule"}
               </p>

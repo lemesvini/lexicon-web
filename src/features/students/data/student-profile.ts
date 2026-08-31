@@ -96,7 +96,8 @@ export type StudentGroup = {
   name: string;
   /** `Date.getDay()` numbering, 0 = Sunday. Empty for no fixed days. */
   meetsOn: number[];
-  schedule: string;
+  /** "HH:MM:SS", or null for no fixed hour — `formatTime` reads it. */
+  startsAt: string | null;
   active: boolean;
 };
 
@@ -192,7 +193,7 @@ type MembershipRecord = {
   group_id: string;
   group: Embedded<{
     name: string | null;
-    schedule: string | null;
+    starts_at: string | null;
     meets_on: number[] | null;
     status: string | null;
   }>;
@@ -243,7 +244,7 @@ export async function fetchStudentDossier(
         .order("started_at", { ascending: false }),
       supabase
         .from("group_students")
-        .select("group_id, group:groups (name, schedule, meets_on, status)")
+        .select("group_id, group:groups (name, starts_at, meets_on, status)")
         .eq("student_id", studentId),
       supabase
         .from("group_attendance")
@@ -321,7 +322,7 @@ export async function fetchStudentDossier(
           id: row.group_id,
           name: group?.name ?? "",
           meetsOn: group?.meets_on ?? [],
-          schedule: group?.schedule ?? "",
+          startsAt: group?.starts_at ?? null,
           active: group?.status !== "inactive",
         };
       })
