@@ -30,6 +30,20 @@ const ADVANCED_THEMES = {
 export type AdvancedTheme = keyof typeof ADVANCED_THEMES;
 
 /**
+ * The frame a slide asks for, or nothing.
+ *
+ * `advancedTheme: "plain"` is a group saying "this is an ordinary slide" — it
+ * still owns the slide, it just doesn't want the aside's frame around it. Kept
+ * out of `ADVANCED_THEMES` on purpose: there is no palette for "no frame", and a
+ * theme entry that has to be checked for before every use is not a theme.
+ */
+function frameTheme(
+  theme: LessonSlide["advancedTheme"],
+): AdvancedTheme | undefined {
+  return theme === "plain" ? undefined : theme;
+}
+
+/**
  * Every measurement of the frame, in one place and one unit system per mode.
  *
  * The stage is whatever the projector is — a laptop panel, a 4K TV, a preview
@@ -249,7 +263,7 @@ export function SlideView({
               that isn't theirs and has to be told apart block by block. On an
               advanced slide the frame is around the lot — see below. */}
           {block.advancedContext && !slide.advancedContext ? (
-            <AdvancedFrame theme={slide.advancedTheme}>
+            <AdvancedFrame theme={frameTheme(slide.advancedTheme)}>
               <BlockView block={block} audience={audience} />
             </AdvancedFrame>
           ) : (
@@ -264,9 +278,12 @@ export function SlideView({
   // the border belongs to the slide rather than sitting on top of it. Returned
   // here rather than folded into the two branches below because it replaces the
   // stage, header and content column all at once.
-  if (slide.advancedContext) {
+  // "plain" falls through to the ordinary paths below: the slide is still the
+  // group's own, it just renders like any other — stage header, wallpaper
+  // layers and all.
+  if (slide.advancedContext && slide.advancedTheme !== "plain") {
     return (
-      <AdvancedFrame theme={slide.advancedTheme} fill>
+      <AdvancedFrame theme={frameTheme(slide.advancedTheme)} fill>
         {blockList}
       </AdvancedFrame>
     );

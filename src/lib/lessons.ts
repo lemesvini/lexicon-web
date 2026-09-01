@@ -258,9 +258,13 @@ export type LessonSlide = {
    *  fully editable. */
   advancedContext?: true;
   /** How an advanced-context slide is framed on the projector: the brand green
-   *  around a dark panel ("jade", the default), or the dark ground around a pale
-   *  one ("forest"). Ignored on a slide that isn't advanced context. */
-  advancedTheme?: "jade" | "forest";
+   *  around a dark panel ("jade", the default), the dark ground around a pale
+   *  one ("forest"), or no frame at all ("plain") — a slide that reads exactly
+   *  like a base one, for a group adding an ordinary slide rather than an aside.
+   *  "plain" changes nothing about ownership: the slide is still the group's,
+   *  still editable, still carried over by a rebase. Ignored on a slide that
+   *  isn't advanced context. */
+  advancedTheme?: "jade" | "forest" | "plain";
   blocks: LessonBlock[];
   teacherNotes?: string[];
 };

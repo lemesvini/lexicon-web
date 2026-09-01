@@ -288,6 +288,26 @@ type MemberRecord = {
 };
 
 /**
+ * Just who is in the group, with no attendance behind it.
+ *
+ * Separate from `listGroupMembers` because the page asks this question before
+ * the register has any bearing on it — "is this group placed in a module yet?"
+ * is about the roster, not about a date — and that one drags a whole attendance
+ * table through to answer it.
+ */
+export async function listGroupStudentIds(
+  groupId: string,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("group_students")
+    .select("student_id")
+    .eq("group_id", groupId);
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => row.student_id as string);
+}
+
+/**
  * The register for one group on one date: who is in it, whether they were marked
  * in that day, and how they've done overall.
  *

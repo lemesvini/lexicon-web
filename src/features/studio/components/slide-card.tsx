@@ -63,6 +63,23 @@ function TeacherNotes({
   );
 }
 
+/**
+ * The three looks a group's own slide can have, in a cycle.
+ *
+ * "plain" is the odd one out and the reason this exists: it isn't a frame
+ * colour, it's the group saying the slide is an ordinary one. The slide is still
+ * theirs either way — the flag that owns it is `advancedContext`, which this
+ * never touches, so switching to plain and back loses nothing and a rebase still
+ * carries the slide across.
+ */
+function nextTheme(
+  theme: LessonSlide["advancedTheme"],
+): NonNullable<LessonSlide["advancedTheme"]> {
+  if (theme === "forest") return "plain";
+  if (theme === "plain") return "jade";
+  return "forest";
+}
+
 export function SlideCard({
   slide,
   index,
@@ -143,15 +160,23 @@ export function SlideCard({
               <button
                 type="button"
                 onClick={() =>
-                  setMeta({
-                    advancedTheme:
-                      meta.advancedTheme === "forest" ? "jade" : "forest",
-                  })
+                  setMeta({ advancedTheme: nextTheme(meta.advancedTheme) })
                 }
-                title="Frame colour on the projector — click to switch"
-                className="rounded bg-primary/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary/25"
+                title={
+                  meta.advancedTheme === "plain"
+                    ? "No frame — this slide looks like any other. Click to frame it as Advanced Context"
+                    : "Frame on the projector — click to switch (green → dark → plain)"
+                }
+                className={cn(
+                  "rounded px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider transition-colors",
+                  meta.advancedTheme === "plain"
+                    ? "bg-muted text-muted-foreground hover:bg-muted/70"
+                    : "bg-primary/15 text-primary hover:bg-primary/25",
+                )}
               >
-                Advanced · {meta.advancedTheme === "forest" ? "dark" : "green"}
+                {meta.advancedTheme === "plain"
+                  ? "Normal slide"
+                  : `Advanced · ${meta.advancedTheme === "forest" ? "dark" : "green"}`}
               </button>
             )}
             {teacherContent && (

@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GroupAttendancePanel } from "@/features/groups/components/group-attendance-panel";
 import { GroupLessonCard } from "@/features/groups/components/group-lesson-card";
+import { GroupModulePrompt } from "@/features/groups/components/group-module-prompt";
 import { GroupRegisterCard } from "@/features/groups/components/group-register-card";
 import { GroupScheduleCard } from "@/features/groups/components/group-schedule-card";
 import {
@@ -31,11 +32,17 @@ import {
   deleteGroup,
   fetchGroup,
   formatSchedule,
+  listGroupStudentIds,
   setGroupStatus,
   today,
   type GroupRow,
 } from "@/features/groups/data/groups";
-import { listStudents, type StudentRow } from "@/features/students/data/students";
+import {
+  listModules,
+  listStudents,
+  type ModuleOption,
+  type StudentRow,
+} from "@/features/students/data/students";
 import { useAuth } from "@/hooks/use-auth";
 import { canUseAdvancedStudio } from "@/lib/profile";
 import { listCloudLessons, type CloudLessonSummary } from "@/lib/lessons-cloud";
@@ -68,6 +75,8 @@ export function GroupPage({ groupId }: { groupId: string }) {
   const [group, setGroup] = React.useState<GroupRow | null>(null);
   const [students, setStudents] = React.useState<StudentRow[]>([]);
   const [lessons, setLessons] = React.useState<CloudLessonSummary[]>([]);
+  const [modules, setModules] = React.useState<ModuleOption[]>([]);
+  const [memberIds, setMemberIds] = React.useState<string[]>([]);
   const [status, setStatus] = React.useState<
     "loading" | "ready" | "missing" | "error"
   >("loading");
@@ -83,11 +92,19 @@ export function GroupPage({ groupId }: { groupId: string }) {
 
   React.useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchGroup(groupId), listStudents(), listCloudLessons()])
-      .then(([groupRow, studentRows, lessonRows]) => {
+    Promise.all([
+      fetchGroup(groupId),
+      listStudents(),
+      listCloudLessons(),
+      listModules(),
+      listGroupStudentIds(groupId),
+    ])
+      .then(([groupRow, studentRows, lessonRows, moduleRows, ids]) => {
         if (cancelled) return;
         setStudents(studentRows);
         setLessons(lessonRows);
+        setModules(moduleRows);
+        setMemberIds(ids);
         if (!groupRow) {
           setStatus("missing");
           return;
@@ -177,6 +194,14 @@ export function GroupPage({ groupId }: { groupId: string }) {
       </div>
     );
   }
+
+  // Unplaced on both sides. A student already in a module — one moved up on
+  // their own, say — is enough to say this group has been placed, and the
+  // prompt would be a second control on a fact somebody has already answered.
+  const placedIds = new Set(memberIds);
+  const needsModule =
+    !group.moduleId &&
+    !students.some((student) => placedIds.has(student.id) && student.moduleId);
 
   return (
     <div className="space-y-4">
@@ -291,6 +316,19 @@ export function GroupPage({ groupId }: { groupId: string }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Only while nothing has been placed: the group is in no module and
+          neither is anyone on its roster. Once either is true the module is
+          the studio's, where the lessons it copies are set. */}
+      {needsModule && (
+        <GroupModulePrompt
+          group={group}
+          modules={modules}
+          studentIds={memberIds}
+          busy={busy}
+          run={run}
+        />
+      )}
 
       {/* Two columns on a wide screen: what happens in the class on the left,
           what is true of the group on the right. They stack in the same order on
