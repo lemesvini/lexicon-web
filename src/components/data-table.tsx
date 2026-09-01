@@ -47,6 +47,16 @@ type DataTableProps<TData, TValue> = {
   filterPlaceholder?: string;
   /** Dropdown filters rendered at the right of the toolbar. */
   facets?: DataTableFacet[];
+  /**
+   * Filters the table opens with — the same shape a facet sets, so the dropdown
+   * shows the selection and clearing it works as normal.
+   *
+   * Read once, when the table mounts: it is a starting point, not a controlled
+   * value, and re-seeding it would undo whatever the user had just chosen. A
+   * caller whose default depends on data it is still loading should hold the
+   * skeleton until the rows arrive, as the roster does.
+   */
+  initialFilters?: ColumnFiltersState;
   /** Caller-owned controls, rendered at the right of the toolbar before the facets. */
   toolbarActions?: React.ReactNode;
   /** Body message when no row survives the active filters. */
@@ -77,6 +87,7 @@ export function DataTable<TData, TValue>({
   filterColumn,
   filterPlaceholder = "Filter...",
   facets = [],
+  initialFilters,
   toolbarActions,
   emptyMessage = "No results.",
   countLabel = (count) => `${count} row${count === 1 ? "" : "s"}`,
@@ -85,7 +96,7 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    [],
+    () => initialFilters ?? [],
   );
 
   const table = useReactTable({

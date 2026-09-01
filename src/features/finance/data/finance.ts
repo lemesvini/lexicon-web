@@ -44,6 +44,7 @@ export type FinanceRow = {
   name: string;
   email: string;
   status: FinanceStatus;
+  teacherId: string | null;
   /** Teacher name, or "—". Only shown to the admin, as on the roster. */
   teacher: string;
   /** Null until someone has priced this student up — not zero. */
@@ -66,6 +67,7 @@ type FinanceRecord = {
   full_name: string | null;
   email: string | null;
   status: string | null;
+  teacher_id: string | null;
   monthly_fee: number | string | null;
   classes_per_week: number | null;
   teacher: Embedded<{ full_name?: string | null; email?: string | null }>;
@@ -88,7 +90,7 @@ export async function listFinances(): Promise<FinanceRow[]> {
   const { data, error } = await supabase
     .from("students")
     .select(
-      "id, full_name, email, status, monthly_fee, classes_per_week, teacher:profiles (full_name, email)",
+      "id, full_name, email, status, teacher_id, monthly_fee, classes_per_week, teacher:profiles (full_name, email)",
     )
     .order("full_name", { ascending: true });
 
@@ -101,6 +103,7 @@ export async function listFinances(): Promise<FinanceRow[]> {
       name: record.full_name ?? "",
       email: record.email ?? "",
       status: record.status === "inactive" ? "inactive" : "active",
+      teacherId: record.teacher_id,
       teacher: teacher?.full_name || teacher?.email || NO_TEACHER,
       monthlyFee: toNumber(record.monthly_fee),
       classesPerWeek: record.classes_per_week,

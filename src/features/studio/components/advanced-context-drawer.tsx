@@ -44,7 +44,14 @@ type Turn = {
   id: number;
   /** Empty when they just pressed send without typing anything. */
   prompt: string;
+  /** What actually went to the model as this turn's message — the prompt, plus
+   *  any "I inserted these" news. Replayed verbatim as history, so the bytes the
+   *  cache was keyed on are the bytes that come back. */
+  sent: string;
   thinking: string;
+  /** What it said in words this turn, if anything. Since the tool stopped being
+   *  forced, a turn can be a sentence rather than a list. */
+  answer: string;
   /** Everything this turn proposed — kept whole, so the conversation can still
    *  refer to a suggestion after it has been inserted and left the list. */
   proposed: ContextSuggestion[];
@@ -66,27 +73,26 @@ type Turn = {
  *  the "result" is a teacher deciding, over the following minutes, which slides
  *  to keep. Saying which ones they kept is both simpler and more useful. */
 function summarise(turn: Turn): string {
+  // It proposed nothing and said why. Replay the why, so a follow-up — "the
+  // context is empty, work from the lesson itself then" — lands on a model that
+  // remembers what it just told the teacher.
   if (turn.proposed.length === 0) {
-    return "I had nothing to suggest from what I could see.";
+    return turn.answer || "I had nothing to suggest from what I could see.";
   }
 
+  // Frozen the moment the turn lands. It used to say which suggestions the
+  // teacher had inserted — written into the turn that PROPOSED them, minutes
+  // later, as they were accepted one by one. Every one of those edits rewrote a
+  // message the cache had already been keyed on, so the conversation the
+  // function had carefully arranged to read from cache was re-sent at full price
+  // on the next turn. Which ones were taken is still told to the model; it now
+  // travels on the new message, where it changes nothing behind it.
   const lines = turn.proposed.map((suggestion) => {
     const kinds = suggestion.blocks.map((block) => block.type).join(", ");
-    const taken = turn.inserted.includes(suggestion.stage);
-    return `- "${suggestion.stage}" (${kinds}, after ${suggestion.afterSlideId})${
-      taken ? " — the teacher inserted this one" : ""
-    }`;
+    return `- "${suggestion.stage}" (${kinds}, after ${suggestion.afterSlideId})`;
   });
 
-  const none = turn.inserted.length === 0 && turn.status === "done";
-
-  return [
-    "I proposed:",
-    ...lines,
-    none ? "The teacher hasn't inserted any of these." : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
+  return ["I proposed:", ...lines].join("\n");
 }
 
 /** The conversation so far, oldest first, trimmed to what travels. */
@@ -96,7 +102,7 @@ function toHistory(turns: Turn[]): ChatMessage[] {
     if (turn.status !== "done") continue;
     messages.push({
       role: "user",
-      content: turn.prompt || "(no particular steer — use your judgement)",
+      content: turn.sent || "(no particular steer — use your judgement)",
     });
     messages.push({ role: "assistant", content: summarise(turn) });
   }
@@ -153,6 +159,10 @@ export function AdvancedContextDrawer({
    *  so one ref covers it. */
   const liveThinking = React.useRef<HTMLDivElement | null>(null);
   const nextId = React.useRef(0);
+  /** Stage names already reported to the model as inserted. What the teacher
+   *  accepts is the only feedback in the loop, and each acceptance is worth
+   *  saying exactly once. */
+  const announced = React.useRef<Set<string>>(new Set());
   // Read at send time, so the history sent is the state as it stands then —
   // including inserts made while the previous answer was on screen.
   const turnsRef = React.useRef<Turn[]>([]);
@@ -187,6 +197,23 @@ export function AdvancedContextDrawer({
 
     const prompt = draft.trim();
     const history = toHistory(turnsRef.current);
+
+    // What they took since they last said anything, carried on this message
+    // rather than backdated into the answer that proposed it.
+    const news = turnsRef.current
+      .flatMap((turn) => turn.inserted)
+      .filter((stage) => !announced.current.has(stage));
+    for (const stage of news) announced.current.add(stage);
+
+    const sent =
+      news.length === 0
+        ? prompt
+        : [
+            prompt || "Suggest more advanced context — use your judgement.",
+            `(Since your last answer I inserted: ${news
+              .map((stage) => `“${stage}”`)
+              .join(", ")}.)`,
+          ].join("\n\n");
     const id = (nextId.current += 1);
     const controller = new AbortController();
     abort.current = controller;
@@ -197,7 +224,9 @@ export function AdvancedContextDrawer({
       {
         id,
         prompt,
+        sent,
         thinking: "",
+        answer: "",
         proposed: [],
         pending: [],
         inserted: [],
@@ -210,7 +239,7 @@ export function AdvancedContextDrawer({
 
     try {
       const result = await suggestAdvancedContext(kind, groupId, documentId, {
-        teacherPrompt: prompt || undefined,
+        teacherPrompt: sent || undefined,
         history,
         signal: controller.signal,
         onThinking: (delta) =>
@@ -221,6 +250,7 @@ export function AdvancedContextDrawer({
           ),
       });
       patch(id, {
+        answer: result.answer,
         proposed: result.suggestions,
         pending: result.suggestions,
         discarded: result.discarded,
@@ -359,8 +389,17 @@ export function AdvancedContextDrawer({
               </div>
             )}
 
+            {turn.answer && (
+              <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                {turn.answer}
+              </p>
+            )}
+
             {turn.status === "done" &&
               turn.proposed.length === 0 &&
+              // It said why, in its own words. That IS the answer — don't follow
+              // it with a canned guess about which field to go and fill in.
+              !turn.answer &&
               // Only when the answer really was empty. Everything having been
               // rejected is a different fact, and telling the teacher to go
               // write more context would send them off to fix the wrong thing.

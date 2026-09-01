@@ -97,6 +97,25 @@ export function StudentsRoster() {
     [students],
   );
 
+  // The admin is a teacher too, and the roster they open is almost always their
+  // own — so the teacher facet starts on them, and is cleared like any other to
+  // get everyone back. Taken from a row rather than from `profile.fullName`
+  // because the column falls back to the email for a teacher with no name, and a
+  // default that matches no row would open the roster empty.
+  const ownTeacherName = React.useMemo(
+    () =>
+      students.find((student) => student.teacherId === profile?.id)?.teacher,
+    [students, profile?.id],
+  );
+
+  const initialFilters = React.useMemo(
+    () =>
+      isAdmin && ownTeacherName
+        ? [{ id: "teacher", value: [ownTeacherName] }]
+        : [],
+    [isAdmin, ownTeacherName],
+  );
+
   if (status === "loading") return <TableSkeleton />;
 
   if (status === "error") {
@@ -119,6 +138,7 @@ export function StudentsRoster() {
       data={students}
       filterColumn="name"
       filterPlaceholder="Filter students..."
+      initialFilters={initialFilters}
       toolbarActions={
         <AddStudentDialog
           modules={modules}

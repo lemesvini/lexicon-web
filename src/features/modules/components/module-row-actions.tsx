@@ -1,5 +1,12 @@
 import * as React from "react";
-import { BookOpenIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import {
+  BookOpenIcon,
+  EyeIcon,
+  EyeOffIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  Trash2Icon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +28,7 @@ import { ModuleLessonsDialog } from "@/features/modules/components/module-lesson
 import {
   deleteModule,
   setModuleActive,
+  setModuleOnDashboard,
   type AssignableLesson,
   type ModuleRow,
 } from "@/features/modules/data/modules";
@@ -55,6 +63,18 @@ export function ModuleRowActions({
     }
   };
 
+  const toggleOnDashboard = async () => {
+    setBusy(true);
+    try {
+      await setModuleOnDashboard(module.id, !module.showOnDashboard);
+      onChanged();
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
       <div className="flex justify-end gap-2">
@@ -79,6 +99,14 @@ export function ModuleRowActions({
             <DropdownMenuItem onSelect={() => setEditOpen(true)}>
               <PencilIcon />
               Rename or reorder
+            </DropdownMenuItem>
+            {/* Separate from Activate: this one is only about the homepage's
+                module gallery, not about who can be enrolled. */}
+            <DropdownMenuItem onSelect={() => void toggleOnDashboard()}>
+              {module.showOnDashboard ? <EyeOffIcon /> : <EyeIcon />}
+              {module.showOnDashboard
+                ? "Hide from dashboard"
+                : "Show on dashboard"}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => void toggleActive()}>
               {module.isActive ? "Deactivate" : "Activate"}

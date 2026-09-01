@@ -466,6 +466,63 @@ export async function listGroupAttendance(
   return [...days.values()];
 }
 
+/** A register that has already been taken: the class happened. */
+export type TakenRegister = {
+  groupId: string;
+  /** How many of the marked students turned up. */
+  present: number;
+  /** How many were marked either way. Always > 0 — an untaken register has no
+   *  rows at all (see {@link clearAttendance}). */
+  total: number;
+};
+
+/**
+ * Which classes already have a register, for each of the given dates.
+ *
+ * The dashboard's second question, after "what am I teaching today?": "and which
+ * of it have I already taught?". A row exists for a student only once somebody
+ * marked them in or out, so the presence of any row for a group on a date is the
+ * class having happened — there is no third state to check for.
+ *
+ * Rolled up in JS for the same reason as {@link listGroupAttendance}: PostgREST
+ * has no GROUP BY, and this is a day or two of classes, not a term of them.
+ * Every requested date gets an entry so the caller can tell "nothing taken" from
+ * "not asked for".
+ */
+export async function listRegistersTakenOn(
+  dateKeys: readonly string[],
+): Promise<Map<string, Map<string, TakenRegister>>> {
+  const byDate = new Map<string, Map<string, TakenRegister>>();
+  for (const key of dateKeys) byDate.set(key, new Map());
+  if (dateKeys.length === 0) return byDate;
+
+  const { data, error } = await supabase
+    .from("group_attendance")
+    .select("group_id, class_date, present")
+    .in("class_date", dateKeys as string[]);
+
+  if (error) throw new Error(error.message);
+
+  for (const row of (data ?? []) as {
+    group_id: string;
+    class_date: string;
+    present: boolean | null;
+  }[]) {
+    const forDay = byDate.get(row.class_date);
+    if (!forDay) continue;
+    const tally = forDay.get(row.group_id) ?? {
+      groupId: row.group_id,
+      present: 0,
+      total: 0,
+    };
+    tally.total += 1;
+    if (row.present) tally.present += 1;
+    forDay.set(row.group_id, tally);
+  }
+
+  return byDate;
+}
+
 export type NewGroup = {
   name: string;
   /** Who teaches it. Required in practice — the write policy only accepts the

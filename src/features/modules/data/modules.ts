@@ -16,6 +16,8 @@ export type ModuleRow = {
   name: string;
   position: number;
   isActive: boolean;
+  /** Whether the homepage's module gallery shows a folder for it (0022). */
+  showOnDashboard: boolean;
   /** Lessons currently tagged with this module's name. */
   lessonCount: number;
   /** Students whose current module this is. */
@@ -42,7 +44,7 @@ export async function listModuleOverview(): Promise<{
   const [moduleRows, lessons, students] = await Promise.all([
     supabase
       .from("modules")
-      .select("id, name, position, is_active")
+      .select("id, name, position, is_active, show_on_dashboard")
       .order("position", { ascending: true })
       .order("name", { ascending: true }),
     listCloudLessons(),
@@ -70,6 +72,7 @@ export async function listModuleOverview(): Promise<{
     name: row.name ?? "",
     position: row.position ?? 0,
     isActive: row.is_active !== false,
+    showOnDashboard: row.show_on_dashboard !== false,
     lessonCount: lessonsByModule.get((row.name ?? "").trim()) ?? 0,
     studentCount: studentsByModule.get(row.id) ?? 0,
   }));
@@ -90,6 +93,22 @@ export async function listModuleNames(): Promise<string[]> {
     .eq("is_active", true)
     .order("position", { ascending: true })
     .order("name", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => (row.name ?? "").trim()).filter(Boolean);
+}
+
+/**
+ * The modules a teacher has hidden from the homepage's module gallery, by name.
+ *
+ * Names rather than ids for the same reason as {@link listModuleNames}: what the
+ * gallery groups by is `lessons.module`, which is a name.
+ */
+export async function listDashboardHiddenModules(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("modules")
+    .select("name")
+    .eq("show_on_dashboard", false);
 
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => (row.name ?? "").trim()).filter(Boolean);
@@ -153,6 +172,26 @@ export async function setModuleActive(
   const { error } = await supabase
     .from("modules")
     .update({ is_active: isActive })
+    .eq("id", moduleId);
+
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Shows or hides the module's folder in the homepage's module gallery.
+ *
+ * Nothing to do with {@link setModuleActive}: an active module is one students
+ * can be enrolled into, this is only about what a teacher wants on their own
+ * front page. A hidden module still comes back when it is picked by name in the
+ * Module filter.
+ */
+export async function setModuleOnDashboard(
+  moduleId: string,
+  showOnDashboard: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from("modules")
+    .update({ show_on_dashboard: showOnDashboard })
     .eq("id", moduleId);
 
   if (error) throw new Error(error.message);

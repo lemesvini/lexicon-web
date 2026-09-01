@@ -4,6 +4,7 @@ import { RefreshCwIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FacetedFilter } from "@/components/data-table-faceted-filter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { AddGroupDialog } from "@/features/groups/components/add-group-dialog";
@@ -39,16 +40,25 @@ function formatRate(rate: number | null): string {
  */
 export function GroupsList() {
   const { profile } = useAuth();
+  const profileId = profile?.id;
+  const isAdmin = profile?.role === "admin";
   const navigate = useNavigate();
 
   const [groups, setGroups] = React.useState<GroupRow[]>([]);
   const [teachers, setTeachers] = React.useState<TeacherOption[]>([]);
   const [lessons, setLessons] = React.useState<CloudLessonSummary[]>([]);
   const [filter, setFilter] = React.useState<Filter>("active");
+  // Teacher names, empty for "everyone". Seeded from the rows once they land —
+  // the admin is a teacher too, and their own groups are what they came for.
+  const [teacherFilter, setTeacherFilter] = React.useState<string[]>([]);
   const [status, setStatus] = React.useState<"loading" | "ready" | "error">(
     "loading",
   );
   const [reloadKey, setReloadKey] = React.useState(0);
+
+  // Only the first load seeds the teacher filter. A reload — after a group is
+  // created, say — must leave whatever the user has since chosen alone.
+  const seeded = React.useRef(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -58,6 +68,16 @@ export function GroupsList() {
     Promise.all([listGroups(), listTeacherOptions(), listCloudLessons()])
       .then(([groupRows, teacherOptions, lessonRows]) => {
         if (cancelled) return;
+        if (!seeded.current) {
+          seeded.current = true;
+          // Matched on the id, not on `profile.fullName`: the row falls back to
+          // the teacher's email when they have no name, and a filter naming
+          // nobody would empty the list.
+          const own = groupRows.find(
+            (group) => group.teacherId === profileId,
+          )?.teacher;
+          if (own) setTeacherFilter([own]);
+        }
         setGroups(groupRows);
         setTeachers(teacherOptions);
         setLessons(lessonRows);
@@ -69,21 +89,32 @@ export function GroupsList() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [reloadKey, profileId]);
 
   const refresh = () => {
     setStatus("loading");
     setReloadKey((k) => k + 1);
   };
 
-  const visible =
-    filter === "all"
+  // The teacher facet narrows first: "show archived" and the count under the
+  // heading are both about the teacher being looked at, not about the school.
+  const mine =
+    teacherFilter.length === 0
       ? groups
-      : groups.filter((group) => group.status === "active");
+      : groups.filter((group) => teacherFilter.includes(group.teacher));
 
-  const archivedCount = groups.filter(
+  const visible =
+    filter === "all" ? mine : mine.filter((group) => group.status === "active");
+
+  const archivedCount = mine.filter(
     (group) => group.status === "inactive",
   ).length;
+
+  // Built from the rows rather than from `teachers`, for the same reason the
+  // roster's facet is: a deactivated teacher is out of the picker but their
+  // groups are still here, and a facet that couldn't name them would leave those
+  // rows unreachable.
+  const teacherOptions = [...new Set(groups.map((group) => group.teacher))].sort();
 
   if (status === "loading") {
     return (
@@ -115,6 +146,17 @@ export function GroupsList() {
         </h2>
 
         <div className="flex items-center gap-2">
+          {/* Admin-only, like the roster's: a teacher's list is all their own,
+              so the dropdown would offer one name and change nothing. */}
+          {isAdmin && (
+            <FacetedFilter
+              label="Teacher"
+              options={teacherOptions}
+              clearLabel="All teachers"
+              value={teacherFilter}
+              onValueChange={setTeacherFilter}
+            />
+          )}
           {archivedCount > 0 && (
             <Button
               variant="ghost"
@@ -149,7 +191,9 @@ export function GroupsList() {
         <p className="p-8 text-center text-sm text-muted-foreground">
           {groups.length === 0
             ? "No groups yet. Start one to keep a register."
-            : "No active groups. Show the archived ones to find yours."}
+            : mine.length === 0
+              ? "No groups for that teacher. Clear the filter to see the rest."
+              : "No active groups. Show the archived ones to find yours."}
         </p>
       ) : (
         <ul className="divide-y">

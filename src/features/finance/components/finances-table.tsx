@@ -3,6 +3,7 @@ import { RefreshCwIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
+import { FacetedFilter } from "@/components/data-table-faceted-filter";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { financesColumns } from "@/features/finance/components/finances-columns";
@@ -20,7 +21,13 @@ import {
  *
  * Who appears is decided in the database, not here: the roster's RLS gives a
  * teacher their own students and the admin everyone (see 0006), so a teacher's
- * total is their own book and the admin's is the school's.
+ * total is their own book, and one teacher cannot read another's fees however
+ * this page is driven.
+ *
+ * The admin sees everyone, but opens on themselves: the teacher filter starts on
+ * the signed-in user and the summary strip is computed from what it leaves, so
+ * the month's total is the total for the teacher being looked at rather than the
+ * school's. Clearing the filter puts the school back.
  *
  * Inactive students stay in the list and out of the totals. They aren't billed,
  * so counting them would overstate the month — but hiding them would make a
@@ -28,19 +35,36 @@ import {
  */
 export function FinancesTable() {
   const { profile } = useAuth();
+  const profileId = profile?.id;
   const isAdmin = profile?.role === "admin";
 
   const [rows, setRows] = React.useState<FinanceRow[]>([]);
+  // Teacher names, empty for "everyone". Held here rather than in the table's
+  // own toolbar because the figures above the table have to move with it, and a
+  // column filter is only known to the column.
+  const [teacherFilter, setTeacherFilter] = React.useState<string[]>([]);
   const [status, setStatus] = React.useState<"loading" | "ready" | "error">(
     "loading",
   );
   const [reloadKey, setReloadKey] = React.useState(0);
+
+  // Only the first load seeds the filter; a reload after a fee is edited must
+  // leave whatever the user has since chosen alone.
+  const seeded = React.useRef(false);
 
   React.useEffect(() => {
     let cancelled = false;
     listFinances()
       .then((next) => {
         if (cancelled) return;
+        if (!seeded.current) {
+          seeded.current = true;
+          // Matched on the id rather than on `profile.fullName`: the column
+          // falls back to the teacher's email when they have no name, and a
+          // filter naming nobody would show an empty book and a zero total.
+          const own = next.find((row) => row.teacherId === profileId)?.teacher;
+          if (own) setTeacherFilter([own]);
+        }
         setRows(next);
         setStatus("ready");
       })
@@ -50,7 +74,7 @@ export function FinancesTable() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [reloadKey, profileId]);
 
   const reload = React.useCallback(() => setReloadKey((k) => k + 1), []);
 
@@ -64,7 +88,21 @@ export function FinancesTable() {
     [isAdmin, reload],
   );
 
-  const summary = React.useMemo(() => summarize(rows), [rows]);
+  // Everything below this line — the figures, the table, the count under it —
+  // is about one teacher's students at a time.
+  const visible = React.useMemo(
+    () =>
+      teacherFilter.length === 0
+        ? rows
+        : rows.filter((row) => teacherFilter.includes(row.teacher)),
+    [rows, teacherFilter],
+  );
+
+  // From the teacher's rows, not the table's filtered ones: the search box and
+  // the status facet are ways of finding a student, and a monthly total that
+  // dropped every time someone typed a name would be a number nobody could
+  // trust. Inactive students are already out of it — see `summarize`.
+  const summary = React.useMemo(() => summarize(visible), [visible]);
 
   // Built from the rows rather than from a teacher list, for the same reason as
   // the roster's: a deactivated teacher still has students here, and a facet
@@ -91,7 +129,22 @@ export function FinancesTable() {
   return (
     <div className="space-y-6">
       <div className="grid gap-px overflow-hidden rounded-md border bg-border sm:grid-cols-2 lg:grid-cols-4">
-        <Figure label="Monthly" value={formatMoney(summary.monthlyRevenue)} />
+        {/* Named, because the same figure is now one teacher's book or the
+            whole school's depending on a dropdown, and a total that big should
+            never leave you guessing which one you're reading. */}
+        <Figure
+          label="Monthly"
+          value={formatMoney(summary.monthlyRevenue)}
+          hint={
+            isAdmin
+              ? teacherFilter.length === 1
+                ? teacherFilter[0]
+                : teacherFilter.length > 1
+                  ? `${teacherFilter.length} teachers`
+                  : "Across the school"
+              : undefined
+          }
+        />
         <Figure
           label="Paying students"
           value={String(summary.payingCount)}
@@ -111,20 +164,23 @@ export function FinancesTable() {
 
       <DataTable
         columns={columns}
-        data={rows}
+        data={visible}
         filterColumn="name"
         filterPlaceholder="Filter students..."
+        // The teacher picker is the caller's, not a column facet: the summary
+        // strip is filtered by it too, and only this component can see both.
+        toolbarActions={
+          isAdmin ? (
+            <FacetedFilter
+              label="Teacher"
+              options={teacherOptions}
+              clearLabel="All teachers"
+              value={teacherFilter}
+              onValueChange={setTeacherFilter}
+            />
+          ) : undefined
+        }
         facets={[
-          ...(isAdmin
-            ? [
-                {
-                  columnId: "teacher",
-                  label: "Teacher",
-                  options: teacherOptions,
-                  clearLabel: "All teachers",
-                },
-              ]
-            : []),
           {
             columnId: "status",
             label: "Status",
@@ -132,7 +188,11 @@ export function FinancesTable() {
             clearLabel: "All statuses",
           },
         ]}
-        emptyMessage="No students match."
+        emptyMessage={
+          rows.length && !visible.length
+            ? "No students for that teacher."
+            : "No students match."
+        }
         countLabel={(count) => `${count} student${count === 1 ? "" : "s"}`}
       />
     </div>

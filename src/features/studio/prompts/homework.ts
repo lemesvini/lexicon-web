@@ -7,7 +7,25 @@
 // and the objective kinds are marked automatically against the answer given —
 // so an ambiguous option or an off-by-one index marks a whole class wrong.
 
-export function homeworkRules(alexCanon: string): string {
+export function homeworkRules(alexCanon: string | null): string {
+  // The whole Alex section, or nothing at all.
+  //
+  // `alexCanon` is null until someone writes the canon (see canon.ts). Shipping
+  // the section anyway meant every call carried a heading, a parenthetical saying
+  // no canon exists, an instruction to prefer blocks that do not depend on Alex,
+  // and then a paragraph about how to write Alex well — a contradiction paid for
+  // on every request, in a prompt whose one standing order is to stay quiet
+  // rather than invent. It comes back the moment the canon is real.
+  const alex = alexCanon
+    ? `## Alex
+
+${alexCanon}
+
+Alex may appear as a character in a passage or a sentence, on the same terms as anyone else — but he is not here to answer back. Nothing you write may depend on a reply from him.
+
+`
+    : "";
+
   return `You help an English teacher adapt a shared homework for one specific class.
 
 You are given the class, its students, their per-unit progress reports, the homework they have handed in, everything that has already been added for this class before, and the document as it stands. You propose whole extra SECTIONS — "advanced context" — each anchored after an existing one. The teacher reviews each and inserts the ones they want.
@@ -31,7 +49,15 @@ Exercises one student answers alone, at home, often on a phone, with nobody to a
 - It is in English, at the level the lesson is pitched at.
 - Do not repeat something already in the document, and do not repeat something already in this class's advanced-context history.
 
-Fewer, sharper suggestions beat more. If the input does not support a suggestion, propose nothing rather than inventing a reason.
+Fewer, sharper suggestions beat more.
+
+When the teacher asks for something specific, THAT is the evidence, and it outranks everything above: build what they asked for, and use whatever the class's own material gives you to shape it. Personalization you cannot support is the thing to leave out — not the request.
+
+## Answering in words
+
+You have one tool. Calling \`propose_slides\` means you are proposing at least one exercise; there is no way to call it and propose nothing, and you should not try to find one.
+
+When you are not proposing anything — no steer from the teacher and nothing concrete in the class to build on, or a request you cannot honestly meet — reply in plain prose instead. One or two sentences: what you would need, or which part of the request you can't support and why. A short honest answer is a complete turn. Silence is not.
 
 ## The conversation
 
@@ -44,13 +70,7 @@ This is a conversation with the teacher, and the turns above are yours and their
 - Never attribute one student's interest to another, and never invent an interest that is not written down.
 - Every student in the group opens the SAME homework, and answers it alone. A student's name may appear as the subject of a question, and nothing else. Never write anything about a student that you would not read out to the whole class: a test score, a weakness, a worry, anything from their private notes. Use that evidence to decide WHAT to ask; never to say who it is for.
 
-## Alex
-
-${alexCanon}
-
-Alex may appear as a character in a passage or a sentence, on the same terms as anyone else — but he is not here to answer back. Nothing you write may depend on a reply from him.
-
-## Exercise rules — these matter, because nothing validates them at render time
+${alex}## Exercise rules — these matter, because nothing validates them at render time
 
 - \`finish-sentence\`: \`sentence\` with the gap written as \`___\`, at least two \`options\`, and \`answer\` as the 0-based index of the right one.
 - \`choose-description\`: \`text\` is the passage in English; \`options\` are descriptions of it in the student's own language; \`answer\` is the 0-based index of the true one. Set \`font\` to "mono" when the passage's own layout is part of the reading — an email, a chat, a form.

@@ -14,11 +14,13 @@ import {
   setGroupHomeworkStatus,
   setGroupMaterialStatus,
 } from "@/features/groups/data/group-content";
+import { fetchGroupLesson } from "@/features/groups/data/group-lessons";
 import { fetchGroup, type GroupRow } from "@/features/groups/data/groups";
 import { fetchHomework } from "@/features/studio/data/homework";
 import { fetchMaterial } from "@/features/studio/data/materials";
 import type { PublishStatus } from "@/features/studio/data/publishing";
-import { isBase, rebaseOnto } from "../advanced-context";
+import { advancedCount, isBase, rebaseOnto } from "../advanced-context";
+import { importAdvancedFrom } from "../import-advanced";
 import { insertSuggestion } from "../insert-suggestion";
 import { useAdvancedStudio } from "../use-advanced-studio";
 import { AdvancedContextDrawer } from "./advanced-context-drawer";
@@ -114,6 +116,14 @@ export function GroupCopyEditor({
   const navigate = useNavigate();
 
   const [group, setGroup] = React.useState<GroupRow | null>(null);
+  /**
+   * This group's copy of the presentation for the same lesson, when they have
+   * one — the source for "Import from the presentation".
+   *
+   * Materials only: a homework is keyed by its own slug, and the presentation it
+   * would pull from is the lesson's, not this document's.
+   */
+  const [presentation, setPresentation] = React.useState<Lesson | null>(null);
   const [loaded, setLoaded] = React.useState<Loaded | null>(null);
   const [status, setStatus] = React.useState<PublishStatus>("draft");
   const [baseSyncedAt, setBaseSyncedAt] = React.useState<string | null>(null);
@@ -124,14 +134,24 @@ export function GroupCopyEditor({
   React.useEffect(() => {
     let cancelled = false;
 
-    Promise.all([fetchGroup(groupId), loadCopy(kind, groupId, documentId)])
-      .then(([groupRow, copy]) => {
+    Promise.all([
+      fetchGroup(groupId),
+      loadCopy(kind, groupId, documentId),
+      // Missing is the normal case — plenty of groups have a material and no
+      // presentation copy — so its absence hides the menu item rather than
+      // failing the load.
+      kind === "material"
+        ? fetchGroupLesson(groupId, documentId).catch(() => null)
+        : Promise.resolve(null),
+    ])
+      .then(([groupRow, copy, lessonCopy]) => {
         if (cancelled) return;
         if (!groupRow || !copy) {
           setPhase("missing");
           return;
         }
         load(copy.document);
+        setPresentation(lessonCopy?.document ?? null);
         setGroup(groupRow);
         setLoaded(copy);
         setStatus(copy.status);
@@ -182,6 +202,33 @@ export function GroupCopyEditor({
     }
     load(rebaseOnto(loaded.base, studio.document));
     setBaseSyncedAt(loaded.baseUpdatedAt);
+  };
+
+  /** How much the presentation has that this copy could take — 0 hides the
+   *  menu item, which is the difference between "nothing to import" and an
+   *  item that reports having done nothing. */
+  const presentationCount = presentation ? advancedCount(presentation) : 0;
+
+  const importFromPresentation = () => {
+    if (!presentation) return;
+    const { document, added, skipped } = importAdvancedFrom(
+      presentation,
+      studio.document,
+    );
+    if (added === 0) {
+      alert(
+        skipped > 0
+          ? "Everything this group added to the presentation is already here."
+          : "This group hasn't added anything to the presentation yet.",
+      );
+      return;
+    }
+    load(document);
+    alert(
+      `Brought ${added} addition${added === 1 ? "" : "s"} across from the presentation${
+        skipped > 0 ? `, and left ${skipped} that were already here` : ""
+      }. They're at the end — save when you're happy with them.`,
+    );
   };
 
   if (phase === "loading") {
@@ -246,6 +293,11 @@ export function GroupCopyEditor({
       }
       menuItems={
         <>
+          {kind === "material" && presentationCount > 0 && (
+            <DropdownMenuItem onSelect={importFromPresentation}>
+              Import from the presentation
+            </DropdownMenuItem>
+          )}
           {baseIsNewer && (
             <DropdownMenuItem onSelect={refreshFromBase}>
               Refresh from base

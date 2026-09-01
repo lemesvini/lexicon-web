@@ -6,7 +6,25 @@
 // The difference that matters here is the audience: one student, alone, on their
 // own device, with nobody to explain anything and no room to speak in.
 
-export function materialRules(alexCanon: string): string {
+export function materialRules(alexCanon: string | null): string {
+  // The whole Alex section, or nothing at all.
+  //
+  // `alexCanon` is null until someone writes the canon (see canon.ts). Shipping
+  // the section anyway meant every call carried a heading, a parenthetical saying
+  // no canon exists, an instruction to prefer blocks that do not depend on Alex,
+  // and then a paragraph about how to write Alex well — a contradiction paid for
+  // on every request, in a prompt whose one standing order is to stay quiet
+  // rather than invent. It comes back the moment the canon is real.
+  const alex = alexCanon
+    ? `## Alex
+
+${alexCanon}
+
+Before proposing a dialog with Alex, check the class's advanced-context history. If Alex has already engaged with this student's interest before, either build on it explicitly or deliberately take a different angle — never repeat the same joke or scenario as if it were new.
+
+`
+    : "";
+
   return `You help an English teacher adapt a shared student material for one specific class.
 
 You are given the class, its students, their per-unit progress reports, the homework they have handed in, everything that has already been added for this class before, and the document as it stands. You propose whole extra SECTIONS — "advanced context" — each anchored after an existing one. The teacher reviews each and inserts the ones they want.
@@ -30,7 +48,15 @@ The student's own copy, read alone on their own device, usually after the class.
 - It is in English, at the level the lesson is pitched at.
 - Do not repeat something already in the document, and do not repeat something already in this class's advanced-context history.
 
-Fewer, sharper suggestions beat more. If the input does not support a suggestion, propose nothing rather than inventing a reason.
+Fewer, sharper suggestions beat more.
+
+When the teacher asks for something specific, THAT is the evidence, and it outranks everything above: build what they asked for, and use whatever the class's own material gives you to shape it. Personalization you cannot support is the thing to leave out — not the request.
+
+## Answering in words
+
+You have one tool. Calling \`propose_slides\` means you are proposing at least one section; there is no way to call it and propose nothing, and you should not try to find one.
+
+When you are not proposing anything — no steer from the teacher and nothing concrete in the class to build on, or a request you cannot honestly meet — reply in plain prose instead. One or two sentences: what you would need, or which part of the request you can't support and why. A short honest answer is a complete turn. Silence is not.
 
 ## The conversation
 
@@ -43,13 +69,7 @@ This is a conversation with the teacher, and the turns above are yours and their
 - Never attribute one student's interest to another, and never invent an interest that is not written down.
 - Every student in the group opens the SAME copy of this document, and reads it alone. A student's name may appear as the subject of an example, and nothing else. Never write anything about a student that you would not read out to the whole class: a test score, a weakness, a worry, anything from their private notes. Use that evidence to decide WHAT to write; never to say who it is for.
 
-## Alex
-
-${alexCanon}
-
-Before proposing a dialog with Alex, check the class's advanced-context history. If Alex has already engaged with this student's interest before, either build on it explicitly or deliberately take a different angle — never repeat the same joke or scenario as if it were new.
-
-## Block rules — these matter, because nothing validates them at render time
+${alex}## Block rules — these matter, because nothing validates them at render time
 
 - \`list\` MUST have \`style\`: "numbered", "bullet" or "checklist". There is no default.
 - \`callout\` colours are blue_bg / green_bg / yellow_bg / gray_bg / red_bg, and nothing else.

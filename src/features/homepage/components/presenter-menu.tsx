@@ -19,6 +19,7 @@ import {
   type ClassView,
 } from "@/features/homepage/components/class-view-toggle";
 import { listCloudLessons, listCloudModules } from "@/lib/lessons-cloud";
+import { listDashboardHiddenModules } from "@/features/modules/data/modules";
 import { putLocalLesson } from "@/lib/lesson-store";
 import { parseLesson } from "@/features/studio/model";
 
@@ -65,6 +66,11 @@ export default function PresenterMenu() {
   const [cloud, setCloud] = React.useState<ClassRow[]>([]);
   const [local, setLocal] = React.useState<ClassRow[]>([]);
   const [modules, setModules] = React.useState<string[]>([]);
+  // Modules with "Show on dashboard" turned off. They stay out of the module
+  // gallery's grid but keep their place in the filter, the cover gallery and
+  // the table — this is about what the front page leads with, not about hiding
+  // classes from the person teaching them.
+  const [hiddenModules, setHiddenModules] = React.useState<string[]>([]);
   const [status, setStatus] = React.useState<"loading" | "ready" | "error">(
     "loading",
   );
@@ -87,11 +93,16 @@ export default function PresenterMenu() {
     // The module list is its own query rather than being derived from the rows:
     // it is the full set of modules in the library, independent of what the
     // table currently holds.
-    Promise.all([listCloudLessons(), listCloudModules()])
-      .then(([lessons, moduleNames]) => {
+    Promise.all([
+      listCloudLessons(),
+      listCloudModules(),
+      listDashboardHiddenModules(),
+    ])
+      .then(([lessons, moduleNames, hidden]) => {
         if (cancelled) return;
         setCloud(lessons.map(cloudClassRow));
         setModules(moduleNames);
+        setHiddenModules(hidden);
         setStatus("ready");
       })
       .catch(() => {
@@ -190,6 +201,7 @@ export default function PresenterMenu() {
             <ModulesGallery
               rows={rows}
               revealedModules={selectedModules}
+              hiddenModules={hiddenModules}
               emptyMessage="No classes match."
             />
           ) : view === "gallery" ? (

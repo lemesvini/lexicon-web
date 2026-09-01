@@ -20,8 +20,17 @@
 // of its own gets a name and a place in the running order, which is what the
 // teacher actually wanted.
 //
-// `propose_slides` is a forced tool call, so the model fills a schema instead of
-// writing JSON inside a code fence for us to scrape. That still isn't trust: the
+// `propose_slides` was a FORCED tool call, and that was the bug behind the
+// longest-running complaint about this feature. A model obliged to emit the tool
+// on its first breath cannot answer "here is why I can't" — and the schema let it
+// say nothing at all, because an empty array is a valid array. So a teacher who
+// asked for something concrete got "Nothing to suggest", eighteen seconds later,
+// with no reasoning streamed and no reason given.
+//
+// Now the tool is offered rather than forced, and `suggestions` has `minItems: 1`.
+// Those two together make silence impossible to fake: propose something, or say
+// in words why not. The words come back as an `answer` event and are shown as the
+// agent's reply. That still isn't trust: the
 // client re-validates every suggestion against a zod schema before it can be
 // inserted (see src/features/studio/data/suggest-context.ts). `parseLesson` checks
 // nothing, and a block with a colour that doesn't exist throws at render time — on
@@ -32,15 +41,21 @@
 // up to it:
 //
 //   1. rulesFor(kind) cached   identical for every call of that kind, forever
-//   2. bookOverview   cached   identical until the curriculum changes
+//   2. bookOverview   —        identical until the curriculum changes
 //   3. classDossier   cached   identical until something about THIS class changes
 //   4. lessonNote     uncached changes per lesson, and is a couple of lines
 //
-// The fourth and last breakpoint goes on the conversation instead — the message
-// just before the teacher's new question — so the lesson and every earlier turn
-// are read from cache rather than re-sent. That is what makes a conversation get
-// CHEAPER per turn rather than steadily more expensive: the only thing paying
-// full price on turn four is the sentence the teacher just typed.
+// Only two of the four carry a breakpoint. There are four to spend in the whole
+// request, and one between blocks 1 and 3 would buy a read point for block 2 —
+// a heading and a sentence. The other two go on `messages`: one on the lesson,
+// which is the largest thing there and never changes within a conversation, and
+// the last on the message just before the teacher's new question.
+//
+// That is what makes a conversation get CHEAPER per turn rather than steadily
+// more expensive: the only thing paying full price on turn four is the sentence
+// the teacher just typed. It only holds while the earlier turns are BYTE-stable,
+// which is a live constraint on the drawer that builds them — see `summarise` in
+// src/features/studio/components/advanced-context-drawer.tsx.
 //
 // Nothing after that breakpoint is cached, deliberately: `cache_control` on
 // content that changes every call buys no hit and costs a write.
@@ -49,7 +64,7 @@
 //
 // Deploy: supabase functions deploy suggest-advanced-context
 
-import Anthropic from "npm:@anthropic-ai/sdk@0.65.0";
+import Anthropic from "npm:@anthropic-ai/sdk@0.123.0";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 import { corsHeaders, HttpError, json, requireStaff } from "../_shared/admin.ts";
@@ -315,6 +330,9 @@ const toolFor = (kind: Kind) => ({
     properties: {
       suggestions: {
         type: "array",
+        // Calling this tool means proposing something. "Nothing" is a sentence,
+        // not an empty array — see the header.
+        minItems: 1,
         maxItems: 6,
         items: {
           type: "object",
@@ -362,13 +380,18 @@ const toolFor = (kind: Kind) => ({
 // value that changed per call would invalidate the cache prefix for every call
 // in the system, not just this one.
 
-const RULES: Record<Kind, (alexCanon: string) => string> = {
+const RULES: Record<Kind, (alexCanon: string | null) => string> = {
   lesson: lessonRules,
   material: materialRules,
   homework: homeworkRules,
 };
 
-const rulesFor = (kind: Kind) => RULES[kind](ALEX_CANON);
+// `null` rather than the placeholder while the canon is unwritten: the prompts
+// drop their Alex section entirely on null, and a section that announces its own
+// absence is worse than no section — it spends tokens telling the model about a
+// character it then forbids it from using.
+const rulesFor = (kind: Kind) =>
+  RULES[kind](CANON_PROVIDED ? ALEX_CANON : null);
 
 // ── Summaries ────────────────────────────────────────────────────────────────
 
@@ -888,6 +911,20 @@ ${studentBlock}`,
       .filter(Boolean)
       .join("\n\n");
 
+    // What the dossier actually came out as. The model refusing to invent is
+    // correct behaviour and looks exactly like a bug from the drawer, so the one
+    // question worth being able to answer afterwards is whether it was given
+    // anything to work from.
+    console.log("[suggest] dossier", {
+      group: group.name,
+      groupContext: (group.context ?? "").length,
+      students: students.length,
+      withNotes: students.filter((s) => (s.notes ?? "").trim() !== "").length,
+      reports: (reports ?? []).length,
+      slides: (doc.slides ?? []).length,
+      dossierChars: classDossier.length,
+    });
+
     // Uncached, and empty until the progression in canon.ts is real — a note built
     // from a placeholder reads to the model as a constraint that happens to say
     // nothing, which is worse than saying nothing at all.
@@ -945,8 +982,14 @@ ${slides}`;
     // re-send, which is what makes a long conversation cheaper per turn instead
     // of steadily more expensive.
     const cacheAt = messages.length - 2;
+
+    // Also the lesson itself, always. It is the largest thing in `messages` and
+    // it never changes within a conversation — but the turns after it do, and
+    // when one of them shifts (a trimmed history, a re-summarised turn) a
+    // breakpoint further down finds nothing and the lesson is re-sent at full
+    // price. Its own breakpoint is a read point that no later churn can move.
     const cachedMessages = messages.map((message, i) =>
-      i === cacheAt
+      i === cacheAt || i === 0
         ? {
             role: message.role,
             content: [
@@ -966,7 +1009,11 @@ ${slides}`;
         text: rulesFor(kind),
         cache_control: { type: "ephemeral" as const },
       },
-      { type: "text" as const, text: bookOverview, cache_control: { type: "ephemeral" as const } },
+      // No breakpoint here on purpose. Four is the ceiling, and a breakpoint
+      // buys a read point only for what lies between it and the one before —
+      // which here is a heading and a sentence. The slot is worth more on the
+      // lesson (below), which is kilobytes and survives every turn.
+      { type: "text" as const, text: bookOverview },
       { type: "text" as const, text: classDossier, cache_control: { type: "ephemeral" as const } },
       ...(lessonNote ? [{ type: "text" as const, text: lessonNote }] : []),
     ];
@@ -979,17 +1026,29 @@ ${slides}`;
       // Roomy on purpose: adaptive thinking draws from the same budget as the
       // answer, and a run that spends it all reasoning returns no tool call at
       // all — which reads downstream as "the model had nothing to suggest".
-      max_tokens: 16000,
+      // 16000 was not roomy enough: six slides of blocks plus the reasoning that
+      // chose them truncates the tool call, and a truncated tool call arrives as
+      // unparseable JSON — an empty `input`, which is indistinguishable here from
+      // an honest "nothing". This is a streamed request, so a high ceiling costs
+      // nothing but the tokens actually spent.
+      max_tokens: 64000,
       // `display: "summarized"` is load-bearing: the default on Sonnet 5 is
       // "omitted", which streams thinking blocks with empty text. Without this the
       // drawer would show an empty panel and look broken.
       thinking: { type: "adaptive", display: "summarized" },
+      // Thinking is billed as output, and this is not a hard problem — it is a
+      // reading problem over a dossier that is already in front of the model.
+      // `high` (the default) spends several times the reasoning for suggestions
+      // a teacher then reads one by one anyway. Raise it if the suggestions get
+      // shallow; it is the first dial to turn either way.
+      output_config: { effort: "medium" },
       system,
-      // Forced: the answer we want is a filled schema, and leaving the choice open
-      // is how you end up parsing JSON out of a paragraph of preamble. (Forced
-      // tool choice alongside thinking is fine on the Claude API; only Bedrock
-      // requires thinking to be off.)
-      tool_choice: { type: "tool", name: tool.name },
+      // Offered, not forced. Forcing it bought a guaranteed schema and cost
+      // everything else: the model could not decline in words, could not ask a
+      // question, and — going by the runs that prompted this — did not stream a
+      // sentence of reasoning before answering. The schema is still guaranteed
+      // when the tool IS called, which is the half that mattered.
+      tool_choice: { type: "auto" },
       tools: [tool],
       messages: cachedMessages,
     });
@@ -1023,12 +1082,42 @@ ${slides}`;
             cacheWrite: message.usage.cache_creation_input_tokens,
             cacheRead: message.usage.cache_read_input_tokens,
             output: message.usage.output_tokens,
+            // Both of these are here because their absence is what a silent
+            // empty answer looks like: `stop` says whether the model finished or
+            // was cut off mid-tool-call, and `blocks` says whether it thought at
+            // all before answering.
+            stop: message.stop_reason,
+            blocks: message.content.map((part) => part.type).join(","),
           });
+
+          // Cut off by `max_tokens`. The tool call that comes back is real but
+          // half-written, and its `input` parses to `{}` — which would otherwise
+          // reach the teacher as "nothing to suggest", sending them off to write
+          // class context that was never the problem.
+          if (message.stop_reason === "max_tokens") {
+            send("error", {
+              error:
+                "The model ran out of room mid-answer, so the suggestions came back incomplete. Ask again, or ask for fewer.",
+            });
+            return;
+          }
+
+          // What it said in words, if anything. With the tool no longer forced
+          // this is a real answer — "the class context is empty, so I have
+          // nothing to build on" is worth infinitely more to a teacher than an
+          // empty list and a guess about which field to go and fill in.
+          const said = message.content
+            .filter((part) => part.type === "text")
+            .map((part) => (part as { text: string }).text)
+            .join("\n\n")
+            .trim();
 
           const use = message.content.find((part) => part.type === "tool_use");
           if (!use || use.type !== "tool_use") {
-            send("error", { error: "The model didn't return any suggestions." });
+            if (said) send("answer", { answer: said });
+            else send("error", { error: "The model didn't return any suggestions." });
           } else {
+            if (said) send("answer", { answer: said });
             // Normally an array. Sometimes a JSON string OF that array — a
             // forced tool call filling an array-typed parameter with its own
             // serialization. Parsed here so the client is handed the shape the
@@ -1045,6 +1134,16 @@ ${slides}`;
                 );
               }
             }
+            // An empty array here is a real answer — and the one the teacher
+            // is most likely to come back and ask about. Log the shape that
+            // produced it, so the next question can be answered from the logs.
+            if (list.length === 0) {
+              console.log("[suggest] empty", {
+                rawType: Array.isArray(raw) ? "array" : typeof raw,
+                keys: Object.keys(use.input as Record<string, unknown>).join(","),
+              });
+            }
+
             send("result", { suggestions: list });
           }
         } catch (err) {

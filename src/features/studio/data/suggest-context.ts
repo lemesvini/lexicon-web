@@ -187,6 +187,10 @@ export type ContextSuggestion = {
 
 export type SuggestionResult = {
   suggestions: ContextSuggestion[];
+  /** What the agent said in words, if it said anything. Since the tool stopped
+   *  being forced this is where a refusal, a question, or a note about what it
+   *  would need arrives — the things an empty list used to stand in for. */
+  answer: string;
   /** How many the model returned that didn't survive validation. Shown rather
    *  than swallowed: a run where half were dropped is worth knowing about. */
   discarded: number;
@@ -290,8 +294,11 @@ export async function suggestAdvancedContext(
     );
   }
 
-  const raw = await readSuggestions(response.body, options.onThinking);
-  return validate(kind, raw);
+  const { suggestions, answer } = await readSuggestions(
+    response.body,
+    options.onThinking,
+  );
+  return { ...validate(kind, suggestions), answer };
 }
 
 /**
@@ -306,7 +313,7 @@ export async function suggestAdvancedContext(
 async function readSuggestions(
   body: ReadableStream<Uint8Array>,
   onThinking?: (delta: string) => void,
-): Promise<unknown[]> {
+): Promise<{ suggestions: unknown[]; answer: string }> {
   // Decoded by hand rather than through `TextDecoderStream`: a UTF-8 character can
   // straddle two chunks, and `{ stream: true }` is what holds the halves together
   // — which matters here because the reasoning is full of em dashes and accented
@@ -316,6 +323,7 @@ async function readSuggestions(
 
   let buffer = "";
   let suggestions: unknown[] | null = null;
+  let answer: string | null = null;
   let failure: string | null = null;
 
   for (;;) {
@@ -351,6 +359,9 @@ async function readSuggestions(
         if (typeof delta === "string") onThinking?.(delta);
       } else if (event === "result") {
         suggestions = toList((data as { suggestions?: unknown }).suggestions);
+      } else if (event === "answer") {
+        const text = (data as { answer?: unknown }).answer;
+        if (typeof text === "string") answer = text;
       } else if (event === "error") {
         const message = (data as { error?: unknown }).error;
         failure = typeof message === "string" ? message : "The model call failed.";
@@ -359,13 +370,15 @@ async function readSuggestions(
   }
 
   if (failure) throw new Error(failure);
-  if (!suggestions) {
-    // The stream ended without either event — a dropped connection, or the
+  if (!suggestions && answer === null) {
+    // The stream ended without any of the three — a dropped connection, or the
     // function dying mid-flight. Saying so is better than showing an empty list,
     // which reads as "the model had nothing to suggest".
     throw new Error("The connection closed before the suggestions arrived.");
   }
-  return suggestions;
+  // An answer with no tool call is a complete turn: it declined, or asked
+  // something back.
+  return { suggestions: suggestions ?? [], answer: answer ?? "" };
 }
 
 /**
@@ -392,7 +405,12 @@ function toList(value: unknown): unknown[] {
   return [];
 }
 
-function validate(kind: SuggestKind, raw: unknown[]): SuggestionResult {
+/** The suggestions half only — the words the agent said arrive on their own
+ *  event, and are joined back on by the caller. */
+function validate(
+  kind: SuggestKind,
+  raw: unknown[],
+): Omit<SuggestionResult, "answer"> {
   const blockSchema = BLOCKS_BY_KIND[kind];
   const suggestions: ContextSuggestion[] = [];
   const problems: string[] = [];

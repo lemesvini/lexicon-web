@@ -65,6 +65,25 @@ export function modulesColumns({
       ),
     },
     {
+      id: "dashboard",
+      // Same trick as `status`: the accessor is the label, so the faceted filter
+      // and the sort read as words rather than as booleans.
+      accessorFn: (row) => (row.showOnDashboard ? "Shown" : "Hidden"),
+      header: ({ column }) => (
+        <SortableHeader column={column} label="Dashboard" />
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => (
+        <span
+          className={
+            row.original.showOnDashboard ? "" : "text-muted-foreground"
+          }
+        >
+          {row.getValue("dashboard")}
+        </span>
+      ),
+    },
+    {
       id: "actions",
       header: () => <span className="sr-only">Actions</span>,
       enableSorting: false,
