@@ -1119,27 +1119,61 @@ ${slides}`;
           } else {
             if (said) send("answer", { answer: said });
             // Normally an array. Sometimes a JSON string OF that array — a
-            // forced tool call filling an array-typed parameter with its own
+            // tool call filling an array-typed parameter with its own
             // serialization. Parsed here so the client is handed the shape the
             // event claims to carry, whichever way it came back.
             const raw = (use.input as { suggestions?: unknown }).suggestions;
-            let list: unknown[] = Array.isArray(raw) ? raw : [];
-            if (typeof raw === "string") {
+            let list: unknown[] = [];
+            // Not "the model proposed nothing" — "the model proposed something
+            // and it arrived in a shape this can't read". The two must not
+            // share an exit: an empty `result` is rendered as a considered no,
+            // and sends the teacher off to write class context that was never
+            // the problem. See the drawer's empty state.
+            let malformed: string | null = null;
+
+            if (Array.isArray(raw)) {
+              list = raw;
+            } else if (typeof raw === "string") {
               try {
                 const parsed = JSON.parse(raw);
                 if (Array.isArray(parsed)) list = parsed;
-              } catch {
-                console.warn(
-                  "[suggest] suggestions came back as an unparseable string",
-                );
+                else malformed = `string parsed to ${typeof parsed}, not an array`;
+              } catch (err) {
+                malformed = `unparseable string (${(err as Error).message})`;
               }
+            } else if (raw !== undefined) {
+              malformed = `suggestions was ${typeof raw}, not an array`;
             }
+
+            if (malformed) {
+              // The string itself, not just its shape. Which malformation this
+              // is — markdown-fenced, single-quoted, doubly-escaped, cut off
+              // mid-object — decides the fix, and the exception message alone
+              // names none of them. Clipped because a full six-slide answer is
+              // kilobytes and this is a log line, and only the head is needed:
+              // every one of those defects shows in the first characters, and a
+              // truncation shows in the last.
+              const text = typeof raw === "string" ? raw : JSON.stringify(raw);
+              console.error("[suggest] malformed tool input", {
+                why: malformed,
+                length: text?.length ?? 0,
+                head: text?.slice(0, 1200),
+                tail: text && text.length > 1200 ? text.slice(-400) : undefined,
+                keys: Object.keys(use.input as Record<string, unknown>).join(","),
+              });
+              send("error", {
+                error:
+                  "The suggestions came back in a shape this couldn't read, so they were dropped. Ask again — this is a fault on our side, not a verdict on the class.",
+              });
+              return;
+            }
+
             // An empty array here is a real answer — and the one the teacher
             // is most likely to come back and ask about. Log the shape that
             // produced it, so the next question can be answered from the logs.
             if (list.length === 0) {
               console.log("[suggest] empty", {
-                rawType: Array.isArray(raw) ? "array" : typeof raw,
+                rawType: raw === undefined ? "undefined" : "array",
                 keys: Object.keys(use.input as Record<string, unknown>).join(","),
               });
             }

@@ -4,7 +4,9 @@ import { ChevronLeftIcon, ChevronRightIcon, RefreshCwIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FacetedFilter } from "@/components/data-table-faceted-filter";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 import {
   byStartTime,
   formatTime,
@@ -91,6 +93,11 @@ function formatDayNumber(date: Date): string {
  * this is the other question — the shape of the week, all of it at once, which
  * is what anyone moving a class or fitting in a new group actually needs to see.
  *
+ * Whose week it is follows the roster and the groups list: the database already
+ * hands a teacher nothing but their own groups (0007), and the admin — who sees
+ * every one of them — gets the timetable opened on their own classes, with the
+ * teacher dropdown there to widen it back out to the school.
+ *
  * A class lands on a day if EITHER its group meets on that weekday (0008) or one
  * of its lessons is dated to that date (0010), the same union the dashboard uses:
  * a group that meets on Tuesdays but has nothing planned still occupies its slot,
@@ -100,6 +107,10 @@ function formatDayNumber(date: Date): string {
  * the planned lessons hang off real dates, so the week has to be a real week.
  */
 export function WeekSchedule() {
+  const { profile } = useAuth();
+  const profileId = profile?.id;
+  const isAdmin = profile?.role === "admin";
+
   const [weekStart, setWeekStart] = React.useState(() =>
     startOfWeek(new Date()),
   );
@@ -111,6 +122,12 @@ export function WeekSchedule() {
     "loading",
   );
   const [reloadKey, setReloadKey] = React.useState(0);
+  // Teacher names, empty for "everyone". Seeded from the rows on the first load,
+  // the same way the groups list seeds its own.
+  const [teacherFilter, setTeacherFilter] = React.useState<string[]>([]);
+  // Only the first load seeds it: the groups are re-read on every week change,
+  // and paging a week must leave whatever the user has since chosen alone.
+  const seeded = React.useRef(false);
 
   const dates = React.useMemo(() => datesOfWeek(weekStart), [weekStart]);
   const dateKeys = React.useMemo(() => dates.map(toDateKey), [dates]);
@@ -128,6 +145,16 @@ export function WeekSchedule() {
     Promise.all([listGroups(), listScheduledOn(dateKeys)])
       .then(([groupRows, plannedByDate]) => {
         if (cancelled) return;
+        if (!seeded.current) {
+          seeded.current = true;
+          // Matched on the id, not on `profile.fullName`: the row falls back to
+          // the teacher's email when they have no name, and a filter naming
+          // nobody would empty the week.
+          const own = groupRows.find(
+            (group) => group.teacherId === profileId,
+          )?.teacher;
+          if (own) setTeacherFilter([own]);
+        }
         setGroups(groupRows);
         setPlanned(plannedByDate);
         setStatus("ready");
@@ -138,7 +165,22 @@ export function WeekSchedule() {
     return () => {
       cancelled = true;
     };
-  }, [dateKeys, reloadKey]);
+  }, [dateKeys, reloadKey, profileId]);
+
+  // The teacher facet narrows before the week is built, so the grid and the
+  // count beside it are both about the teacher being looked at.
+  const visibleGroups =
+    teacherFilter.length === 0
+      ? groups
+      : groups.filter((group) => teacherFilter.includes(group.teacher));
+
+  // Built from the rows rather than from a teacher list, as the groups list's
+  // facet is: a deactivated teacher is out of the picker but their groups are
+  // still on the timetable, and a facet that couldn't name them would leave
+  // those classes unreachable.
+  const teacherOptions = [
+    ...new Set(groups.map((group) => group.teacher)),
+  ].sort();
 
   const days: Day[] = COLUMNS.map((column, index) => {
     const dateKey = dateKeys[index];
@@ -150,7 +192,7 @@ export function WeekSchedule() {
       ...column,
       date: dates[index],
       dateKey,
-      classes: groups
+      classes: visibleGroups
         .filter(
           (group) =>
             group.status === "active" &&
@@ -223,11 +265,25 @@ export function WeekSchedule() {
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          {status === "ready"
-            ? `${total} class${total === 1 ? "" : "es"} this week`
-            : " "}
-        </p>
+        <div className="flex items-center gap-2">
+          {/* Admin-only, like the roster's and the groups list's: a teacher's
+              week is all their own, so the dropdown would offer one name and
+              change nothing. */}
+          {isAdmin && (
+            <FacetedFilter
+              label="Teacher"
+              options={teacherOptions}
+              clearLabel="All teachers"
+              value={teacherFilter}
+              onValueChange={setTeacherFilter}
+            />
+          )}
+          <p className="text-xs text-muted-foreground">
+            {status === "ready"
+              ? `${total} class${total === 1 ? "" : "es"} this week`
+              : " "}
+          </p>
+        </div>
       </div>
 
       {status === "error" ? (

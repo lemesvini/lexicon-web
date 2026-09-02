@@ -358,7 +358,16 @@ async function readSuggestions(
         const delta = (data as { delta?: unknown }).delta;
         if (typeof delta === "string") onThinking?.(delta);
       } else if (event === "result") {
-        suggestions = toList((data as { suggestions?: unknown }).suggestions);
+        const list = toList((data as { suggestions?: unknown }).suggestions);
+        // The function now refuses a malformed tool input before it ever gets
+        // here, but this half needs no deploy and is the half that decides what
+        // the teacher sees — so it draws the same distinction independently.
+        if (list === null) {
+          failure =
+            "The suggestions came back in a shape this couldn't read, so they were dropped. Ask again — this is a fault on our side, not a verdict on the class.";
+        } else {
+          suggestions = list;
+        }
       } else if (event === "answer") {
         const text = (data as { answer?: unknown }).answer;
         if (typeof text === "string") answer = text;
@@ -382,27 +391,35 @@ async function readSuggestions(
 }
 
 /**
- * The suggestions as a list, however they arrived.
+ * The suggestions as a list, however they arrived — or `null` when they arrived
+ * in a shape no list can be got out of.
  *
- * A forced tool call is supposed to hand back an array. It does not always: the
- * model sometimes fills an array-typed parameter with a JSON *string* of that
- * array, and the whole answer — anchors, blocks, answer keys, all of it valid —
- * was landing as "nothing to suggest" because it wasn't literally an Array.
+ * A tool call is supposed to hand back an array. It does not always: the model
+ * sometimes fills an array-typed parameter with a JSON *string* of that array,
+ * and the whole answer — anchors, blocks, answer keys, all of it valid — was
+ * landing as "nothing to suggest" because it wasn't literally an Array.
+ *
+ * `null` rather than `[]` for the unreadable cases, because those two are
+ * different facts and the drawer says different things about them: an empty
+ * list is a considered "nothing to add here", and it tells the teacher to go
+ * and write more class context. A parse failure is our bug, and telling them to
+ * fix their data for it sends them somewhere there is nothing to fix.
  *
  * Parsed here as well as in the function, deliberately. This half needs no
  * deploy, and it is the half that decides what the teacher sees.
  */
-function toList(value: unknown): unknown[] {
+function toList(value: unknown): unknown[] | null {
   if (Array.isArray(value)) return value;
+  if (value === undefined || value === null) return [];
   if (typeof value === "string") {
     try {
       const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed : [];
+      return Array.isArray(parsed) ? parsed : null;
     } catch {
-      return [];
+      return null;
     }
   }
-  return [];
+  return null;
 }
 
 /** The suggestions half only — the words the agent said arrive on their own
