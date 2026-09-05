@@ -21,6 +21,7 @@ idempotent, so re-running one is safe.
 - `0010_advanced_context.sql` — the advanced context a group carries into lesson generation
 - `0011_advanced_studio.sql` — the advanced studio's saved settings
 - `0012_student_onboarding.sql` — the first-visit questionnaire: `students.onboarded_at` and the RPC that appends the answers to the student's context
+- `0023_lesson_embeds.sql` — the `lesson-embeds` bucket: the self-hosted HTML pages an `embed` block frames
 
 If the app reports `column students.avatar_path does not exist`, apply
 `0009_student_avatars.sql` in the Supabase SQL editor (or with the CLI) before
@@ -118,3 +119,7 @@ the module history, the RLS — stays as it is.
 Not covered by any migration: a Storage bucket named `lesson-images` with public
 read and an insert policy for `authenticated`. See the comment at the top of
 `src/lib/storage.ts`.
+
+`lesson-embeds` — the HTML pages an `embed` block frames — **is** covered, by
+`0023_lesson_embeds.sql`. Apply it before uploading a page in the Studio; until
+it is applied, the upload fails with a storage policy error.

@@ -122,8 +122,9 @@ noisy diff.
 
 ### Full-bleed slides
 
-`title` blocks and `image` blocks with `"wallpaper": true` are lifted out of the
-normal flow and stacked edge to edge **in the order you wrote them**. Any other
+`title` blocks, `image` blocks with `"wallpaper": true` and `embed` blocks with
+`"fill": true` are lifted out of the normal flow and stacked edge to edge **in
+the order you wrote them**. Any other
 blocks on that slide are laid on top, centred.
 
 That ordering is the mechanism behind a title over a photo:
@@ -363,6 +364,65 @@ time.
 an actual upload resolves to a broken image. Either copy a path from an existing
 lesson, or leave the image out and tell the author to add it in the Studio,
 which uploads the file and fills the path in. `wallpaper: true` wants 1920×1080.
+
+### embed
+
+A live web page framed on the slide — a video, a map, an interactive.
+
+```json
+{ "type": "embed", "url": "https://www.youtube.com/watch?v=…", "title": "Lorde — Team", "aspect": "16:9", "caption": "…" }
+```
+
+Either `url` (a page someone else hosts) or `path` (one we host — see below).
+`url` must be absolute `http(s)`; anything else draws an empty frame rather than
+a broken one. Share links are rewritten to the publisher's frameable form, so
+paste what you copied:
+
+| Pasted | Framed |
+|---|---|
+| `youtu.be/<id>`, `youtube.com/watch?v=<id>`, `/shorts/<id>` | `youtube.com/embed/<id>` (a `t=90s` cue point is kept) |
+| `vimeo.com/<id>` | `player.vimeo.com/video/<id>` |
+| anything else | exactly as written |
+
+`aspect` is `"16:9"` (default) · `"4:3"` · `"1:1"` · `"3:4"`. There is no height
+field: the frame is a ratio so the same block fits a projector, a preview card
+and a phone. `"fill": true` gives the embed the whole slide instead (see
+[Full-bleed slides](#full-bleed-slides)) and makes `aspect` moot; in a student's
+material, a page rather than a stage, a filling embed falls back to 16:9 in the
+column.
+
+**Many pages refuse to be framed.** `X-Frame-Options` or a `frame-ancestors`
+policy is the publisher saying no, and there is nothing to be done from our side
+— the frame comes up blank or says "refused to connect". Always check an embed on
+the presenter before the lesson.
+
+**Claude artifacts are one of those.** They are served with
+`frame-ancestors 'self' *.anthropic.com claude.com …`, so an artifact URL cannot
+be framed from our domain no matter which form of it you use. Do this instead:
+
+1. Open the artifact and save the page (or export its HTML).
+2. In the Studio, on an `embed` block, click **Upload a page (.html)**.
+3. The file goes to the `lesson-embeds` bucket and the block stores its object
+   path in `path`, which then takes precedence over `url`.
+
+```json
+{ "type": "embed", "path": "pages/6f1c-….html", "title": "What we have in common" }
+```
+
+`path` is a real upload, exactly like `image.path` — **you cannot author it from
+nothing.** An invented path frames an empty box.
+
+The page is read back out of storage and handed to the iframe as markup, not
+pointed at by address: Storage does not serve user-uploaded HTML as `text/html`,
+and an iframe pointed straight at the file renders the source code on the slide.
+Two consequences worth knowing:
+
+- The file must be **self-contained**. A page that pulls in a sibling `style.css`
+  it was saved next to has no address to resolve it against and will come up
+  unstyled. Fonts, images and scripts on absolute `https://` URLs are fine.
+- Uploaded pages are sandboxed without `allow-same-origin`, so a page that
+  expects `localStorage` will find it throws. That is deliberate — a `srcdoc`
+  document otherwise inherits the Studio's own origin.
 
 ---
 

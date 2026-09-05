@@ -160,6 +160,11 @@ function serializeBlock(block: LessonBlock): LessonBlock {
       return prune(block, ["type", "path"]);
     case "title":
       return prune(block, ["type", "title"]);
+    // Nothing but `type` is kept: an embed is either a URL or an uploaded page,
+    // and forcing the unused one to survive as `""` would put a field in the
+    // document that says the opposite of what the block does.
+    case "embed":
+      return prune(block, ["type"]);
     // Exercise blocks. Two things are deliberate here:
     //
     // `id` is in every keep-list — it is what stored answers are keyed by, so

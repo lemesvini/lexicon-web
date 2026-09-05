@@ -141,6 +141,49 @@ export type ImageBlock = BlockBase & {
   wallpaper?: boolean;
 };
 
+/**
+ * A live web page on the slide, in an iframe.
+ *
+ * The case it exists for is an interactive built elsewhere and pointed at from
+ * here — a Claude artifact's `/embed` URL, a video, a map — where the point is
+ * that the room can *use* it during the lesson rather than look at a screenshot
+ * of it. Nothing about the page is ours: the block owns the frame it sits in and
+ * nothing inside it.
+ *
+ * The height is never a number. A slide is laid out at whatever size the
+ * projector is, so the frame is sized by `aspect` (or, with `fill`, by the
+ * stage) and the embedded page is left to lay itself out at that size — the same
+ * reason `TitleBlock` is drawn as type rather than uploaded as a picture.
+ */
+export type EmbedBlock = BlockBase & {
+  type: "embed";
+  label?: string;
+  /** Absolute http(s) URL of the page to frame. A share link is rewritten to the
+   *  publisher's frameable form where one is known (a YouTube watch URL to its
+   *  player); anything else is framed as written. */
+  url?: string;
+  /** Object path of a page WE host, in the `lesson-embeds` bucket (see
+   *  @/lib/storage), for the case `url` cannot serve: a publisher that refuses
+   *  to be framed at all. A Claude artifact is exactly that — served with
+   *  `frame-ancestors` naming Anthropic's own domains — so its HTML is uploaded
+   *  and framed from here instead. Takes precedence over `url` when both are
+   *  set, which is what makes "upload a page" a repair rather than a second
+   *  block to author. */
+  path?: string;
+  /** Accessible name for the frame, read by screen readers. */
+  title?: string;
+  /** Shape of the frame. Defaults to "16:9". Ignored when `fill` is set. */
+  aspect?: "16:9" | "4:3" | "1:1" | "3:4";
+  /** Take the whole slide, edge to edge, the way a wallpaper image does. Any
+   *  other block on the slide is laid on top, so a `fill` embed is usually the
+   *  only block there. In a student's material — a page, not a stage — there is
+   *  no slide to fill and it renders in the flow like any other embed. */
+  fill?: true;
+  /** Optional caption shown beneath the frame. */
+  caption?: string;
+  note?: string;
+};
+
 // ── Exercise blocks ─────────────────────────────────────────────────────────
 // Blocks a student answers rather than reads. Only homework uses them.
 //
@@ -235,6 +278,7 @@ export type LessonBlock =
   | EmailBlock
   | ImageBlock
   | TitleBlock
+  | EmbedBlock
   | ExerciseBlock;
 
 /** What a student's answer to one block looks like: an option index for the

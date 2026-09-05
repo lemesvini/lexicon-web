@@ -212,7 +212,11 @@ function isWallpaper(block: LessonBlock): boolean {
  * the frame's padding would break the `absolute inset-0` the layer relies on.
  */
 function isFullBleed(block: LessonBlock): boolean {
-  return isWallpaper(block) || block.type === "title";
+  return (
+    isWallpaper(block) ||
+    block.type === "title" ||
+    (block.type === "embed" && block.fill === true)
+  );
 }
 
 /**

@@ -16,13 +16,16 @@ import { cn } from "@/lib/utils";
  * document never contains them in the first place.
  */
 
-/** A wallpaper image only means something on a projected slide — SlideView lifts
- *  it out of the flow as a full-bleed background. In a page it is just an image,
- *  so the flag is dropped rather than the block being rendered edge-to-edge. */
+/** Full-bleed only means something on a projected slide — SlideView lifts those
+ *  blocks out of the flow and gives them the whole stage. A page has no stage, so
+ *  the flag is dropped and the block renders in the column like any other: a
+ *  wallpaper becomes an image, a full-slide embed becomes a 16:9 frame. */
 function inFlow(block: LessonBlock): LessonBlock {
-  return block.type === "image" && block.wallpaper
-    ? { ...block, wallpaper: false }
-    : block;
+  if (block.type === "image" && block.wallpaper)
+    return { ...block, wallpaper: false };
+  if (block.type === "embed" && block.fill)
+    return { ...block, fill: undefined };
+  return block;
 }
 
 function Section({ slide }: { slide: LessonSlide }) {
