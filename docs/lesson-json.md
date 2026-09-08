@@ -33,6 +33,8 @@ broken import or a silently wrong slide.
    words, split on whitespace.
 5. **`image` blocks cannot be authored from scratch.** `path` points at a file
    already uploaded to Supabase Storage. Do not invent one. See [image](#image).
+   The same goes for a `post` block's `avatarPath` and `imagePath` — but there,
+   leaving the avatar out is fine: the card draws a default user icon.
 6. **Write UTF-8.** Portuguese in these lessons is full of accented characters,
    and a file saved as Latin-1 renders as `cafÃ© da manhÃ£` on a projector in
    front of a class. Check with `file -I lesson.json` — you want
@@ -171,11 +173,12 @@ worth getting right on the first pass.
 **Never put a `*_bg` value on a title block, and never put `jade`/`forest`/
 `mist`/`clear` on a callout.**
 
-### `email` blocks — `theme`, not `color`
+### `email` and `post` blocks — `theme`, not `color`
 
-Defined in `src/features/blocks/email/index.tsx`. The email window's field is
+Defined in `src/features/blocks/email/index.tsx` and
+`src/features/blocks/post/index.tsx`. The window's — and the card's — field is
 called `theme`, and it is a separate field name precisely so it cannot be
-confused with the two lists above: an `email` block has no `color` at all.
+confused with the two lists above: neither block has a `color` at all.
 
 | Value | Looks like | Use for |
 |---|---|---|
@@ -192,6 +195,10 @@ time.
 
 An unknown value falls back to `light` rather than throwing — the mistake shows
 up as a light window in the studio preview instead of a blank slide in class.
+
+A `post` block takes the same four values, with the same meanings and the same
+fallback: `light`/`dark` for a card that should look like a real feed, `mist`/
+`forest` for one that belongs to the deck.
 
 ---
 
@@ -340,7 +347,7 @@ the chrome is a picture and none of it does anything.
 
 `body` required (block markdown — blank line between paragraphs). `theme` is
 `light`, `dark`, `mist` or `forest`, defaulting to `light`; see
-[Colour](#email-blocks--theme-not-color).
+[Colour](#email-and-post-blocks--theme-not-color).
 
 `to`, `cc`, `subject` and `from` are each optional and **each row is drawn only
 when it has a value**. Leave `cc` out and the window simply has no Cc line — do
@@ -423,6 +430,47 @@ Two consequences worth knowing:
 - Uploaded pages are sandboxed without `allow-same-origin`, so a page that
   expects `localStorage` will find it throws. That is deliberate — a `srcdoc`
   document otherwise inherits the Studio's own origin.
+
+---
+
+### post
+
+A social post — a tweet, an Instagram post — drawn as the card it would be seen
+in. Same reasoning as `email`: the shape around the words is half of what is
+being read.
+
+```json
+{
+  "type": "post",
+  "theme": "light",
+  "displayName": "Marina Alves",
+  "username": "marina.climbs",
+  "avatarPath": "images/6f1c-….png",
+  "body": "First time on real rock this weekend. My arms are **dead** but I'd do it again tomorrow.",
+  "imagePath": "images/9a20-….jpg",
+  "imageAlt": "A climber on a granite face"
+}
+```
+
+`username` and `body` are the only required fields, and `body` may be `""` on a
+post that is only a photo. The `@` is drawn, so write the handle with or without
+it — `"marina.climbs"` and `"@marina.climbs"` come out the same.
+
+`displayName` is optional; leave it out and the card shows the handle alone.
+
+`avatarPath` and `imagePath` are **object paths in the `lesson-images` bucket,
+exactly like `image.path` — a real upload, never invented.** An invented one
+draws a broken picture. Leaving `avatarPath` out is not a defect: the card falls
+back to the default user icon, which is what a real account with no picture
+looks like. Upload both in the Studio, which fills the paths in.
+
+`body` is block markdown. `theme` is `light`, `dark`, `mist` or `forest`,
+defaulting to `light`; see [Colour](#email-and-post-blocks--theme-not-color).
+
+The card is a still picture: no like, reply or share buttons, because none of
+them would do anything. If the student has to answer a question *about* the
+post, that is a `choose-description` block in a homework document, whose passage
+takes the same block markdown.
 
 ---
 
@@ -546,7 +594,8 @@ and a `text` block longer than three lines will not be read at all.
       `options` (0-based, in range) — or, on `find-mistake`, into the
       sentence's whitespace-split words
 - [ ] No exercise blocks in a presentation or material; no `image` block with an
-      invented `path`
+      invented `path`, and no `post` block with an invented `avatarPath` /
+      `imagePath`
 - [ ] Top-level `id`, `unit`, `module`, `title`, `context`, `minorCanDo`,
       `grammarFocus`, `classPlan`, `slides` all present
 - [ ] Answer keys and drill prompts are behind `teacherNotes` or

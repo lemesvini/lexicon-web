@@ -9,6 +9,7 @@ import { emailBlock } from "./email";
 import { imageBlock } from "./image";
 import { titleBlock } from "./title";
 import { embedBlock } from "./embed";
+import { postBlock } from "./post";
 import { finishSentenceBlock } from "./finish-sentence";
 import { chooseDescriptionBlock } from "./choose-description";
 import { findMistakeBlock } from "./find-mistake";
@@ -30,6 +31,7 @@ export const BLOCK_REGISTRY: Registry = {
   email: emailBlock,
   image: imageBlock,
   embed: embedBlock,
+  post: postBlock,
   "finish-sentence": finishSentenceBlock,
   "choose-description": chooseDescriptionBlock,
   "find-mistake": findMistakeBlock,
@@ -47,6 +49,7 @@ export const BLOCK_ORDER: BlockType[] = [
   "email",
   "image",
   "embed",
+  "post",
 ];
 
 /**

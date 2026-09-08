@@ -101,6 +101,43 @@ export type EmailBlock = BlockBase & {
 };
 
 /**
+ * A social post — a tweet or an Instagram post, drawn as the card it would be.
+ *
+ * Same reasoning as `EmailBlock`: a `text` block can hold the words, but half of
+ * what a student is being asked to read is the shape around them — who posted,
+ * under what handle, with what picture. Drawing the card is what makes it read
+ * as a post rather than as a paragraph about one.
+ *
+ * The card is a still picture: no like, reply or share affordances, because none
+ * of them would do anything. Nothing here is answered either; this is a
+ * presentation and material block. A post a student answers *about* is a
+ * `choose-description` exercise, whose passage takes the same block markdown.
+ */
+export type PostBlock = BlockBase & {
+  type: "post";
+  label?: string;
+  /** The handle. Written with or without the `@` — exactly one is drawn. */
+  username: string;
+  /** The name above the handle. Optional: a handle-only account is a real one. */
+  displayName?: string;
+  /** Object path of the profile picture in the `lesson-images` bucket (see
+   *  @/lib/storage), exactly like `image.path` — a real upload, never invented.
+   *  Absent draws the default user icon rather than a hole in the card. */
+  avatarPath?: string;
+  /** The message. Block markdown: paragraphs, line breaks, headings and lists
+   *  are kept as typed. May be empty on a post that is only a photo. */
+  body: string;
+  /** Object path of the photo attached to the post, same bucket and same rule
+   *  as `avatarPath`. */
+  imagePath?: string;
+  /** Alt text for that photo. */
+  imageAlt?: string;
+  /** Card treatment: see POST_THEMES. Defaults to "light". */
+  theme?: "light" | "dark" | "mist" | "forest";
+  note?: string;
+};
+
+/**
  * A cover: eyebrow, wordmark, and one huge headline on a flat brand colour.
  *
  * This is the presentation-only "big title" from docs/presenter.md, and it is
@@ -279,6 +316,7 @@ export type LessonBlock =
   | ImageBlock
   | TitleBlock
   | EmbedBlock
+  | PostBlock
   | ExerciseBlock;
 
 /** What a student's answer to one block looks like: an option index for the

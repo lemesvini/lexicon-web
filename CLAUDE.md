@@ -19,13 +19,14 @@ The traps, in short:
 - `title` blocks take `jade` / `forest` / `mist` / `clear`. `callout` blocks
   take `blue_bg` / `green_bg` / `yellow_bg` / `gray_bg` / `red_bg`. Same field
   name, no shared values; a callout colour on a title block **crashes**.
-  `email` blocks have no `color` — their field is `theme`: `light` / `dark` /
-  `mist` / `forest`.
+  `email` and `post` blocks have no `color` — their field is `theme`: `light` /
+  `dark` / `mist` / `forest`.
 - `list` blocks require `style` — no default.
 - Exercise blocks need a stable `id`; `answer` is a 0-based index into
   `options`; homework only.
 - `image.path` is a Supabase Storage object path from a real upload. Never
-  invent one.
+  invent one. Same for `post.avatarPath` / `post.imagePath` — though an absent
+  avatar is fine, it falls back to a default user icon.
 - Save as UTF-8. These lessons contain Portuguese and mojibake ends up on a
   projector.
 

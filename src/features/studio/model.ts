@@ -165,6 +165,8 @@ function serializeBlock(block: LessonBlock): LessonBlock {
     // document that says the opposite of what the block does.
     case "embed":
       return prune(block, ["type"]);
+    case "post":
+      return prune(block, ["type", "username", "body"]);
     // Exercise blocks. Two things are deliberate here:
     //
     // `id` is in every keep-list — it is what stored answers are keyed by, so
