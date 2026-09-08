@@ -136,31 +136,6 @@ export async function listCloudLessons(): Promise<CloudLessonSummary[]> {
 }
 
 /**
- * Lists every distinct module name in the cloud library, alphabetically. Feeds
- * the homepage's module filter, so a teacher can narrow the class list to one
- * module (or several) without the app hard-coding the curriculum.
- *
- * Modules exist only as a denormalized column on `lessons` — there is no modules
- * table — and PostgREST exposes no DISTINCT, so the column is fetched and deduped
- * here. Ordering server-side means the Set below comes out already sorted.
- */
-export async function listCloudModules(): Promise<string[]> {
-  const { data, error } = await supabase
-    .from("lessons")
-    .select("module")
-    .order("module", { ascending: true });
-
-  if (error) throw new Error(error.message);
-
-  const modules = new Set<string>();
-  for (const row of data ?? []) {
-    const name = (row.module ?? "").trim();
-    if (name) modules.add(name);
-  }
-  return [...modules];
-}
-
-/**
  * Fetches the full lesson document for a cloud lesson id, or undefined if no
  * such row exists. Used by present/control to run a class that isn't bundled
  * into the app at build time.

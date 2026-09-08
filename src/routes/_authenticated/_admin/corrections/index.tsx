@@ -6,6 +6,7 @@ import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { TableSkeleton } from "@/components/table-skeleton";
+import { useAuth } from "@/hooks/use-auth";
 import { submissionsColumns } from "@/features/corrections/components/submissions-columns";
 import {
   listSubmissions,
@@ -22,8 +23,15 @@ export const Route = createFileRoute("/_authenticated/_admin/corrections/")({
  * A page of its own rather than a tab under each homework, because the question
  * this answers is "what is waiting on me?" — which nobody can ask one homework
  * at a time.
+ *
+ * A teacher gets their own students and nothing else — that is the RLS in 0006,
+ * not a filter here. The admin gets everyone, so they also get a teacher facet,
+ * opened on themselves: the admin teaches too, and the queue they came to read
+ * is almost always their own.
  */
 function CorrectionsPage() {
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === "admin";
   const [rows, setRows] = React.useState<SubmissionRow[]>([]);
   const [status, setStatus] = React.useState<"loading" | "ready" | "error">(
     "loading",
@@ -49,10 +57,33 @@ function CorrectionsPage() {
     };
   }, [reloadKey]);
 
-  const pending = rows.filter((r) => r.status === "submitted").length;
+  // "Waiting on you" means your own students, so the admin's line counts theirs
+  // rather than the whole school's — the table below is what shows the rest, and
+  // clearing the teacher facet is how you go looking for it.
+  const pending = rows.filter(
+    (r) =>
+      r.status === "submitted" && (!isAdmin || r.teacherId === profile?.id),
+  ).length;
   const homeworkTitles = [
     ...new Set(rows.map((r) => r.homeworkTitle)),
   ].sort((a, b) => a.localeCompare(b));
+
+  // The facet options come from the rows, not from the teacher list: a teacher
+  // who has since been deactivated still has submissions sitting in this queue,
+  // and a facet that couldn't select them would leave those rows unreachable.
+  const teacherNames = [...new Set(rows.map((r) => r.teacher))].sort((a, b) =>
+    a.localeCompare(b),
+  );
+
+  // Taken from a row rather than from `profile.fullName`, because the column
+  // falls back to the email for a teacher with no name and a default matching no
+  // row would open the queue empty. Cleared like any other facet to get the rest
+  // back.
+  const ownTeacherName = rows.find((r) => r.teacherId === profile?.id)?.teacher;
+  const initialFilters =
+    isAdmin && ownTeacherName
+      ? [{ id: "teacher", value: [ownTeacherName] }]
+      : [];
 
   return (
     <div className="min-h-[100dvh] bg-background">
@@ -95,10 +126,11 @@ function CorrectionsPage() {
           </div>
         ) : (
           <DataTable
-            columns={submissionsColumns()}
+            columns={submissionsColumns({ isAdmin })}
             data={rows}
             filterColumn="studentName"
             filterPlaceholder="Filter by student..."
+            initialFilters={initialFilters}
             facets={[
               {
                 columnId: "status",
@@ -106,6 +138,16 @@ function CorrectionsPage() {
                 options: ["To correct", "Started", "Corrected"],
                 clearLabel: "All",
               },
+              ...(isAdmin
+                ? [
+                    {
+                      columnId: "teacher",
+                      label: "Teacher",
+                      options: teacherNames,
+                      clearLabel: "All teachers",
+                    },
+                  ]
+                : []),
               {
                 columnId: "homeworkTitle",
                 label: "Homework",

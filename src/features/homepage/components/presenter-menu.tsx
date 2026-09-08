@@ -18,8 +18,11 @@ import {
   ClassViewToggle,
   type ClassView,
 } from "@/features/homepage/components/class-view-toggle";
-import { listCloudLessons, listCloudModules } from "@/lib/lessons-cloud";
-import { listDashboardHiddenModules } from "@/features/modules/data/modules";
+import { listCloudLessons } from "@/lib/lessons-cloud";
+import {
+  listDashboardHiddenModules,
+  listModuleNames,
+} from "@/features/modules/data/modules";
 import { putLocalLesson } from "@/lib/lesson-store";
 import { parseLesson } from "@/features/studio/model";
 
@@ -91,11 +94,14 @@ export default function PresenterMenu() {
   React.useEffect(() => {
     let cancelled = false;
     // The module list is its own query rather than being derived from the rows:
-    // it is the full set of modules in the library, independent of what the
-    // table currently holds.
+    // it is the curriculum itself, straight from the modules table, so a module
+    // created a minute ago is in the filter before a single lesson has been
+    // filed under it. Deriving it from the lessons — which is what this used to
+    // do — made a new module invisible until it stopped being empty, which is
+    // exactly when you go looking for it.
     Promise.all([
       listCloudLessons(),
-      listCloudModules(),
+      listModuleNames(),
       listDashboardHiddenModules(),
     ])
       .then(([lessons, moduleNames, hidden]) => {
@@ -128,6 +134,20 @@ export default function PresenterMenu() {
     const localIds = new Set(local.map((row) => row.id));
     return [...local, ...cloud.filter((row) => !localIds.has(row.id))];
   }, [local, cloud]);
+
+  // The curriculum's own order, then anything a lesson is tagged with that the
+  // modules table doesn't know about — a module that was renamed or deactivated
+  // still has classes sitting in it, and a filter that couldn't select them
+  // would leave those classes unreachable from here.
+  const moduleOptions = React.useMemo(() => {
+    const known = new Set(modules);
+    const extra = new Set<string>();
+    for (const row of items) {
+      const name = row.module.trim();
+      if (name && !known.has(name)) extra.add(name);
+    }
+    return [...modules, ...[...extra].sort((a, b) => a.localeCompare(b))];
+  }, [modules, items]);
 
   const rows = React.useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -189,8 +209,9 @@ export default function PresenterMenu() {
               </Button>
               <FacetedFilter
                 label="Module"
-                options={modules}
+                options={moduleOptions}
                 clearLabel="All modules"
+                searchPlaceholder="Search modules..."
                 value={selectedModules}
                 onValueChange={setSelectedModules}
               />

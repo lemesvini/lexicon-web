@@ -10,11 +10,13 @@
 // The queue below is not filtered by teacher here, and shouldn't be: a
 // submission reaches whoever the student belongs to, and the admin, because the
 // policy says so. Adding a client-side filter would only be a second, weaker
-// copy of that rule.
+// copy of that rule. The teacher on each row is carried for the admin's facet —
+// a way to narrow a queue they already receive in full, not a rule.
 
 import { supabase } from "@/lib/supabase";
 import type { AnswerValue, Lesson } from "@/lib/lessons";
 import type { SubmissionStatus } from "@/lib/student-content";
+import { NO_TEACHER } from "@/features/students/data/students";
 
 export type SubmissionRow = {
   id: string;
@@ -27,6 +29,11 @@ export type SubmissionRow = {
   lessonTitle: string;
   module: string;
   studentName: string;
+  /** The teacher the student belongs to. Null for a student nobody owns. */
+  teacherId: string | null;
+  /** Their name, or `NO_TEACHER` — only ever shown to the admin, since a
+   *  teacher's queue is all their own and the column would repeat itself. */
+  teacher: string;
   status: SubmissionStatus;
   score: number | null;
   /** Empty while the student is still working on it. */
@@ -55,6 +62,14 @@ function one<T>(embedded: T | T[] | null): T | undefined {
 
 type LessonEmbed = { title: string | null; module: string | null };
 
+type TeacherEmbed = { full_name: string | null; email: string | null };
+
+type StudentEmbed = {
+  full_name: string | null;
+  teacher_id: string | null;
+  teacher: TeacherEmbed | TeacherEmbed[] | null;
+};
+
 type HomeworkEmbed = {
   title: string | null;
   lesson: LessonEmbed | LessonEmbed[] | null;
@@ -68,7 +83,7 @@ type Record_ = {
   submitted_at: string | null;
   graded_at: string | null;
   homework: HomeworkEmbed | HomeworkEmbed[] | null;
-  student: { full_name: string | null } | { full_name: string | null }[] | null;
+  student: StudentEmbed | StudentEmbed[] | null;
 };
 
 function toStatus(raw: unknown): SubmissionStatus {
@@ -78,6 +93,8 @@ function toStatus(raw: unknown): SubmissionStatus {
 function toRow(record: Record_): SubmissionRow {
   const homework = one(record.homework);
   const lesson = one(homework?.lesson ?? null);
+  const student = one(record.student);
+  const teacher = one(student?.teacher ?? null);
 
   return {
     id: record.id,
@@ -87,7 +104,13 @@ function toRow(record: Record_): SubmissionRow {
     homeworkTitle: homework?.title || record.homework_id,
     lessonTitle: lesson?.title ?? "",
     module: lesson?.module ?? "",
-    studentName: one(record.student)?.full_name ?? "—",
+    studentName: student?.full_name ?? "—",
+    teacherId: student?.teacher_id ?? null,
+    // Falls back to the email so a teacher who never filled in a name still
+    // reads as themselves. A teacher reading their own queue can't select the
+    // profiles table at all (0002), so the embed comes back empty for them —
+    // harmless, since the column and facet are the admin's only.
+    teacher: teacher?.full_name || teacher?.email || NO_TEACHER,
     status: toStatus(record.status),
     score: record.score,
     submittedAt: record.submitted_at ?? "",
@@ -107,9 +130,14 @@ const BASE_COLUMNS =
  *  no link to a lesson of its own, and shouldn't grow one. */
 const HOMEWORK_EMBED = "lesson:lessons (title, module)";
 
-const LIST_COLUMNS = `${BASE_COLUMNS}, homework:homework (title, ${HOMEWORK_EMBED}), student:students (full_name)`;
+/** The teacher comes through the student, which is where the ownership lives —
+ *  a submission has no teacher of its own and shouldn't grow one. */
+const STUDENT_EMBED =
+  "student:students (full_name, teacher_id, teacher:profiles (full_name, email))";
 
-const DETAIL_COLUMNS = `${BASE_COLUMNS}, answers, answer_key, marks, feedback, block_notes, homework:homework (title, document, ${HOMEWORK_EMBED}), student:students (full_name)`;
+const LIST_COLUMNS = `${BASE_COLUMNS}, homework:homework (title, ${HOMEWORK_EMBED}), ${STUDENT_EMBED}`;
+
+const DETAIL_COLUMNS = `${BASE_COLUMNS}, answers, answer_key, marks, feedback, block_notes, homework:homework (title, document, ${HOMEWORK_EMBED}), ${STUDENT_EMBED}`;
 
 /**
  * Everything handed in, oldest first — a queue rather than a feed. Work that has

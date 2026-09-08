@@ -36,15 +36,21 @@ import {
 /**
  * Per-row module actions. The dialogs are siblings of the menu, not children —
  * a dialog inside a DropdownMenuItem unmounts as soon as the menu closes.
+ *
+ * `showLessons` is off in the card view's panel, which already lists the
+ * module's lessons itself: the picker would open a second copy of that list on
+ * top of the first one. The table has no such list, so there it stays.
  */
 export function ModuleRowActions({
   module,
   lessons,
   onChanged,
+  showLessons = true,
 }: {
   module: ModuleRow;
   lessons: AssignableLesson[];
   onChanged: () => void;
+  showLessons?: boolean;
 }) {
   const [busy, setBusy] = React.useState(false);
   const [lessonsOpen, setLessonsOpen] = React.useState(false);
@@ -78,15 +84,17 @@ export function ModuleRowActions({
   return (
     <>
       <div className="flex justify-end gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setLessonsOpen(true)}
-          disabled={busy}
-        >
-          <BookOpenIcon className="text-muted-foreground" />
-          Lessons
-        </Button>
+        {showLessons && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLessonsOpen(true)}
+            disabled={busy}
+          >
+            <BookOpenIcon className="text-muted-foreground" />
+            Lessons
+          </Button>
+        )}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -123,13 +131,15 @@ export function ModuleRowActions({
         </DropdownMenu>
       </div>
 
-      <ModuleLessonsDialog
-        module={module}
-        lessons={lessons}
-        open={lessonsOpen}
-        onOpenChange={setLessonsOpen}
-        onSaved={onChanged}
-      />
+      {showLessons && (
+        <ModuleLessonsDialog
+          module={module}
+          lessons={lessons}
+          open={lessonsOpen}
+          onOpenChange={setLessonsOpen}
+          onSaved={onChanged}
+        />
+      )}
 
       <ModuleDialog
         module={module}

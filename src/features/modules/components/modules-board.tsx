@@ -1,11 +1,13 @@
 import * as React from "react";
-import { PlusIcon, RefreshCwIcon } from "lucide-react";
+import { FolderIcon, ListIcon, PlusIcon, RefreshCwIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { DataTable } from "@/components/data-table";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { modulesColumns } from "@/features/modules/components/modules-columns";
 import { ModuleDialog } from "@/features/modules/components/module-dialog";
+import { ModulesCards } from "@/features/modules/components/modules-cards";
 import {
   listModuleOverview,
   type AssignableLesson,
@@ -13,11 +15,42 @@ import {
 } from "@/features/modules/data/modules";
 
 /**
+ * Where the chosen view is remembered, in the shape the homepage uses for the
+ * same preference (@/features/homepage/components/presenter-menu): how you like
+ * to read the curriculum is not a per-visit question.
+ */
+const VIEW_KEY = "modules:view";
+
+type ModulesView = "cards" | "table";
+
+function readViewPreference(): ModulesView {
+  try {
+    return window.localStorage.getItem(VIEW_KEY) === "table"
+      ? "table"
+      : "cards";
+  } catch {
+    // Private mode, blocked storage — a preference is not a reason to fail to
+    // draw the page.
+    return "cards";
+  }
+}
+
+const VIEWS: { value: ModulesView; label: string; icon: typeof FolderIcon }[] = [
+  { value: "cards", label: "Modules", icon: FolderIcon },
+  { value: "table", label: "List", icon: ListIcon },
+];
+
+/**
  * The curriculum: every module, how much is in it, and who's in it.
  *
- * Each row opens a dialog for picking that module's lessons — which is the whole
- * point of the screen, since a module with no lessons gives its students an
- * empty app.
+ * Two views over the same rows, the dashboard's folder grid and the table —
+ * cards first, because picking a module out of a wall of tiles is what a teacher
+ * already does on the front page, and the table is where the answer is a number
+ * (how many students, what position, which are off the dashboard).
+ *
+ * Either way a module opens a dialog for picking its lessons — which is the
+ * whole point of the screen, since a module with no lessons gives its students
+ * an empty app.
  */
 export function ModulesBoard() {
   const [modules, setModules] = React.useState<ModuleRow[]>([]);
@@ -27,6 +60,15 @@ export function ModulesBoard() {
   );
   const [reloadKey, setReloadKey] = React.useState(0);
   const [createOpen, setCreateOpen] = React.useState(false);
+  const [view, setView] = React.useState<ModulesView>(readViewPreference);
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(VIEW_KEY, view);
+    } catch {
+      // See readViewPreference — the toggle still works for this session.
+    }
+  }, [view]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -90,30 +132,78 @@ export function ModulesBoard() {
     );
   }
 
+  const viewToggle = (
+    <div
+      role="group"
+      aria-label="View"
+      className="flex items-center gap-0.5 rounded-md bg-muted p-0.5"
+    >
+      {VIEWS.map((option) => (
+        <Button
+          key={option.value}
+          variant="ghost"
+          size="icon-sm"
+          aria-pressed={view === option.value}
+          title={option.label}
+          onClick={() => setView(option.value)}
+          className={cn(
+            "text-muted-foreground hover:bg-background/60",
+            view === option.value &&
+              "bg-background text-foreground shadow-xs hover:bg-background",
+          )}
+        >
+          <option.icon />
+          <span className="sr-only">{option.label}</span>
+        </Button>
+      ))}
+    </div>
+  );
+
+  const newModuleButton = (
+    <Button size="sm" onClick={() => setCreateOpen(true)}>
+      <PlusIcon />
+      New module
+    </Button>
+  );
+
   return (
     <div className="space-y-4">
-      <DataTable
-        columns={columns}
-        data={modules}
-        filterColumn="name"
-        filterPlaceholder="Filter modules..."
-        toolbarActions={
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <PlusIcon />
-            New module
-          </Button>
-        }
-        facets={[
-          {
-            columnId: "status",
-            label: "Status",
-            options: ["Active", "Inactive"],
-            clearLabel: "All statuses",
-          },
-        ]}
-        emptyMessage="No modules yet."
-        countLabel={(count) => `${count} module${count === 1 ? "" : "s"}`}
-      />
+      {view === "cards" ? (
+        <>
+          <div className="flex items-center justify-end gap-2">
+            {viewToggle}
+            {newModuleButton}
+          </div>
+          <ModulesCards
+            modules={modules}
+            lessons={lessons}
+            onChanged={reload}
+          />
+        </>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={modules}
+          filterColumn="name"
+          filterPlaceholder="Filter modules..."
+          toolbarActions={
+            <>
+              {viewToggle}
+              {newModuleButton}
+            </>
+          }
+          facets={[
+            {
+              columnId: "status",
+              label: "Status",
+              options: ["Active", "Inactive"],
+              clearLabel: "All statuses",
+            },
+          ]}
+          emptyMessage="No modules yet."
+          countLabel={(count) => `${count} module${count === 1 ? "" : "s"}`}
+        />
+      )}
 
       {(unassigned > 0 || unknown.length > 0) && (
         <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">

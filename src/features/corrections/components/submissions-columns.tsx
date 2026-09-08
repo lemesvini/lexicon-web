@@ -39,7 +39,14 @@ function StatusBadge({ status }: { status: SubmissionStatus }) {
   );
 }
 
-export function submissionsColumns(): ColumnDef<SubmissionRow>[] {
+/**
+ * `isAdmin` decides whether the teacher column is here at all: a teacher's queue
+ * is only ever their own students (the RLS in 0006 sees to that), so the column
+ * would say the same thing on every row.
+ */
+export function submissionsColumns({
+  isAdmin = false,
+}: { isAdmin?: boolean } = {}): ColumnDef<SubmissionRow>[] {
   return [
     {
       accessorKey: "studentName",
@@ -48,6 +55,22 @@ export function submissionsColumns(): ColumnDef<SubmissionRow>[] {
         <span className="font-medium">{row.getValue("studentName")}</span>
       ),
     },
+    ...(isAdmin
+      ? [
+          {
+            accessorKey: "teacher",
+            header: ({ column }) => (
+              <SortableHeader column={column} label="Teacher" />
+            ),
+            filterFn: multiSelectFilter,
+            cell: ({ row }) => (
+              <span className="text-muted-foreground">
+                {row.getValue("teacher")}
+              </span>
+            ),
+          } satisfies ColumnDef<SubmissionRow>,
+        ]
+      : []),
     {
       accessorKey: "homeworkTitle",
       header: ({ column }) => (
