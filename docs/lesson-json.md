@@ -391,6 +391,7 @@ paste what you copied:
 |---|---|
 | `youtu.be/<id>`, `youtube.com/watch?v=<id>`, `/shorts/<id>` | `youtube.com/embed/<id>` (a `t=90s` cue point is kept) |
 | `vimeo.com/<id>` | `player.vimeo.com/video/<id>` |
+| `x.com/<user>/status/<id>`, an Instagram post, a TikTok video | the post drawn as a card, exactly as if its embed code had been pasted into `html` (see below) |
 | anything else | exactly as written |
 
 `aspect` is `"16:9"` (default) · `"4:3"` · `"1:1"` · `"3:4"`. There is no height
@@ -449,6 +450,13 @@ Paste the code exactly as the site gives it — script tag included; that tag is
 the half that does the work. In the Studio it goes in the box under the URL
 field, and pasting it *into* the URL field works too: a value that starts with
 `<` is filed as `html` rather than saved as an address that could never load.
+
+**Or just paste the post's link.** A snippet is a wrapper around a permalink, and
+the permalink is all that is read out of it — so an `x.com/<user>/status/<id>`
+address in `url` (query string and all) draws the same card as the embed code,
+and needs no trip to the publisher's "embed this post" page. Same for an
+Instagram post and a TikTok video. Everything below about `html` applies to those
+URLs too.
 
 **The snippet's script is not what renders it.** A pasted `widgets.js` cannot
 work from here — it needs its own origin to build the card, and it does not get

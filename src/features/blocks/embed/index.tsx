@@ -326,6 +326,29 @@ function decodeEntities(value: string): string {
  * just an `<iframe>` (CodePen, Spotify, a map) is handled first and never needs
  * either path.
  */
+/**
+ * The permalinks a social card can be rebuilt from.
+ *
+ * They are read out of a pasted snippet — the blockquote carries the link at its
+ * foot — but a teacher who simply copies the address bar on X has handed us the
+ * same thing with less around it. So the patterns are shared: `isSocialPost`
+ * asks whether a plain URL is one of these, and a URL that is gets the card
+ * treatment rather than being framed as a page, which X refuses anyway.
+ */
+const TWEET_URL = /(?:twitter|x)\.com\/[^/"'\s]+\/status(?:es)?\/(\d+)/i;
+const INSTAGRAM_URL = /instagram\.com\/(p|reel|reels|tv)\/([\w-]+)/i;
+const TIKTOK_URL = /tiktok\.com\/@[^/"'\s]+\/video\/(\d+)/i;
+
+/** Whether a plain address is a post we can draw as a card. */
+function isSocialPost(url: string): boolean {
+  const value = url.trim();
+  return (
+    TWEET_URL.test(value) ||
+    INSTAGRAM_URL.test(value) ||
+    TIKTOK_URL.test(value)
+  );
+}
+
 function snippetSource(html: string, dark: boolean): SnippetSource {
   // Already an address: most publishers outside social hand out a bare iframe,
   // and its `src` is exactly what the `url` field would have taken.
@@ -345,9 +368,7 @@ function snippetSource(html: string, dark: boolean): SnippetSource {
   }
 
   // X / Twitter. The status id is in the permalink at the foot of the quote.
-  const tweetId = /(?:twitter|x)\.com\/[^/"'\s]+\/status(?:es)?\/(\d+)/i.exec(
-    html,
-  )?.[1];
+  const tweetId = TWEET_URL.exec(html)?.[1];
   if (tweetId) {
     const params = new URLSearchParams({
       id: tweetId,
@@ -368,7 +389,7 @@ function snippetSource(html: string, dark: boolean): SnippetSource {
 
   // Instagram. `/embed/captioned/` is the post with its caption, which is the
   // half a language teacher is usually after.
-  const insta = /instagram\.com\/(p|reel|reels|tv)\/([\w-]+)/i.exec(html);
+  const insta = INSTAGRAM_URL.exec(html);
   if (insta) {
     const kind = insta[1].toLowerCase() === "reels" ? "reel" : insta[1];
     return {
@@ -383,7 +404,7 @@ function snippetSource(html: string, dark: boolean): SnippetSource {
   // TikTok. The id is on the blockquote as an attribute and in the permalink.
   const tiktokId =
     /\bdata-video-id=["'](\d+)["']/i.exec(html)?.[1] ??
-    /tiktok\.com\/@[^/"'\s]+\/video\/(\d+)/i.exec(html)?.[1];
+    TIKTOK_URL.exec(html)?.[1];
   if (tiktokId) {
     return {
       kind: "url",
@@ -472,18 +493,20 @@ function useDarkMode(): boolean {
  * height, the frame takes it.
  */
 function SnippetFrame({
-  html,
+  code,
   title,
   fill,
 }: {
-  html: string;
+  /** An embed snippet, or the plain address of a post — `snippetSource` reads
+   *  the permalink out of either. */
+  code: string;
   title: string;
   /** Full-slide: the stage is the height, so ignore what the card reports. */
   fill?: boolean;
 }) {
   const dark = useDarkMode();
   const ref = useRef<HTMLIFrameElement>(null);
-  const source = snippetSource(html, dark);
+  const source = snippetSource(code, dark);
   const stated = source.kind === "url" ? source.height : "auto";
   const [height, setHeight] = useState(SNIPPET_MIN_HEIGHT);
   /** A card that says nothing for this long is a card that is not coming. */
@@ -511,7 +534,7 @@ function SnippetFrame({
       window.removeEventListener("message", onMessage);
       window.clearTimeout(timer);
     };
-  }, [stated, html, dark]);
+  }, [stated, code, dark]);
 
   // A card that says how wide it is is believed over the number we guessed —
   // X reports its width alongside its height, and a thread or a quoted post is
@@ -543,7 +566,7 @@ function SnippetFrame({
     ) : (
       <iframe
         ref={ref}
-        srcDoc={snippetDocument(html)}
+        srcDoc={snippetDocument(code)}
         sandbox={SNIPPET_SANDBOX}
         {...shared}
       />
@@ -619,13 +642,17 @@ function Placeholder() {
 
 function View({ block }: { block: EmbedBlock }) {
   const snippet = block.html?.trim() ?? "";
-  const { html } = useHostedPage(snippet ? undefined : block.path);
+  const raw = (block.url ?? "").trim();
+  // A pasted snippet, or an address that is a post rather than a page: X's own
+  // status URL cannot be framed, and the card is what the teacher meant by it.
+  const card = snippet || (!block.path && isSocialPost(raw) ? raw : "");
+  const { html } = useHostedPage(card ? undefined : block.path);
   const title = block.title || block.label || "Embedded page";
 
   // An uploaded page wins over the URL: uploading is how a teacher repairs a URL
   // that turned out to refuse framing, and the repair has to be what shows. A
-  // pasted snippet wins over both for the same reason.
-  const url = snippet || block.path ? "" : frameUrl(block.url ?? "");
+  // card wins over both for the same reason.
+  const url = card || block.path ? "" : frameUrl(raw);
 
   const frame = block.path ? (
     // `undefined` is still loading — an empty frame for the moment it takes,
@@ -649,11 +676,7 @@ function View({ block }: { block: EmbedBlock }) {
   if (block.fill) {
     return (
       <div className="h-full w-full overflow-hidden bg-background">
-        {snippet ? (
-          <SnippetFrame html={snippet} title={title} fill />
-        ) : (
-          frame
-        )}
+        {card ? <SnippetFrame code={card} title={title} fill /> : frame}
       </div>
     );
   }
@@ -661,10 +684,10 @@ function View({ block }: { block: EmbedBlock }) {
   return (
     <figure className="space-y-3">
       {block.label && <BlockLabel>{block.label}</BlockLabel>}
-      {snippet ? (
-        // No FrameBox: a snippet brings its own height, and a ratio around it
+      {card ? (
+        // No FrameBox: a card brings its own height, and a ratio around it
         // would be the empty margin the card was drawn to avoid.
-        <SnippetFrame html={snippet} title={title} />
+        <SnippetFrame code={card} title={title} />
       ) : (
         <FrameBox ratio={EMBED_ASPECTS[block.aspect ?? "16:9"].ratio}>
           {frame}
@@ -698,11 +721,13 @@ function Editor({
   const aspect = block.aspect ?? "16:9";
 
   const snippet = block.html?.trim() ?? "";
+  const raw = (block.url ?? "").trim();
+  const card = snippet || (!block.path && isSocialPost(raw) ? raw : "");
   const hosted = Boolean(block.path) && !snippet;
   const { html, error: pageError } = useHostedPage(
     hosted ? block.path : undefined,
   );
-  const claudeUrl = !hosted && !snippet && isClaudeArtifact(block.url ?? "");
+  const claudeUrl = !hosted && !card && isClaudeArtifact(raw);
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
@@ -738,7 +763,7 @@ function Editor({
         onKeyDown={(e) => {
           if (e.key === "Enter") setTyped(frameUrl(e.currentTarget.value));
         }}
-        placeholder="https://… (a YouTube or Vimeo link, a map, any page)"
+        placeholder="https://… (a YouTube or Vimeo link, an X post, a map, any page)"
         className={cn(
           "w-full bg-transparent font-mono text-sm outline-none placeholder:font-sans placeholder:text-muted-foreground/60 focus:rounded-sm focus:ring-2 focus:ring-ring/30",
           // Still editable while a page is uploaded — it is the address the page
@@ -765,14 +790,14 @@ function Editor({
         onChange={(e) => void handleFile(e.target.files?.[0])}
       />
 
-      {snippet ? (
-        // A snippet is previewed at its own height, the same as it renders —
-        // and re-mounted per snippet (`key`) so an edit reloads the frame
-        // instead of leaving the last card's script running in it.
+      {card ? (
+        // A card is previewed at its own height, the same as it renders — and
+        // re-mounted per card (`key`) so an edit reloads the frame instead of
+        // leaving the last one running in it.
         <div className="overflow-hidden rounded-lg border bg-muted/20">
           <SnippetFrame
-            key={snippet}
-            html={snippet}
+            key={card}
+            code={card}
             title={block.title || "Embedded page"}
           />
         </div>
@@ -827,13 +852,13 @@ function Editor({
             type="button"
             onClick={() => onChange({ ...block, aspect: value })}
             // A snippet measures itself, so a ratio is not one of its choices.
-            disabled={block.fill === true || Boolean(snippet)}
+            disabled={block.fill === true || Boolean(card)}
             className={cn(
               "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide transition-colors",
-              aspect === value && !block.fill && !snippet
+              aspect === value && !block.fill && !card
                 ? "bg-primary/15 text-primary"
                 : "text-muted-foreground hover:bg-accent",
-              (block.fill || snippet) && "opacity-40",
+              (block.fill || card) && "opacity-40",
             )}
           >
             {EMBED_ASPECTS[value].label}
@@ -891,7 +916,7 @@ function Editor({
             Remove page
           </button>
         )}
-        {!hosted && !snippet && typed && typed !== (block.url ?? "").trim() && (
+        {!hosted && !card && typed && typed !== raw && (
           // Only when the frame shows something other than what was typed —
           // otherwise it is the URL back at you, which says nothing.
           <span className="ml-auto truncate font-mono text-[11px] text-muted-foreground">
@@ -928,7 +953,7 @@ export const embedBlock: BlockDefinition<EmbedBlock> = {
   meta: {
     type: "embed",
     label: "Embed",
-    hint: "Frame a live page or an embed code — a video, a map, a tweet",
+    hint: "Frame a live page, a post or an embed code — video, map, tweet",
     icon: GlobeIcon,
   },
   create: () => ({ type: "embed", url: "" }),

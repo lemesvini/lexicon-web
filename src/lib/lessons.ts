@@ -199,7 +199,9 @@ export type EmbedBlock = BlockBase & {
   label?: string;
   /** Absolute http(s) URL of the page to frame. A share link is rewritten to the
    *  publisher's frameable form where one is known (a YouTube watch URL to its
-   *  player); anything else is framed as written. */
+   *  player); anything else is framed as written. The address of a *post* — an
+   *  X status, an Instagram post, a TikTok video — is drawn as the card instead,
+   *  exactly as if its embed code had been pasted into `html`. */
   url?: string;
   /** Object path of a page WE host, in the `lesson-embeds` bucket (see
    *  @/lib/storage), for the case `url` cannot serve: a publisher that refuses
