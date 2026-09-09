@@ -190,7 +190,9 @@ export type ImageBlock = BlockBase & {
  * The height is never a number. A slide is laid out at whatever size the
  * projector is, so the frame is sized by `aspect` (or, with `fill`, by the
  * stage) and the embedded page is left to lay itself out at that size — the same
- * reason `TitleBlock` is drawn as type rather than uploaded as a picture.
+ * reason `TitleBlock` is drawn as type rather than uploaded as a picture. An
+ * `html` snippet is the one source that sizes the frame instead of being sized
+ * by it: a card has a height of its own, and it reports it.
  */
 export type EmbedBlock = BlockBase & {
   type: "embed";
@@ -207,9 +209,23 @@ export type EmbedBlock = BlockBase & {
    *  set, which is what makes "upload a page" a repair rather than a second
    *  block to author. */
   path?: string;
+  /** An embed *snippet* — the block of HTML a publisher hands out under "Embed
+   *  this post": an X/Twitter `<blockquote class="twitter-tweet">` with its
+   *  `widgets.js`, an Instagram or TikTok card, a CodePen. These are not pages
+   *  and have no address to frame; they are markup that must run to become the
+   *  thing. The script is not what renders it here — it cannot be, it needs its
+   *  own origin — so the snippet is read instead: the id comes out of the markup
+   *  and the publisher's own embed page is framed at the publisher's origin.
+   *  See `snippetSource` in @/features/blocks/embed.
+   *
+   *  Takes precedence over `path` and `url`, and is the only source sized by its
+   *  own content rather than by `aspect`: a tweet is as tall as it is, and the
+   *  frame reports its height back and follows it. */
+  html?: string;
   /** Accessible name for the frame, read by screen readers. */
   title?: string;
-  /** Shape of the frame. Defaults to "16:9". Ignored when `fill` is set. */
+  /** Shape of the frame. Defaults to "16:9". Ignored when `fill` is set, and
+   *  ignored for `html`, which measures itself. */
   aspect?: "16:9" | "4:3" | "1:1" | "3:4";
   /** Take the whole slide, edge to edge, the way a wallpaper image does. Any
    *  other block on the slide is laid on top, so a `fill` embed is usually the

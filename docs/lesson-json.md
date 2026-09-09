@@ -380,7 +380,9 @@ A live web page framed on the slide — a video, a map, an interactive.
 { "type": "embed", "url": "https://www.youtube.com/watch?v=…", "title": "Lorde — Team", "aspect": "16:9", "caption": "…" }
 ```
 
-Either `url` (a page someone else hosts) or `path` (one we host — see below).
+One of `url` (a page someone else hosts), `path` (one we host — see below) or
+`html` (a pasted embed code — see below). When more than one is set, `html` wins,
+then `path`, then `url`.
 `url` must be absolute `http(s)`; anything else draws an empty frame rather than
 a broken one. Share links are rewritten to the publisher's frameable form, so
 paste what you copied:
@@ -430,6 +432,53 @@ Two consequences worth knowing:
 - Uploaded pages are sandboxed without `allow-same-origin`, so a page that
   expects `localStorage` will find it throws. That is deliberate — a `srcdoc`
   document otherwise inherits the Studio's own origin.
+
+**Embed codes: `html`.** X/Twitter, Instagram, TikTok, CodePen and friends do not
+publish a framable address at all — they hand out a *snippet*, a piece of markup
+plus the script that turns it into the card:
+
+```json
+{
+  "type": "embed",
+  "html": "<blockquote class=\"twitter-tweet\"><p lang=\"en\" dir=\"ltr\">millie just keeps rubbing it in his face</p>&mdash; someone (@someone) <a href=\"https://x.com/someone/status/207…\">July 2, 2026</a></blockquote> <script async src=\"https://platform.x.com/widgets.js\" charset=\"utf-8\"></script>",
+  "caption": "What does *rub it in* mean here?"
+}
+```
+
+Paste the code exactly as the site gives it — script tag included; that tag is
+the half that does the work. In the Studio it goes in the box under the URL
+field, and pasting it *into* the URL field works too: a value that starts with
+`<` is filed as `html` rather than saved as an address that could never load.
+
+**The snippet's script is not what renders it.** A pasted `widgets.js` cannot
+work from here — it needs its own origin to build the card, and it does not get
+one inside our frame. So the snippet is read rather than run: the id is taken out
+of the markup and the publisher's *own* embed page is framed at the publisher's
+origin, which is the same page the script would have built.
+
+| Pasted | Framed |
+|---|---|
+| an `<iframe src="…">` (CodePen, Spotify, a map) | that `src`, at its own stated height |
+| an X / Twitter blockquote | `platform.twitter.com/embed/Tweet.html?id=…`, in the app's light or dark theme |
+| an Instagram blockquote | `instagram.com/p/<code>/embed/captioned/` |
+| a TikTok blockquote | `tiktok.com/embed/v2/<id>` |
+| anything else | the snippet itself, in a sandboxed document of ours |
+
+Two things behave differently for `html` than for the other two:
+
+- **It has no `aspect`.** A tweet is as tall as it is, and a card in a 16:9 box
+  is a card with an empty field either side of it. X and Instagram report their
+  height to the frame and it follows them; the others use the height they state.
+  The frame is also capped at the card's own width and centred — a tweet is a
+  550px column, and in a frame wider than that it lays itself against the left
+  edge and reads as crooked. `"fill": true` still works and still means the whole
+  slide.
+- **A snippet from somewhere unrecognised** falls back to being run in a
+  sandboxed document without `allow-same-origin`, which is enough for static
+  markup and for most widgets, but not for one that insists on `localStorage` or
+  on being logged in. Check it on the presenter before the lesson, as with any
+  embed. If it will not cooperate at all, the fallback is the `post` block, which
+  draws the card ourselves.
 
 ---
 
