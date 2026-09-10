@@ -51,6 +51,39 @@ function headlineSize(lines: string[]): string {
   return `min(${byWidth.toFixed(1)}cqw, ${byHeight.toFixed(1)}cqh, 16cqw)`;
 }
 
+/**
+ * The lockup, not just the word: "lexicon" in the display face with ENGLISH
+ * ruled underneath it, the same mark as the printed one.
+ *
+ * The second line is Montserrat rather than the display face — it is a rule
+ * more than a word, and Caprasimo at that size reads as a smudge. Its size and
+ * tracking are in `em`, so the whole lockup scales off the one `fontSize` here
+ * and stays glued together at any slide size. Letter-spacing lands after the
+ * last letter too, which shoves the line visibly left of centre; the negative
+ * right margin takes that trailing space back off.
+ */
+function Wordmark() {
+  return (
+    <span
+      className="ml-auto flex flex-col items-center leading-none"
+      style={{ fontSize: "min(4.2cqw, 7.5cqh)" }}
+    >
+      <span className="font-display lowercase tracking-tight">lexicon</span>
+      <span
+        className="font-montserrat"
+        style={{
+          fontSize: "0.3em",
+          letterSpacing: "0.42em",
+          marginRight: "-0.42em",
+          marginTop: "0.24em",
+        }}
+      >
+        ENGLISH
+      </span>
+    </span>
+  );
+}
+
 function View({ block }: { block: TitleBlock }) {
   const { background, foreground } = TITLE_COLORS[block.color ?? "jade"];
   const lines = block.title.split("\n");
@@ -81,14 +114,7 @@ function View({ block }: { block: TitleBlock }) {
               {block.eyebrow}
             </p>
           )}
-          {!block.hideWordmark && (
-            <span
-              className="ml-auto font-display lowercase tracking-tight"
-              style={{ fontSize: "min(4.2cqw, 7.5cqh)" }}
-            >
-              lexicon
-            </span>
-          )}
+          {!block.hideWordmark && <Wordmark />}
         </header>
 
         <div className="space-y-[2.5cqh]">
