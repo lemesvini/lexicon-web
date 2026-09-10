@@ -47,6 +47,7 @@ import {
 } from "@/features/studio/components/library-view-toggle";
 import {
   listGroupLessons,
+  rebaseGroupLesson,
   removeGroupLesson,
   setGroupLessonDate,
   type GroupLessonRow,
@@ -56,6 +57,8 @@ import {
   addGroupMaterials,
   listGroupHomework,
   listGroupMaterials,
+  rebaseGroupHomework,
+  rebaseGroupMaterial,
   removeGroupHomework,
   removeGroupMaterial,
   setGroupHomeworkStatus,
@@ -263,6 +266,29 @@ export function GroupStudioPage({ groupId }: { groupId: string }) {
     })();
   }, []);
 
+  /**
+   * What the "Out of date" badge does: rebuild one copy on the shared document
+   * as it stands now.
+   *
+   * The editor's "Refresh from base" without the editor. Confirmed for the same
+   * reason it is confirmed there — the base half is replaced wholesale, and the
+   * additions land where `rebaseOnto` can put them rather than where the teacher
+   * left them — and run through `run` so the list reloads and the badge goes.
+   */
+  const refreshBase = React.useCallback(
+    (name: string, rebuild: () => Promise<void>) => {
+      if (
+        !window.confirm(
+          `Rebuild ${name} on the current shared version? Your added blocks are kept; any that no longer have a slide to sit on are collected onto one at the end.`,
+        )
+      ) {
+        return;
+      }
+      run(rebuild);
+    },
+    [run],
+  );
+
   // Lessons belong to a module by *name*, not by a foreign key (see
   // features/modules/data/modules.ts) — so the match is on the text column.
   const chosenModule = modules.find((module) => module.id === moduleId);
@@ -405,6 +431,12 @@ export function GroupStudioPage({ groupId }: { groupId: string }) {
               rows={lessons}
               currentLessonId={group.lessonId}
               plannedDate={(row) => formatPlanned(row.scheduledOn)}
+              busy={busy}
+              onRefreshBase={(row) =>
+                refreshBase(row.title || row.lessonId, () =>
+                  rebaseGroupLesson(groupId, row.lessonId),
+                )
+              }
             />
           ) : lessons.length === 0 ? (
             <Empty>
@@ -448,6 +480,10 @@ export function GroupStudioPage({ groupId }: { groupId: string }) {
                     }
                     advancedCount={row.advancedCount}
                     baseIsNewer={row.baseIsNewer}
+                    busy={busy}
+                    onRefreshBase={() =>
+                      refreshBase(name, () => rebaseGroupLesson(groupId, row.lessonId))
+                    }
                     badges={
                       isCurrent ? (
                         <Badge variant="secondary">Current</Badge>
@@ -578,7 +614,16 @@ export function GroupStudioPage({ groupId }: { groupId: string }) {
           <Hint tab="material" />
 
           {view === "gallery" ? (
-            <GroupMaterialGallery groupId={groupId} rows={materials} />
+            <GroupMaterialGallery
+              groupId={groupId}
+              rows={materials}
+              busy={busy}
+              onRefreshBase={(row) =>
+                refreshBase(row.title || row.lessonId, () =>
+                  rebaseGroupMaterial(groupId, row.lessonId),
+                )
+              }
+            />
           ) : materials.length === 0 ? (
             <Empty>
               This group reads the shared material. Copy one below to write a
@@ -593,6 +638,12 @@ export function GroupStudioPage({ groupId }: { groupId: string }) {
                   subtitle={[row.unit, row.module].filter(Boolean).join(" · ")}
                   advancedCount={row.advancedCount}
                   baseIsNewer={row.baseIsNewer}
+                  busy={busy}
+                  onRefreshBase={() =>
+                    refreshBase(row.title || row.lessonId, () =>
+                      rebaseGroupMaterial(groupId, row.lessonId),
+                    )
+                  }
                   badges={<StatusBadge status={row.status} />}
                   edit={
                     <Button variant="outline" size="sm" asChild>
@@ -656,7 +707,16 @@ export function GroupStudioPage({ groupId }: { groupId: string }) {
           <Hint tab="homework" />
 
           {view === "gallery" ? (
-            <GroupHomeworkGallery groupId={groupId} rows={homework} />
+            <GroupHomeworkGallery
+              groupId={groupId}
+              rows={homework}
+              busy={busy}
+              onRefreshBase={(row) =>
+                refreshBase(row.title || row.homeworkId, () =>
+                  rebaseGroupHomework(groupId, row.homeworkId),
+                )
+              }
+            />
           ) : homework.length === 0 ? (
             <Empty>
               This group answers the shared homework. Copy one below to set them
@@ -675,6 +735,12 @@ export function GroupStudioPage({ groupId }: { groupId: string }) {
                   }
                   advancedCount={row.advancedCount}
                   baseIsNewer={row.baseIsNewer}
+                  busy={busy}
+                  onRefreshBase={() =>
+                    refreshBase(row.title || row.homeworkId, () =>
+                      rebaseGroupHomework(groupId, row.homeworkId),
+                    )
+                  }
                   badges={<StatusBadge status={row.status} />}
                   edit={
                     <Button variant="outline" size="sm" asChild>
@@ -873,6 +939,8 @@ function PublishItem({
   );
 }
 
+const BEHIND_BADGE = "border-amber-500/40 text-amber-600 dark:text-amber-400";
+
 /** One copy, however it is stored. Kept generic on purpose: the three kinds
  *  differ in where they link and what their badges say, and in nothing a reader
  *  scanning the list would care about. */
@@ -883,6 +951,8 @@ function CopyRow({
   subtitle,
   advancedCount,
   baseIsNewer,
+  onRefreshBase,
+  busy,
   badges,
   before,
   edit,
@@ -895,6 +965,10 @@ function CopyRow({
   subtitle: React.ReactNode;
   advancedCount: number;
   baseIsNewer: boolean;
+  /** Rebuild this copy on the shared document. The badge is the button — see
+   *  `OutOfDateBadge` in ./group-studio-gallery, which the gallery draws. */
+  onRefreshBase?: () => void;
+  busy?: boolean;
   badges?: React.ReactNode;
   /** Actions that come before Edit — presenting, for a presentation. */
   before?: React.ReactNode;
@@ -937,15 +1011,29 @@ function CopyRow({
             </Badge>
           )}
           {badges}
-          {baseIsNewer && (
-            <Badge
-              variant="outline"
-              className="border-amber-500/40 text-amber-600 dark:text-amber-400"
-              title="The shared version has changed since this copy was made"
-            >
-              Base updated
-            </Badge>
-          )}
+          {baseIsNewer &&
+            (onRefreshBase ? (
+              <Badge asChild variant="outline" className={BEHIND_BADGE}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={onRefreshBase}
+                  aria-label={`Rebuild this copy of ${title} on the current shared version`}
+                  title="The shared version has changed since this copy was made — click to rebuild on it"
+                  className="cursor-pointer hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Base updated
+                </button>
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className={BEHIND_BADGE}
+                title="The shared version has changed since this copy was made"
+              >
+                Base updated
+              </Badge>
+            ))}
         </div>
         <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 truncate text-xs text-muted-foreground">
           {subtitle}

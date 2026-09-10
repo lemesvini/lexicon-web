@@ -33,16 +33,60 @@ function AddedBadge({ count }: { count: number }) {
   );
 }
 
-function OutOfDateBadge({ behind }: { behind: boolean }) {
+/**
+ * The copy has fallen behind the shared document — and the badge is the button
+ * that fixes it.
+ *
+ * The same "Refresh from base" the editor offers, moved to where the problem is
+ * noticed. Telling someone their copy is stale and then making them open it to
+ * do anything about it is a notice, not an action; the badge is already the
+ * thing being pointed at, so it is what gets clicked. It stays a plain badge if
+ * no handler is passed, which is what the read-only lists want.
+ */
+function OutOfDateBadge({
+  behind,
+  onRefresh,
+  busy,
+  title,
+}: {
+  behind: boolean;
+  /** Rebuild this copy on the shared document. Omit for a badge that only says. */
+  onRefresh?: () => void;
+  busy?: boolean;
+  /** The document's name, for the button's label. */
+  title: string;
+}) {
   if (!behind) return null;
+
+  const className =
+    "gap-1 border-amber-600/40 text-amber-700 dark:text-amber-400";
+
+  if (!onRefresh) {
+    return (
+      <Badge
+        variant="outline"
+        className={className}
+        title="The shared version has changed since this copy was made"
+      >
+        <AlertTriangleIcon />
+        Out of date
+      </Badge>
+    );
+  }
+
   return (
-    <Badge
-      variant="outline"
-      className="gap-1 border-amber-600/40 text-amber-700 dark:text-amber-400"
-      title="The shared version has changed since this copy was made"
-    >
-      <AlertTriangleIcon />
-      Out of date
+    <Badge asChild variant="outline" className={className}>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => onRefresh()}
+        aria-label={`Rebuild this copy of ${title} on the current shared version`}
+        title="The shared version has changed since this copy was made — click to rebuild on it"
+        className="cursor-pointer hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <AlertTriangleIcon />
+        Out of date
+      </button>
     </Badge>
   );
 }
@@ -54,11 +98,16 @@ export function GroupLessonGallery({
   /** The planned date, already formatted — the gallery has no opinion on how a
    *  date reads, and the list next to it must agree with whatever that is. */
   plannedDate,
+  onRefreshBase,
+  busy,
 }: {
   groupId: string;
   rows: GroupLessonRow[];
   currentLessonId: string | null;
   plannedDate: (row: GroupLessonRow) => string;
+  /** Rebuild one copy on the shared lesson — what the "Out of date" badge does. */
+  onRefreshBase?: (row: GroupLessonRow) => void;
+  busy?: boolean;
 }) {
   return (
     <Gallery
@@ -99,7 +148,14 @@ export function GroupLessonGallery({
                 </Badge>
               )}
               <AddedBadge count={row.advancedCount} />
-              <OutOfDateBadge behind={row.baseIsNewer} />
+              <OutOfDateBadge
+                behind={row.baseIsNewer}
+                title={row.title || row.lessonId}
+                busy={busy}
+                onRefresh={
+                  onRefreshBase ? () => onRefreshBase(row) : undefined
+                }
+              />
             </>
           }
         />
@@ -111,9 +167,13 @@ export function GroupLessonGallery({
 export function GroupMaterialGallery({
   groupId,
   rows,
+  onRefreshBase,
+  busy,
 }: {
   groupId: string;
   rows: GroupMaterialRow[];
+  onRefreshBase?: (row: GroupMaterialRow) => void;
+  busy?: boolean;
 }) {
   return (
     <Gallery
@@ -150,7 +210,14 @@ export function GroupMaterialGallery({
             <>
               <StatusBadge status={row.status} />
               <AddedBadge count={row.advancedCount} />
-              <OutOfDateBadge behind={row.baseIsNewer} />
+              <OutOfDateBadge
+                behind={row.baseIsNewer}
+                title={row.title || row.lessonId}
+                busy={busy}
+                onRefresh={
+                  onRefreshBase ? () => onRefreshBase(row) : undefined
+                }
+              />
             </>
           }
         />
@@ -162,9 +229,13 @@ export function GroupMaterialGallery({
 export function GroupHomeworkGallery({
   groupId,
   rows,
+  onRefreshBase,
+  busy,
 }: {
   groupId: string;
   rows: GroupHomeworkRow[];
+  onRefreshBase?: (row: GroupHomeworkRow) => void;
+  busy?: boolean;
 }) {
   return (
     <Gallery
@@ -201,7 +272,14 @@ export function GroupHomeworkGallery({
             <>
               <StatusBadge status={row.status} />
               <AddedBadge count={row.advancedCount} />
-              <OutOfDateBadge behind={row.baseIsNewer} />
+              <OutOfDateBadge
+                behind={row.baseIsNewer}
+                title={row.title || row.homeworkId}
+                busy={busy}
+                onRefresh={
+                  onRefreshBase ? () => onRefreshBase(row) : undefined
+                }
+              />
             </>
           }
         />

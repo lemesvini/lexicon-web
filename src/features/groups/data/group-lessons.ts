@@ -18,7 +18,7 @@
 
 import type { Lesson } from "@/lib/lessons";
 import { supabase } from "@/lib/supabase";
-import { advancedCount } from "@/features/studio/advanced-context";
+import { advancedCount, rebaseOnto } from "@/features/studio/advanced-context";
 import { fetchCloudLesson, type CloudLessonSummary } from "@/lib/lessons-cloud";
 
 import { fromDateKey, toDateKey } from "./groups";
@@ -266,6 +266,47 @@ export async function saveGroupLesson(
     .eq("lesson_id", lessonId);
 
   if (error) throw new Error(error.message);
+}
+
+/**
+ * Rebuilds this group's copy on the shared lesson as it stands now.
+ *
+ * The same move the editor's "Refresh from base" makes, done without opening the
+ * document: read the copy and the base together, `rebaseOnto` them, and write the
+ * result back with `base_synced_at` moved forward to the base's last save — which
+ * is what clears the "Out of date" badge.
+ *
+ * Both halves of the read matter. A copy that has gone missing, or a base lesson
+ * that has, throws rather than writing something half-rebuilt: this is offered
+ * from a list, where there is nothing on screen to compare the result against.
+ */
+export async function rebaseGroupLesson(
+  groupId: string,
+  lessonId: string,
+): Promise<void> {
+  const [copy, base] = await Promise.all([
+    fetchGroupLesson(groupId, lessonId),
+    supabase
+      .from("lessons")
+      .select("document, updated_at")
+      .eq("id", lessonId)
+      .maybeSingle(),
+  ]);
+
+  if (base.error) throw new Error(base.error.message);
+  if (!copy) throw new Error("This group has no copy of that lesson.");
+
+  const document = base.data?.document as Lesson | undefined;
+  if (!document) {
+    throw new Error("The shared lesson is no longer there to rebuild from.");
+  }
+
+  await saveGroupLesson(
+    groupId,
+    lessonId,
+    rebaseOnto(document, copy.document),
+    (base.data?.updated_at as string | null) ?? null,
+  );
 }
 
 /**

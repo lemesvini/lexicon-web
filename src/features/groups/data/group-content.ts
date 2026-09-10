@@ -16,7 +16,7 @@
 
 import type { Lesson } from "@/lib/lessons";
 import { supabase } from "@/lib/supabase";
-import { advancedCount } from "@/features/studio/advanced-context";
+import { advancedCount, rebaseOnto } from "@/features/studio/advanced-context";
 import { fetchMaterial, listMaterials } from "@/features/studio/data/materials";
 import { fetchHomework } from "@/features/studio/data/homework";
 import { stripTeacherContent } from "@/features/studio/strip-teacher";
@@ -193,6 +193,36 @@ export async function saveGroupMaterial(
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Rebuilds this group's material on the shared material as it stands now.
+ *
+ * The list's version of the editor's "Refresh from base" — see
+ * `rebaseGroupLesson`, which reads the same way. A group whose material was
+ * seeded from the presentation (no shared material of its own) has nothing to
+ * rebuild from, and says so rather than writing anything.
+ */
+export async function rebaseGroupMaterial(
+  groupId: string,
+  lessonId: string,
+): Promise<void> {
+  const [copy, base] = await Promise.all([
+    fetchGroupMaterial(groupId, lessonId),
+    fetchMaterial(lessonId),
+  ]);
+
+  if (!copy) throw new Error("This group has no copy of that material.");
+  if (!base) {
+    throw new Error("There's no shared material for this lesson to rebuild on.");
+  }
+
+  await saveGroupMaterial(
+    groupId,
+    lessonId,
+    rebaseOnto(base.document, copy.document),
+    base.updatedAt || null,
+  );
+}
+
 export async function setGroupMaterialStatus(
   id: string,
   status: PublishStatus,
@@ -364,6 +394,30 @@ export async function saveGroupHomework(
     .eq("homework_id", homeworkId);
 
   if (error) throw new Error(error.message);
+}
+
+/** Rebuilds this group's homework on the shared homework as it stands now.
+ *  See `rebaseGroupMaterial` — the same move, keyed by the homework's slug. */
+export async function rebaseGroupHomework(
+  groupId: string,
+  homeworkId: string,
+): Promise<void> {
+  const [copy, base] = await Promise.all([
+    fetchGroupHomework(groupId, homeworkId),
+    fetchHomework(homeworkId),
+  ]);
+
+  if (!copy) throw new Error("This group has no copy of that homework.");
+  if (!base) {
+    throw new Error("The shared homework is no longer there to rebuild from.");
+  }
+
+  await saveGroupHomework(
+    groupId,
+    homeworkId,
+    rebaseOnto(base.document, copy.document),
+    base.updatedAt || null,
+  );
 }
 
 export async function setGroupHomeworkStatus(
