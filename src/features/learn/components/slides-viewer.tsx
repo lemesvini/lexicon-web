@@ -6,7 +6,7 @@ import {
   XIcon,
 } from "lucide-react";
 
-import { SlideView } from "@/features/blocks";
+import { SlideView, isAdvancedMarked } from "@/features/blocks";
 import { useArrowKeyNav } from "@/features/presenter/use-arrow-key-nav";
 import type { Lesson } from "@/lib/lessons";
 import { fetchStudentPresentation } from "@/lib/student-content";
@@ -124,7 +124,7 @@ function SlidesViewer({
   const slide = slides[Math.min(index, last)];
 
   return (
-    <Stage onClose={onClose}>
+    <Stage onClose={onClose} hideWordmark={isAdvancedMarked(slide)}>
       <Projector>
         <SlideView slide={slide} audience="student" />
       </Projector>
@@ -228,9 +228,13 @@ function Projector({ children }: { children: React.ReactNode }) {
  *  rather than flashing a different one. */
 function Stage({
   onClose,
+  hideWordmark = false,
   children,
 }: {
   onClose: () => void;
+  /** Drop the brand mark — an Advanced Context slide carries the wordmark in
+   *  its own corner lockup, and two of them is one too many. */
+  hideWordmark?: boolean;
   children: React.ReactNode;
 }) {
   // Escape closes, and the page behind must not scroll while the deck is open.
@@ -257,15 +261,17 @@ function Stage({
       className="fixed inset-0 z-50 overflow-hidden bg-background text-foreground"
     >
       {/* Brand mark, as on the projector — the deck should look like the one the
-          class was taught from. */}
-      <header className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center pt-6">
-        <span className="font-display text-3xl lowercase leading-none tracking-tight text-primary">
-          lexicon
-        </span>
-        <span className="font-sans text-[0.625rem] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
-          English
-        </span>
-      </header>
+          class was taught from, hidden on the same slides. */}
+      {!hideWordmark && (
+        <header className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center pt-6">
+          <span className="font-display text-3xl lowercase leading-none tracking-tight text-primary">
+            lexicon
+          </span>
+          <span className="font-sans text-[0.625rem] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+            English
+          </span>
+        </header>
+      )}
 
       <button
         type="button"

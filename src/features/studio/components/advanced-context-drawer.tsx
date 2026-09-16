@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ClaudeLogo } from "@/components/claude-logo";
 import { cn } from "@/lib/utils";
-import { AdvancedFrame, BlockView } from "@/features/blocks";
+import { AdvancedMark, BlockView } from "@/features/blocks";
 import {
   suggestAdvancedContext,
   type ChatMessage,
@@ -434,14 +434,13 @@ export function AdvancedContextDrawer({
 
                 {/* The real renderers, not a description of them: what you
                     approve should be the thing that lands. */}
-                <div className="pointer-events-none text-sm">
-                  <AdvancedFrame>
-                    <div className="space-y-6">
-                      {suggestion.blocks.map((block, i) => (
-                        <BlockView key={i} block={block} audience="teacher" />
-                      ))}
-                    </div>
-                  </AdvancedFrame>
+                <div className="pointer-events-none rounded-2xl border bg-background p-4 text-sm">
+                  <AdvancedMark />
+                  <div className="space-y-6">
+                    {suggestion.blocks.map((block, i) => (
+                      <BlockView key={i} block={block} audience="teacher" />
+                    ))}
+                  </div>
                 </div>
 
                 <Button

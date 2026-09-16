@@ -64,20 +64,17 @@ function TeacherNotes({
 }
 
 /**
- * The three looks a group's own slide can have, in a cycle.
+ * Whether the slide wears the Advanced Context mark, toggled.
  *
- * "plain" is the odd one out and the reason this exists: it isn't a frame
- * colour, it's the group saying the slide is an ordinary one. The slide is still
- * theirs either way — the flag that owns it is `advancedContext`, which this
- * never touches, so switching to plain and back loses nothing and a rebase still
- * carries the slide across.
+ * The slide is the group's own either way — the flag that owns it is
+ * `advancedContext`, which this never touches, so switching to plain and back
+ * loses nothing and a rebase still carries the slide across. Anything that isn't
+ * "plain" (including the frame names old documents carry) is marked.
  */
 function nextTheme(
   theme: LessonSlide["advancedTheme"],
 ): NonNullable<LessonSlide["advancedTheme"]> {
-  if (theme === "forest") return "plain";
-  if (theme === "plain") return "jade";
-  return "forest";
+  return theme === "plain" ? "mark" : "plain";
 }
 
 export function SlideCard({
@@ -164,8 +161,8 @@ export function SlideCard({
                 }
                 title={
                   meta.advancedTheme === "plain"
-                    ? "No frame — this slide looks like any other. Click to frame it as Advanced Context"
-                    : "Frame on the projector — click to switch (green → dark → plain)"
+                    ? "No mark — this slide looks like any other. Click to mark it as Advanced Context"
+                    : "Advanced Context mark in the slide's top-left corner — click to remove it"
                 }
                 className={cn(
                   "rounded px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider transition-colors",
@@ -176,7 +173,7 @@ export function SlideCard({
               >
                 {meta.advancedTheme === "plain"
                   ? "Normal slide"
-                  : `Advanced · ${meta.advancedTheme === "forest" ? "dark" : "green"}`}
+                  : "Advanced · marked"}
               </button>
             )}
             {teacherContent && (

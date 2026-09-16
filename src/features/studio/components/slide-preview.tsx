@@ -2,7 +2,7 @@ import * as React from "react";
 
 import type { LessonSlide } from "@/lib/lessons";
 import { cn } from "@/lib/utils";
-import { SlideView } from "@/features/blocks";
+import { SlideView, isAdvancedMarked } from "@/features/blocks";
 import type { EditorSlide } from "../model";
 
 /**
@@ -82,14 +82,18 @@ export function SlidePreview({
             rather than shared: the presenter owns fullscreen, the whiteboard and
             the live connection, none of which belong in a still picture. */}
         <div className="relative h-full w-full overflow-hidden text-foreground">
-          <header className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center pt-6">
-            <span className="font-display text-3xl lowercase leading-none tracking-tight text-primary">
-              lexicon
-            </span>
-            <span className="font-sans text-[0.625rem] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
-              English
-            </span>
-          </header>
+          {/* Dropped on an Advanced Context slide, as on the present route: the
+              slide's own corner lockup already carries the wordmark. */}
+          {!isAdvancedMarked(projected) && (
+            <header className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center pt-6">
+              <span className="font-display text-3xl lowercase leading-none tracking-tight text-primary">
+                lexicon
+              </span>
+              <span className="font-sans text-[0.625rem] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+                English
+              </span>
+            </header>
+          )}
 
           <div className="relative flex h-full items-center justify-center px-16 py-24">
             <SlideView slide={projected} audience="teacher" />
