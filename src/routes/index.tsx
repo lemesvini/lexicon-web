@@ -672,7 +672,7 @@ function Footer() {
       <div className="mx-auto flex max-w-[1120px] flex-col gap-12">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
           <div className="flex flex-col gap-5">
-            <img src="/new-light.svg" alt="lexicon" className="h-14 w-fit" />
+            <img src="/new-light.svg" alt="lexicon" className="h-14 w-auto self-start" />
             <p className="m-0 max-w-[280px] text-sm leading-relaxed text-white/70">
               Escola de inglês com aulas personalizadas e material didático adaptado para cada aluno.
             </p>
