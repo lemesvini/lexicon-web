@@ -26,13 +26,6 @@ import {
 import { putLocalLesson } from "@/lib/lesson-store";
 import { parseLesson } from "@/features/studio/model";
 
-/**
- * Where the chosen view is remembered. The module gallery is the default in
- * the sense that matters — what a teacher sees before they have said
- * otherwise — but a preference about how to read the library is not a
- * per-visit question, so having said otherwise sticks. Same reasoning as the
- * studio's preview toggle.
- */
 const VIEW_KEY = "homepage:classes-view";
 
 function readViewPreference(): ClassView {
@@ -46,33 +39,12 @@ function readViewPreference(): ClassView {
   }
 }
 
-/**
- * The homepage's class library: every launchable class — from the shared cloud
- * library or opened from a local JSON file — with Present (`/present`) and
- * Control (`/control`) on each one.
- *
- * Three views over the same rows: a gallery of modules (the default — a
- * teacher picks the module they're teaching from before they pick the class
- * inside it, and clicking one opens its lessons in a panel beside the grid),
- * a gallery of covers (a teacher recognises the class they are about to teach
- * by its cover long before they read its title), and the table, for when the
- * question is "which of these hundred" rather than "that one".
- *
- * The search box and the module filter live here rather than in the table's own
- * toolbar, which is what they used to be: filters that reset every time you
- * changed how the list was drawn would make the toggle feel like it navigated
- * somewhere.
- */
 export default function PresenterMenu() {
   const fileRef = React.useRef<HTMLInputElement>(null);
 
   const [cloud, setCloud] = React.useState<ClassRow[]>([]);
   const [local, setLocal] = React.useState<ClassRow[]>([]);
   const [modules, setModules] = React.useState<string[]>([]);
-  // Modules with "Show on dashboard" turned off. They stay out of the module
-  // gallery's grid but keep their place in the filter, the cover gallery and
-  // the table — this is about what the front page leads with, not about hiding
-  // classes from the person teaching them.
   const [hiddenModules, setHiddenModules] = React.useState<string[]>([]);
   const [status, setStatus] = React.useState<"loading" | "ready" | "error">(
     "loading",
@@ -87,18 +59,11 @@ export default function PresenterMenu() {
     try {
       window.localStorage.setItem(VIEW_KEY, view);
     } catch {
-      // See readViewPreference — the toggle still works for this session.
     }
   }, [view]);
 
   React.useEffect(() => {
     let cancelled = false;
-    // The module list is its own query rather than being derived from the rows:
-    // it is the curriculum itself, straight from the modules table, so a module
-    // created a minute ago is in the filter before a single lesson has been
-    // filed under it. Deriving it from the lessons — which is what this used to
-    // do — made a new module invisible until it stopped being empty, which is
-    // exactly when you go looking for it.
     Promise.all([
       listCloudLessons(),
       listModuleNames(),
@@ -123,22 +88,11 @@ export default function PresenterMenu() {
     setStatus("loading");
     setReloadKey((k) => k + 1);
   };
-
-  // A local file shadows a cloud lesson of the same id, matching the order
-  // present/control resolve them in (@/features/presenter/use-resolved-lesson).
-  //
-  // Ahead of the library rather than sorted into it: `listCloudLessons` returns
-  // the curriculum's own sequence, and a file opened from disk has no place in
-  // it — but it was opened a second ago, so it is the one being looked for.
   const items = React.useMemo(() => {
     const localIds = new Set(local.map((row) => row.id));
     return [...local, ...cloud.filter((row) => !localIds.has(row.id))];
   }, [local, cloud]);
 
-  // The curriculum's own order, then anything a lesson is tagged with that the
-  // modules table doesn't know about — a module that was renamed or deactivated
-  // still has classes sitting in it, and a filter that couldn't select them
-  // would leave those classes unreachable from here.
   const moduleOptions = React.useMemo(() => {
     const known = new Set(modules);
     const extra = new Set<string>();

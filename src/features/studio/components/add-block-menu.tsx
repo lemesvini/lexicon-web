@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { BLOCK_ORDER, blockMetas, type BlockType } from "@/features/blocks";
 
-/** The "+" affordance in a slide's top-right corner. Adds a block to that slide. */
+/** The bar under a slide's blocks. Adds a block to the end of that slide. */
 export function AddBlockMenu({
   onAdd,
   blockTypes = BLOCK_ORDER,
@@ -22,14 +22,13 @@ export function AddBlockMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label="Add block"
-          title="Add block"
-          className="inline-flex size-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-foreground"
         >
           <PlusIcon className="size-4" />
+          Add block
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
+      <DropdownMenuContent align="center" className="w-56">
         <DropdownMenuLabel>Add block</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {blockMetas(blockTypes).map((b) => {

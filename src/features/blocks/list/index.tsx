@@ -1,4 +1,4 @@
-import { ListIcon } from "lucide-react";
+import { LayoutListIcon, ListIcon } from "lucide-react";
 import type { ListBlock } from "@/lib/lessons";
 import { cn } from "@/lib/utils";
 import type { BlockDefinition } from "../types";
@@ -11,6 +11,7 @@ import {
   DeleteRowButton,
   NoteInput,
 } from "../editor-ui/primitives";
+import { Segmented } from "../editor-ui/segmented";
 
 const STYLES: { value: ListBlock["style"]; label: string }[] = [
   { value: "bullet", label: "Bullet" },
@@ -37,7 +38,7 @@ function ListMarker({
   return (
     <span className="flex w-6 shrink-0 select-none justify-center">
       {style === "numbered" ? (
-        <span className="mt-px flex size-6 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold tabular-nums text-primary">
+        <span className="mt-px flex size-7 items-center justify-center rounded-full border-[1.5px] border-current/60 text-sm font-medium tabular-nums">
           {index + 1}
         </span>
       ) : style === "checklist" ? (
@@ -55,18 +56,66 @@ function ListMarker({
   );
 }
 
+/**
+ * One item as a card: a tinted, bordered box with the marker in the corner.
+ * The first line is the heading when there is more than one — "Round one: what
+ * you see" over "Pick three cards…" — so an author writes a step as a title and
+ * a body without a second field for it.
+ */
+function CardItem({
+  item,
+  style,
+  index,
+}: {
+  item: string;
+  style: ListBlock["style"];
+  index: number;
+}) {
+  const [first, ...rest] = item.split("\n");
+  const body = rest.join("\n").trim();
+  return (
+    <li className="flex gap-4 rounded-xl border border-primary/25 bg-primary/[0.06] px-5 py-4">
+      <ListMarker style={style} index={index} />
+      <div className="min-w-0 space-y-1">
+        {body ? (
+          <>
+            <p className="text-xl font-semibold leading-snug">
+              {renderInline(first)}
+            </p>
+            <p className="whitespace-pre-line text-lg leading-relaxed text-foreground/85">
+              {renderInline(body)}
+            </p>
+          </>
+        ) : (
+          <p className="whitespace-pre-line text-lg leading-relaxed">
+            {renderInline(item)}
+          </p>
+        )}
+      </div>
+    </li>
+  );
+}
+
 function View({ block }: { block: ListBlock }) {
   return (
-    <section className="space-y-2">
+    <section className="space-y-3">
       {block.label && <BlockLabel>{block.label}</BlockLabel>}
-      <ul className="space-y-2.5">
-        {block.items.map((item, i) => (
-          <li key={i} className="flex gap-3 text-lg leading-relaxed">
-            <ListMarker style={block.style} index={i} />
-            <span className="whitespace-pre-line">{renderInline(item)}</span>
-          </li>
-        ))}
-      </ul>
+      {block.cards ? (
+        <ul className="space-y-3">
+          {block.items.map((item, i) => (
+            <CardItem key={i} item={item} style={block.style} index={i} />
+          ))}
+        </ul>
+      ) : (
+        <ul className="space-y-2.5">
+          {block.items.map((item, i) => (
+            <li key={i} className="flex gap-3 text-lg leading-relaxed">
+              <ListMarker style={block.style} index={i} />
+              <span className="whitespace-pre-line">{renderInline(item)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       {block.note && <BlockNote text={block.note} />}
     </section>
   );
@@ -95,21 +144,34 @@ function Editor({
           value={block.label ?? ""}
           onChange={(label) => onChange({ ...block, label })}
         />
-        <div className="flex shrink-0 gap-1 rounded-md bg-muted p-0.5">
-          {STYLES.map((s) => (
-            <button
-              key={s.value}
-              type="button"
-              onClick={() => onChange({ ...block, style: s.value })}
-              className={cn(
-                "rounded px-2 py-0.5 text-xs font-medium text-muted-foreground transition-colors",
-                block.style === s.value &&
-                  "bg-background text-foreground shadow-sm",
-              )}
-            >
-              {s.label}
-            </button>
-          ))}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Segmented
+            value={block.style}
+            onChange={(style) => onChange({ ...block, style })}
+            options={STYLES}
+            label="List style"
+          />
+          <button
+            type="button"
+            aria-pressed={!!block.cards}
+            title={
+              block.cards
+                ? "Cards — each item in its own box. Click for plain lines"
+                : "Plain lines — click to draw each item as a card"
+            }
+            onClick={() =>
+              onChange({ ...block, cards: block.cards ? undefined : true })
+            }
+            className={cn(
+              "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+              block.cards
+                ? "bg-primary/15 text-primary"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            <LayoutListIcon className="size-3.5" />
+            Cards
+          </button>
         </div>
       </div>
 

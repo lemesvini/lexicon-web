@@ -40,16 +40,23 @@ export function NoteInput({
   );
 }
 
-/** Round icon button for add/remove-row affordances inside blocks. */
+/** Round icon button for add/remove-row affordances inside blocks. Spreads the
+ *  rest of its props onto the button so it can stand in as a menu or popover
+ *  trigger (`asChild`), which is how the slide chrome uses it. */
 export function IconAction({
   onClick,
   label,
   variant = "default",
+  active = false,
+  className,
   children,
-}: {
-  onClick: () => void;
+  ...props
+}: Omit<React.ComponentProps<"button">, "onClick"> & {
+  onClick?: () => void;
   label: string;
   variant?: "default" | "danger";
+  /** Drawn pressed — for a toggle that is on, or a trigger whose panel is open. */
+  active?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -58,10 +65,13 @@ export function IconAction({
       onClick={onClick}
       aria-label={label}
       title={label}
+      {...props}
       className={cn(
-        "inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent",
+        "inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
         variant === "danger" && "hover:bg-destructive/10 hover:text-destructive",
+        active && "bg-accent text-foreground",
         "[&_svg]:size-3.5",
+        className,
       )}
     >
       {children}

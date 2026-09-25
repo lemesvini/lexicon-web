@@ -210,7 +210,6 @@ function AdvancedEditor({
     <StudioCanvas
       studio={studio}
       label={studioKind("advanced").singular}
-      railLayout="stacked"
       portable={false}
       back={{ label: "Back", onClick: goBack }}
       slideLocked={(slide) => isBase(slide.meta)}

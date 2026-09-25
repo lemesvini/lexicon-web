@@ -10,6 +10,7 @@ import { imageBlock } from "./image";
 import { titleBlock } from "./title";
 import { embedBlock } from "./embed";
 import { postBlock } from "./post";
+import { containerBlock } from "./container";
 import { finishSentenceBlock } from "./finish-sentence";
 import { chooseDescriptionBlock } from "./choose-description";
 import { findMistakeBlock } from "./find-mistake";
@@ -32,6 +33,7 @@ export const BLOCK_REGISTRY: Registry = {
   image: imageBlock,
   embed: embedBlock,
   post: postBlock,
+  container: containerBlock,
   "finish-sentence": finishSentenceBlock,
   "choose-description": chooseDescriptionBlock,
   "find-mistake": findMistakeBlock,
@@ -50,6 +52,7 @@ export const BLOCK_ORDER: BlockType[] = [
   "image",
   "embed",
   "post",
+  "container",
 ];
 
 /**

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { BackButton } from '@/components/back-button'
 import { Button } from '@/components/ui/button'
-import { SlideView } from '@/features/blocks'
+import { StagePreview } from '@/features/blocks'
 import { Whiteboard } from '@/features/presenter/components/whiteboard'
 import { ConnectionBadge } from '@/features/presenter/components/connection-status'
 import {
@@ -171,9 +171,14 @@ function ControlPage() {
             </>
           ) : (
             <div className="flex h-full flex-col gap-6 overflow-auto p-8">
-              <div className="relative flex flex-1 items-center justify-center">
-                <SlideView slide={slide} audience="teacher" />
-              </div>
+              {/* The stage at its real proportions, so what the teacher sees
+                  here is laid out the way the room sees it. */}
+              <StagePreview
+                slide={slide}
+                lesson={lesson}
+                audience="teacher"
+                className="shrink-0"
+              />
               {slide.teacherNotes && slide.teacherNotes.length > 0 && (
                 <section className="shrink-0 space-y-2 rounded-lg border border-border bg-muted p-4">
                   <h2 className="text-sm font-semibold text-muted-foreground">

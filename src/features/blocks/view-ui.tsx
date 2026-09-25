@@ -7,7 +7,7 @@ import { renderInline } from "./inline-md";
 /** Small uppercase eyebrow above a block's content. */
 export function BlockLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+    <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-primary/80">
       {children}
     </h3>
   );

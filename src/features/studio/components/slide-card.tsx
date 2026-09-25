@@ -1,22 +1,25 @@
 import {
   ChevronDownIcon,
   ChevronUpIcon,
-  Columns2Icon,
   CopyIcon,
-  EyeIcon,
-  EyeOffIcon,
-  GripVerticalIcon,
-  PlusIcon,
-  Rows2Icon,
+  MoreHorizontalIcon,
   Trash2Icon,
 } from "lucide-react";
-import type { LessonBlock, LessonSlide } from "@/lib/lessons";
+import type { Lesson, LessonBlock, LessonSlide } from "@/lib/lessons";
 import { cn } from "@/lib/utils";
-import { BLOCK_REGISTRY, type BlockType } from "@/features/blocks";
+import type { BlockType } from "@/features/blocks";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { EditorSlide } from "../model";
 import type { StudioController } from "../use-studio-lesson";
 import { AddBlockMenu } from "./add-block-menu";
 import { BlockEditor } from "./block-editor";
+import { SlideLayoutPopover } from "./slide-layout-popover";
 import { SlidePreview } from "./slide-preview";
 import {
   AddRowButton,
@@ -79,6 +82,7 @@ function nextTheme(
 
 export function SlideCard({
   slide,
+  lesson,
   index,
   total,
   studio,
@@ -88,6 +92,8 @@ export function SlideCard({
   blockTypes,
 }: {
   slide: EditorSlide;
+  /** The document's defaults the preview needs — the wordmark setting. */
+  lesson?: Pick<Lesson, "hideBrand">;
   index: number;
   total: number;
   studio: StudioController;
@@ -113,7 +119,6 @@ export function SlideCard({
   const { key, meta, blocks } = slide;
   const setMeta = (patch: Partial<Omit<LessonSlide, "blocks">>) =>
     studio.updateSlideMeta(key, patch);
-  const isRow = meta.layout === "row";
 
   return (
     <section
@@ -122,12 +127,11 @@ export function SlideCard({
     >
       {/* Slide header */}
       <header className="flex items-start gap-3 border-b px-5 py-4">
-        <div className="flex items-center gap-2 pt-0.5">
-          <GripVerticalIcon className="size-4 text-muted-foreground/40" />
-          <span className="flex size-6 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold tabular-nums text-primary">
-            {index + 1}
-          </span>
-        </div>
+        {/* No grip: nothing here drags, and a handle that doesn't is a promise
+            the card can't keep. Reordering is in the slide menu. */}
+        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold tabular-nums text-primary">
+          {index + 1}
+        </span>
 
         <div className="min-w-0 flex-1 space-y-1">
           <input
@@ -200,68 +204,50 @@ export function SlideCard({
           </div>
         </div>
 
-        {/* Slide actions + the top-right add button. On a locked slide only the
-            add button survives — everything else here would change the shared
-            lesson rather than this group's copy of it. */}
-        <div className="flex shrink-0 items-center gap-0.5">
-          {!locked && (
-            <>
-              <IconAction
-                onClick={() => setMeta({ hideStage: !meta.hideStage })}
-                label={
-                  meta.hideStage
-                    ? "Stage header hidden — click to show"
-                    : "Stage header shown — click to hide"
-                }
-              >
-                {meta.hideStage ? <EyeOffIcon /> : <EyeIcon />}
-              </IconAction>
-              <IconAction
-                onClick={() => setMeta({ layout: isRow ? "column" : "row" })}
-                label={
-                  isRow
-                    ? "Layout: side by side — click to stack"
-                    : "Layout: stacked — click for side by side"
-                }
-              >
-                {isRow ? <Columns2Icon /> : <Rows2Icon />}
-              </IconAction>
-              <IconAction
-                onClick={() => studio.moveSlide(key, -1)}
-                label="Move slide up"
-              >
-                <ChevronUpIcon className={cn(index === 0 && "opacity-30")} />
-              </IconAction>
-              <IconAction
-                onClick={() => studio.moveSlide(key, 1)}
-                label="Move slide down"
-              >
-                <ChevronDownIcon
-                  className={cn(index === total - 1 && "opacity-30")}
-                />
-              </IconAction>
-              <IconAction
-                onClick={() => studio.duplicateSlide(key)}
-                label="Duplicate slide"
-              >
-                <CopyIcon />
-              </IconAction>
-              <IconAction
-                onClick={() => studio.removeSlide(key)}
-                label="Delete slide"
-                variant="danger"
-              >
-                <Trash2Icon />
-              </IconAction>
-            </>
-          )}
-          <span className="ml-1">
-            <AddBlockMenu
-              onAdd={(type) => studio.addBlock(key, type)}
-              blockTypes={blockTypes}
-            />
-          </span>
-        </div>
+        {/* Slide actions: layout behind one button, the rest behind a menu.
+            On a locked slide neither survives — everything in them would change
+            the shared lesson rather than this group's copy of it; blocks are
+            added from the bar under the block list instead. */}
+        {!locked && (
+          <div className="flex shrink-0 items-center gap-0.5">
+            <SlideLayoutPopover meta={meta} onChange={setMeta} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconAction label="Slide actions">
+                  <MoreHorizontalIcon />
+                </IconAction>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem
+                  disabled={index === 0}
+                  onSelect={() => studio.moveSlide(key, -1)}
+                >
+                  <ChevronUpIcon />
+                  Move up
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={index === total - 1}
+                  onSelect={() => studio.moveSlide(key, 1)}
+                >
+                  <ChevronDownIcon />
+                  Move down
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => studio.duplicateSlide(key)}>
+                  <CopyIcon />
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => studio.removeSlide(key)}
+                >
+                  <Trash2Icon />
+                  Delete slide
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </header>
 
       {/* The slide itself, above the fields that build it — one picture of the
@@ -269,17 +255,18 @@ export function SlideCard({
           checking is how the blocks land together on the stage. */}
       {preview && (
         <div className="px-5 pt-4">
-          <SlidePreview slide={slide} />
+          <SlidePreview slide={slide} lesson={lesson} />
         </div>
       )}
 
-      {/* Blocks */}
+      {/* Blocks, then the one place a block is added from. The bar is where
+          the next block will land, which is the thing a "+" in the corner
+          never managed to say. */}
       <div className="space-y-1 px-3 py-3">
         {blocks.length === 0 ? (
-          <EmptySlide
-            onAdd={(type) => studio.addBlock(key, type)}
-            firstType={blockTypes?.[0]}
-          />
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            No blocks yet
+          </p>
         ) : (
           blocks.map((block, i) => (
             <BlockEditor
@@ -301,6 +288,10 @@ export function SlideCard({
             />
           ))
         )}
+        <AddBlockMenu
+          onAdd={(type) => studio.addBlock(key, type)}
+          blockTypes={blockTypes}
+        />
       </div>
 
       {teacherContent && (
@@ -312,34 +303,5 @@ export function SlideCard({
         </div>
       )}
     </section>
-  );
-}
-
-function EmptySlide({
-  onAdd,
-  firstType = "text",
-}: {
-  onAdd: (type: BlockType) => void;
-  /** The type the shortcut button adds — the first the editor offers, since
-   *  "text" isn't on the palette in a homework. */
-  firstType?: BlockType;
-}) {
-  const label = BLOCK_REGISTRY[firstType].meta.label;
-  return (
-    <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-8 text-center">
-      <p className="text-sm text-muted-foreground">No blocks yet</p>
-      <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-        <PlusIcon className="size-3.5" />
-        Use the <span className="font-medium">+</span> in the corner or the
-        palette to add a block
-      </div>
-      <button
-        type="button"
-        onClick={() => onAdd(firstType)}
-        className="mt-1 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent text-muted-foreground"
-      >
-        Add a {label.toLowerCase()} block
-      </button>
-    </div>
   );
 }

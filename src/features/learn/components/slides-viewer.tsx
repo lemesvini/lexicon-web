@@ -6,9 +6,9 @@ import {
   XIcon,
 } from "lucide-react";
 
-import { SlideView, isAdvancedMarked } from "@/features/blocks";
+import { BrandMark, SlideView } from "@/features/blocks";
 import { useArrowKeyNav } from "@/features/presenter/use-arrow-key-nav";
-import type { Lesson } from "@/lib/lessons";
+import { showsBrand, type Lesson } from "@/lib/lessons";
 import { fetchStudentPresentation } from "@/lib/student-content";
 import { cn } from "@/lib/utils";
 
@@ -124,7 +124,7 @@ function SlidesViewer({
   const slide = slides[Math.min(index, last)];
 
   return (
-    <Stage onClose={onClose} hideWordmark={isAdvancedMarked(slide)}>
+    <Stage onClose={onClose} hideWordmark={!showsBrand(doc, slide)}>
       <Projector>
         <SlideView slide={slide} audience="student" />
       </Projector>
@@ -214,9 +214,7 @@ function Projector({ children }: { children: React.ReactNode }) {
       >
         {/* `relative` for the same reason the presenter's stage is: a wallpaper
             image block anchors a full-bleed background to it. */}
-        <div className="relative flex h-full w-full items-center justify-center px-16 py-16">
-          {children}
-        </div>
+        <div className="relative h-full w-full">{children}</div>
       </div>
     </div>
   );
@@ -262,16 +260,7 @@ function Stage({
     >
       {/* Brand mark, as on the projector — the deck should look like the one the
           class was taught from, hidden on the same slides. */}
-      {!hideWordmark && (
-        <header className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center pt-6">
-          <span className="font-display text-3xl lowercase leading-none tracking-tight text-primary">
-            lexicon
-          </span>
-          <span className="font-sans text-[0.625rem] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
-            English
-          </span>
-        </header>
-      )}
+      {!hideWordmark && <BrandMark />}
 
       <button
         type="button"

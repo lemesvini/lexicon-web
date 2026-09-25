@@ -4,7 +4,6 @@ import type { BlockType } from "@/features/blocks";
 import { cn } from "@/lib/utils";
 import type { EditorSlide } from "../model";
 
-import { BlockPalette } from "./block-palette";
 import { RawJsonDrawer } from "./raw-json-drawer";
 import { SlideCard } from "./slide-card";
 import { SlideOutline } from "./slide-outline";
@@ -33,7 +32,7 @@ function readPreviewPreference(): boolean {
 /**
  * The editing surface, minus anything that depends on what is being edited.
  *
- * Slides, blocks, the two rails and the JSON drawer are identical for a
+ * Slides, blocks, the outline rail and the JSON drawer are identical for a
  * presentation, a student material and a homework — they are all the same
  * document shape. The two things that aren't identical arrive as slots: the meta
  * editor above the slides (`meta`), and the kind-specific toolbar actions
@@ -51,7 +50,6 @@ export function StudioCanvas({
   canSave,
   teacherContent = true,
   blockTypes,
-  railLayout = "split",
   slideLocked,
   drawer,
   drawerLabel = "Assistant",
@@ -70,12 +68,8 @@ export function StudioCanvas({
   /** False for the student-facing kinds, which hides teacher notes, the
    *  teacher-only block toggle and the class-planning fields. */
   teacherContent?: boolean;
-  /** Which block types the palette offers; defaults to all of them. */
+  /** Which block types the add menu offers; defaults to all of them. */
   blockTypes?: BlockType[];
-  /** "split" puts the palette and the outline on facing rails — the default, and
-   *  the roomier of the two. "stacked" moves both to the left so the right-hand
-   *  side is free for `drawer`. */
-  railLayout?: "split" | "stacked";
   /** Which slides can only be added to, not changed. The Advanced Context Studio
    *  passes the base material here; everything else leaves it undefined and
    *  every slide stays editable. */
@@ -139,29 +133,6 @@ export function StudioCanvas({
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const stacked = railLayout === "stacked";
-
-  const palette = (
-    <BlockPalette
-      slides={lesson.slides}
-      activeKey={targetKey}
-      blockTypes={blockTypes}
-      stacked={stacked}
-      onAddBlock={(type) => {
-        if (targetKey) studio.addBlock(targetKey, type);
-      }}
-    />
-  );
-
-  const outline = (
-    <SlideOutline
-      slides={lesson.slides}
-      activeKey={targetKey}
-      stacked={stacked}
-      onAddSlide={handleAddSlide}
-      onSelectSlide={handleSelectSlide}
-    />
-  );
 
   return (
     <div className="min-h-svh bg-background text-foreground">
@@ -184,23 +155,25 @@ export function StudioCanvas({
           drawerLabel={drawer ? drawerLabel : undefined}
           drawerOpen={drawerOpen}
           onToggleDrawer={() => setDrawerOpen((v) => !v)}
+          brandOn={!lesson.meta.hideBrand}
+          onToggleBrand={() =>
+            studio.updateMeta({ hideBrand: lesson.meta.hideBrand ? undefined : true })
+          }
           portable={portable}
           back={back}
           menuItems={menuItems}
         />
 
         <div className="mx-auto flex w-full max-w-[84rem] gap-6 px-4 py-6">
-          {/* Rails. Split: blocks here, outline across the canvas. Stacked: both
-              here, blocks on top — the deck list is the thing you scroll, so it
-              takes the bottom half where a scrollbar costs nothing. */}
-          {stacked ? (
-            <aside className="sticky top-20 hidden max-h-[calc(100svh-6rem)] w-56 shrink-0 flex-col gap-5 lg:flex">
-              {palette}
-              {outline}
-            </aside>
-          ) : (
-            palette
-          )}
+          {/* One rail, on the left: the deck as a jump list. Blocks are added
+              from the bar under each slide's blocks, so there is no palette to
+              find a home for, and the right-hand side is free for a drawer. */}
+          <SlideOutline
+            slides={lesson.slides}
+            activeKey={targetKey}
+            onAddSlide={handleAddSlide}
+            onSelectSlide={handleSelectSlide}
+          />
 
           {/* Canvas */}
           <div className="min-w-0 flex-1 space-y-4">
@@ -214,6 +187,7 @@ export function StudioCanvas({
               >
                 <SlideCard
                   slide={slide}
+                  lesson={lesson.meta}
                   index={i}
                   total={lesson.slides.length}
                   studio={studio}
@@ -233,8 +207,6 @@ export function StudioCanvas({
               + Add slide
             </button>
           </div>
-
-          {!stacked && outline}
         </div>
       </div>
 

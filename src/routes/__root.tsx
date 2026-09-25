@@ -1,4 +1,4 @@
-import { Outlet, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Outlet, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/components/auth-provider'
@@ -11,6 +11,7 @@ function RootComponent() {
   return (
     <AuthProvider>
       <ThemeProvider storageKey="lexicon-theme">
+        <HeadContent />
         <Outlet />
         {import.meta.env.DEV && <TanStackRouterDevtools />}
       </ThemeProvider>

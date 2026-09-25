@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Loader2Icon, MaximizeIcon, MinimizeIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { SlideView, isAdvancedMarked } from '@/features/blocks'
+import { showsBrand } from '@/lib/lessons'
+import { BrandMark, SlideView } from '@/features/blocks'
 import { Whiteboard } from '@/features/presenter/components/whiteboard'
 import { ConnectionBadge } from '@/features/presenter/components/connection-status'
 import { useLessonDisplay } from '@/features/presenter/use-lesson-display'
@@ -90,23 +91,14 @@ function PresentPage() {
       <FullscreenToggle className="absolute right-4 top-4 z-20 opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-visible:opacity-100" />
 
       {/* Brand mark — at the top so the room always knows whose class this is.
-          Sits behind the whiteboard, which covers it when open. Dropped on an
-          Advanced Context slide: that slide's own corner lockup already carries
-          the wordmark, and two of them is one too many. */}
-      {!isAdvancedMarked(slide) && (
-        <header className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center pt-6">
-          <span className="font-display text-3xl lowercase leading-none tracking-tight text-primary">
-            lexicon
-          </span>
-          <span className=" font-sans text-[0.625rem] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
-            English
-          </span>
-        </header>
-      )}
+          Sits behind the whiteboard, which covers it when open. Optional per
+          slide and per document (`hideBrand`), and dropped on an Advanced
+          Context slide, whose corner lockup already carries the wordmark. */}
+      {showsBrand(lesson, slide) && <BrandMark />}
 
       {/* Slide — the only thing the presenter ever shows on its own. Positioned
-          so a wallpaper image block can anchor a full-bleed background here. */}
-      <div className="relative flex min-h-svh items-center justify-center px-16 py-24">
+          so SlideView's stage layer (and any wallpaper) fills the screen. */}
+      <div className="relative min-h-svh">
         <SlideView slide={slide} audience="student" />
       </div>
 

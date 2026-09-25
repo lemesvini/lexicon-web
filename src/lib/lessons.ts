@@ -42,6 +42,9 @@ export type ListBlock = BlockBase & {
   type: "list";
   label?: string;
   style: "numbered" | "bullet" | "checklist";
+  /** Draw each item in its own tinted card instead of as a line. An item's
+   *  first line becomes the card's heading when there is more than one. */
+  cards?: boolean;
   items: string[];
   note?: string;
 };
@@ -324,7 +327,38 @@ export type ExerciseBlock =
   | FindMistakeBlock
   | LongAnswerBlock;
 
+/**
+ * A group of blocks laid out together, in a row or a column.
+ *
+ * A slide's own `layout` is one axis for every block on it. That is enough for
+ * "text next to an image", and not enough for "a heading over two lists, next to
+ * a photo" — the row wants a column inside it. A container is that second axis:
+ * it takes the same blocks a slide does and lays them out along its own
+ * direction, and a container inside a container nests as deep as the author
+ * cares to go.
+ *
+ * Nothing full-bleed goes inside one — a title cover or a wallpaper image owns
+ * the whole slide and has no meaning inside a column — and neither does an
+ * exercise, which is answered by id from the top of a homework, not from inside
+ * a layout. A teacher-only block inside a container is hidden from the room by
+ * the renderer, but note that `strip_teacher_content` (migration 0004) only
+ * looks at top-level blocks: keep answer keys at the top level of the slide.
+ */
+export type ContainerBlock = BlockBase & {
+  type: "container";
+  /** Which way the children run. Defaults to "column". */
+  direction?: "row" | "column";
+  /** How the children line up on the cross axis: for a row, top-aligned or
+   *  vertically centred; for a column, left-aligned or centred. Defaults to
+   *  "start". */
+  align?: "start" | "center";
+  /** Space between children. Defaults to "md". */
+  gap?: "sm" | "md" | "lg";
+  blocks: LessonBlock[];
+};
+
 export type LessonBlock =
+  | ContainerBlock
   | TextBlock
   | ListBlock
   | CalloutBlock
@@ -347,8 +381,17 @@ export type LessonSlide = {
   duration: string;
   goal: string;
   /** How the slide's blocks are arranged: stacked ("column", the default) or
-   *  side by side ("row" — e.g. text next to an image). */
+   *  side by side ("row" — e.g. text next to an image). For a row with a column
+   *  inside it, put the column's blocks in a `container` block. */
   layout?: "row" | "column";
+  /** Where the content sits on the stage vertically. Defaults to "middle". */
+  align?: "top" | "middle" | "bottom";
+  /** Where the content column sits horizontally. Defaults to "center"; "left"
+   *  with `align: "top"` is the top-left corner. */
+  justify?: "left" | "center" | "right";
+  /** Drop the "lexicon / English" wordmark from the top of this slide. Unset
+   *  falls back to the document's own `hideBrand`. */
+  hideBrand?: boolean;
   /** Hide the stage header (the eyebrow + stage name) on this slide. Wallpaper
    *  slides always hide it regardless of this flag. */
   hideStage?: boolean;
@@ -380,8 +423,30 @@ export type Lesson = {
   minorCanDo: string;
   grammarFocus: string[];
   classPlan: { stage: string; duration: string; goal: string }[];
+  /** The document's default for the wordmark at the top of every slide. A slide
+   *  with its own `hideBrand` overrides this. */
+  hideBrand?: boolean;
   slides: LessonSlide[];
 };
+
+/**
+ * Whether the "lexicon / English" wordmark is drawn above a slide.
+ *
+ * Every surface that projects a slide (present, the studio preview, the
+ * student's deck) asks this rather than reading the flags itself, so the three
+ * cannot drift. The slide's own flag wins; the document's is the default; and
+ * an Advanced Context slide drops it regardless, because its corner lockup
+ * already carries the wordmark.
+ */
+export function showsBrand(
+  lesson: Pick<Lesson, "hideBrand"> | undefined,
+  slide: LessonSlide,
+): boolean {
+  if (slide.advancedContext === true && slide.advancedTheme !== "plain")
+    return false;
+  const hidden = slide.hideBrand ?? lesson?.hideBrand ?? false;
+  return !hidden;
+}
 
 const modules = import.meta.glob("/src/situations/**/*.json", {
   eager: true,

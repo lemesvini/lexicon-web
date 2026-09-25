@@ -46,6 +46,8 @@ export function StudioToolbar({
   drawerLabel,
   drawerOpen = false,
   onToggleDrawer,
+  brandOn = true,
+  onToggleBrand,
   portable = true,
   back,
   menuItems,
@@ -66,6 +68,10 @@ export function StudioToolbar({
   drawerLabel?: string;
   drawerOpen?: boolean;
   onToggleDrawer?: () => void;
+  /** The document's default for the wordmark on every slide; a slide can still
+   *  override it from its layout popover. */
+  brandOn?: boolean;
+  onToggleBrand?: () => void;
   /**
    * Whether this document can leave the app — Copy and Export.
    *
@@ -159,6 +165,17 @@ export function StudioToolbar({
             >
               JSON
             </DropdownMenuCheckboxItem>
+            {onToggleBrand && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem
+                  checked={brandOn}
+                  onCheckedChange={onToggleBrand}
+                >
+                  Lexicon wordmark on slides
+                </DropdownMenuCheckboxItem>
+              </>
+            )}
             {portable && (
               <>
                 <DropdownMenuSeparator />

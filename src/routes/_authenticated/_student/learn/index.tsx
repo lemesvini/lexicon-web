@@ -142,8 +142,7 @@ function LearnPage() {
             to="/practice"
             icon={DumbbellIcon}
             title="Practice"
-            description="Exercícios entre as aulas"
-            badge="Em breve"
+            description="Leitura e compreensão"
           />
         </div>
       </main>

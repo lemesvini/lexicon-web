@@ -18,8 +18,10 @@ export const CALLOUT_COLORS: { value: string; label: string; swatch: string }[] 
 /** Tailwind classes for rendering a callout by its color token. */
 export function calloutClasses(color: string | undefined): string {
   switch (color) {
+    // The brand green rather than Tailwind's: on the projector this is the
+    // house colour, and it should read as the same green the list cards use.
     case "green_bg":
-      return "bg-green-50 border-green-200 dark:bg-green-950/40 dark:border-green-900";
+      return "bg-primary/[0.08] border-primary/30";
     case "yellow_bg":
       return "bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-900";
     case "gray_bg":
@@ -34,14 +36,18 @@ export function calloutClasses(color: string | undefined): string {
 
 function View({ block }: { block: CalloutBlock }) {
   return (
-    <div className={cn("rounded-xl border p-5", calloutClasses(block.color))}>
-      <div className="flex items-start gap-3">
+    <div
+      className={cn("rounded-xl border px-6 py-5", calloutClasses(block.color))}
+    >
+      <div className="flex items-start gap-4">
         {block.icon && (
-          <span className="shrink-0 text-2xl leading-none">{block.icon}</span>
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full border-[1.5px] border-current/50 text-xl leading-none">
+            {block.icon}
+          </span>
         )}
-        <div className="min-w-0 space-y-1">
-          <p className="text-base font-semibold">{block.title}</p>
-          <p className="whitespace-pre-line leading-relaxed">
+        <div className="min-w-0 space-y-1.5">
+          <p className="text-xl font-semibold leading-snug">{block.title}</p>
+          <p className="whitespace-pre-line text-lg leading-relaxed text-foreground/85">
             {renderInline(block.body)}
           </p>
         </div>

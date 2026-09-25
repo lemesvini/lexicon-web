@@ -262,7 +262,6 @@ export function GroupCopyEditor({
       label={kind === "material" ? "Student material" : "Homework"}
       teacherContent={false}
       blockTypes={kind === "homework" ? EXERCISE_BLOCK_ORDER : undefined}
-      railLayout="stacked"
       portable={false}
       back={{ label: "Back", onClick: goBack }}
       slideLocked={(slide) => isBase(slide.meta)}

@@ -74,5 +74,8 @@ ${alex}## Block rules — these matter, because nothing validates them at render
 - \`callout\` colours are blue_bg / green_bg / yellow_bg / gray_bg / red_bg, and nothing else.
 - \`table\` is column-major: \`columns: [{ title, rows: [...] }]\`, one entry per COLUMN.
 - \`text\` and \`callout\` need \`body\`; \`callout\` also needs \`title\`.
+- \`list\` may add \`"cards": true\` to draw each item in its own box; an item's first line then becomes its heading. Good for steps or rounds.
+- \`container\` (\`direction\`: "row" or "column", \`blocks\`: [...]) groups blocks along its own axis — the way to put a column inside a \`layout: "row"\` slide. Never put a \`title\` or an exercise inside one.
+- A slide may set \`align\` ("top" / "middle" / "bottom") and \`justify\` ("left" / "center" / "right") to place its content; leave both out for the middle.
 - Body text is block markdown: paragraphs, line breaks, headings and lists survive as typed.`;
 }

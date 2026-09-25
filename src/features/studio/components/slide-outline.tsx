@@ -8,31 +8,21 @@ import type { EditorSlide } from "../model";
  *
  * Only the list itself scrolls, so a deck of any length keeps its heading and
  * its "Add slide" button in place; the track is hidden because the rail has no
- * frame of its own for a scrollbar to sit against. `stacked` puts it under the
- * block palette in one shared rail — see {@link ./block-palette.tsx}.
+ * frame of its own for a scrollbar to sit against.
  */
 export function SlideOutline({
   slides,
   activeKey,
-  stacked = false,
   onAddSlide,
   onSelectSlide,
 }: {
   slides: EditorSlide[];
   activeKey: string | null;
-  /** Render as a section of a shared rail rather than as a rail of its own. */
-  stacked?: boolean;
   onAddSlide: () => void;
   onSelectSlide: (key: string) => void;
 }) {
   return (
-    <aside
-      className={cn(
-        stacked
-          ? "flex min-h-0 shrink flex-col"
-          : "sticky top-20 hidden max-h-[calc(100svh-6rem)] w-56 shrink-0 flex-col lg:flex",
-      )}
-    >
+    <aside className="sticky top-20 hidden max-h-[calc(100svh-6rem)] w-56 shrink-0 flex-col lg:flex">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Slides
       </p>

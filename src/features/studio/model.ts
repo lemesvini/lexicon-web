@@ -86,6 +86,7 @@ export function fromLesson(lesson: Lesson): EditorLesson {
       minorCanDo: lesson.minorCanDo ?? "",
       grammarFocus: lesson.grammarFocus ?? [],
       classPlan: lesson.classPlan ?? [],
+      hideBrand: lesson.hideBrand,
     },
     slides: (lesson.slides ?? []).map((slide) => ({
       key: newKey("slide"),
@@ -95,7 +96,10 @@ export function fromLesson(lesson: Lesson): EditorLesson {
         duration: slide.duration ?? "",
         goal: slide.goal ?? "",
         layout: slide.layout,
+        align: slide.align,
+        justify: slide.justify,
         hideStage: slide.hideStage,
+        hideBrand: slide.hideBrand,
         advancedContext: slide.advancedContext,
         advancedTheme: slide.advancedTheme,
         teacherNotes: slide.teacherNotes ?? [],
@@ -127,6 +131,20 @@ function prune<T extends Record<string, unknown>>(obj: T, keep: string[] = []): 
 // truths. Adding them would be noise repeated eleven times.
 function serializeBlock(block: LessonBlock): LessonBlock {
   switch (block.type) {
+    // Children are serialized by the same rules as top-level blocks; the
+    // defaults ("column", "start", "md") are dropped so an untouched container
+    // is as short as it can be.
+    case "container":
+      return prune(
+        {
+          ...block,
+          direction: block.direction === "row" ? "row" : undefined,
+          align: block.align === "center" ? "center" : undefined,
+          gap: block.gap && block.gap !== "md" ? block.gap : undefined,
+          blocks: block.blocks.map(serializeBlock),
+        },
+        ["type", "blocks"],
+      );
     case "text":
       return prune(block, ["type", "body"]);
     case "callout":
@@ -200,6 +218,9 @@ export function toLesson(editor: EditorLesson): Lesson {
     context: m.context,
     minorCanDo: m.minorCanDo,
     grammarFocus: m.grammarFocus.filter((g) => g.trim() !== ""),
+    // Only emitted when set: the wordmark is on by default and a document that
+    // never touched the setting shouldn't say so.
+    ...(m.hideBrand ? { hideBrand: true } : {}),
     classPlan: m.classPlan.filter(
       (s) =>
         s.stage.trim() !== "" ||
@@ -218,7 +239,15 @@ export function toLesson(editor: EditorLesson): Lesson {
             // Only emit `layout` when it differs from the "column" default, so
             // untouched slides stay byte-for-byte the same in the export.
             layout: sm.layout === "row" ? "row" : undefined,
+            // Same for the anchors: "middle" / "center" are the defaults.
+            align: sm.align && sm.align !== "middle" ? sm.align : undefined,
+            justify:
+              sm.justify && sm.justify !== "center" ? sm.justify : undefined,
             hideStage: sm.hideStage ? true : undefined,
+            // A slide-level `false` is meaningful — it re-shows the wordmark on
+            // a document that hides it by default — so it is kept, unlike the
+            // flags above where false and unset are the same thing.
+            hideBrand: sm.hideBrand,
             // Only a group's copy ever carries this, so `undefined` (pruned
             // away) is the right shape for every lesson that isn't one.
             advancedContext: sm.advancedContext ? true : undefined,
@@ -256,13 +285,17 @@ export function parseLesson(json: string): Lesson {
     minorCanDo: raw.minorCanDo ?? "",
     grammarFocus: raw.grammarFocus ?? [],
     classPlan: raw.classPlan ?? [],
+    hideBrand: raw.hideBrand,
     slides: raw.slides.map((s) => ({
       id: s.id ?? "",
       stage: s.stage ?? "",
       duration: s.duration ?? "",
       goal: s.goal ?? "",
       layout: s.layout,
+      align: s.align,
+      justify: s.justify,
       hideStage: s.hideStage,
+      hideBrand: s.hideBrand,
       advancedContext: s.advancedContext,
       advancedTheme: s.advancedTheme,
       blocks: Array.isArray(s.blocks) ? s.blocks : [],

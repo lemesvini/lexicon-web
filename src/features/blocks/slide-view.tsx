@@ -79,17 +79,41 @@ function isFullBleed(block: LessonBlock): boolean {
   );
 }
 
+/** Where the content column sits on the stage, as flex classes on the stage
+ *  layer. Exported for the studio's alignment picker, so the options offered are
+ *  exactly the ones that render. */
+export const SLIDE_ALIGN: Record<NonNullable<LessonSlide["align"]>, string> = {
+  top: "items-start",
+  middle: "items-center",
+  bottom: "items-end",
+};
+export const SLIDE_JUSTIFY: Record<
+  NonNullable<LessonSlide["justify"]>,
+  string
+> = {
+  left: "justify-start",
+  center: "justify-center",
+  right: "justify-end",
+};
+
 /**
  * Read-only render of a whole slide — the presenter's slide surface (both the
  * projected display and the teacher's control device). Teacher-only blocks are
  * shown only when `audience` is "teacher".
  *
+ * The view is a layer: it fills the nearest positioned ancestor and places the
+ * content column inside it according to the slide's `align` / `justify` — the
+ * middle by default, a corner when the author wants the room's eye there. The
+ * surfaces that mount it (present / control / the studio preview / the student
+ * deck) provide a `relative` box of the stage's size and nothing else; the
+ * padding around the content is the slide's own, so it is the same on all of
+ * them.
+ *
  * A slide may declare `layout: "row"` to place its blocks side by side (e.g.
- * text next to an image) instead of stacked, and may carry full-bleed blocks — a
- * `wallpaper` image, a title cover — which are lifted out of the flow and
- * stacked edge-to-edge with the remaining blocks laid on top. Full-bleed mode
- * anchors to the nearest positioned ancestor, so the surfaces that mount
- * `SlideView` (present / control routes) wrap it in a `relative` container.
+ * text next to an image) instead of stacked — a `container` block puts a column
+ * inside that row — and may carry full-bleed blocks — a `wallpaper` image, a
+ * title cover — which are lifted out of the flow and stacked edge-to-edge with
+ * the remaining blocks laid on top.
  */
 export function SlideView({
   slide,
@@ -104,21 +128,30 @@ export function SlideView({
   const layers = visible.filter(isFullBleed);
   const blocks = visible.filter((b) => !isFullBleed(b));
   const isRow = slide.layout === "row";
+  const justify = slide.justify ?? "center";
 
-  const header = slide.hideStage ? null : (
-    <header className="flex items-center gap-2.5">
-      <span aria-hidden className="h-4 w-1 shrink-0 rounded-full bg-primary" />
-      <p className="text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        {slide.stage}
-      </p>
-    </header>
-  );
+  // No heading over a full-bleed layer: a cover has its own headline, and a
+  // photo with a stage title on it reads as a captioned picture, not a slide.
+  const header =
+    slide.hideStage || !slide.stage || layers.length > 0 ? null : (
+      <header>
+        <h2
+          className={cn(
+            "font-montserrat text-4xl font-bold leading-tight tracking-tight text-primary",
+            justify === "center" && "text-center",
+            justify === "right" && "text-right",
+          )}
+        >
+          {slide.stage}
+        </h2>
+      </header>
+    );
 
   const blockList = (
     <div
       className={cn(
         "flex",
-        isRow ? "flex-row items-center gap-10" : "flex-col gap-8",
+        isRow ? "flex-row items-start gap-10" : "flex-col gap-8",
       )}
     >
       {blocks.map((block, i) => (
@@ -134,35 +167,41 @@ export function SlideView({
   );
 
   // A slide that is entirely a group's own renders like any other slide; the
-  // only difference is the mark in the stage's top-left corner, added to
-  // whichever of the two layouts below the slide happens to use.
+  // only difference is the mark in the stage's top-left corner.
   const mark = isAdvancedMarked(slide) ? <AdvancedMark corner /> : null;
 
-  if (layers.length > 0) {
-    return (
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        {mark}
-        {layers.map((layer, i) => (
-          <div key={i} className="absolute inset-0">
-            <BlockView block={layer} audience={audience} />
-          </div>
-        ))}
-        {blocks.length > 0 && (
-          <div className="relative z-10 mx-auto flex h-full w-full max-w-5xl flex-col justify-center gap-8 px-16 py-16">
-            {blockList}
-          </div>
+  // The content column and where it sits. `py-24` leaves room for the wordmark
+  // above and nothing in particular below; the two match so "middle" is the
+  // middle of the stage, not of what's left under the brand.
+  const column = (
+    <div
+      className={cn(
+        "absolute inset-0 z-10 flex px-16 py-24",
+        SLIDE_ALIGN[slide.align ?? "middle"],
+        SLIDE_JUSTIFY[justify],
+      )}
+    >
+      <div
+        className={cn(
+          "flex w-full flex-col gap-8",
+          isRow ? "max-w-6xl" : "max-w-4xl",
         )}
-      </div>
-    );
-  }
-
-  return (
-    <>
-      {mark}
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
+      >
         {header}
         {blockList}
       </div>
-    </>
+    </div>
+  );
+
+  return (
+    <div className="absolute inset-0 z-0 overflow-hidden">
+      {mark}
+      {layers.map((layer, i) => (
+        <div key={i} className="absolute inset-0">
+          <BlockView block={layer} audience={audience} />
+        </div>
+      ))}
+      {(blocks.length > 0 || header) && column}
+    </div>
   );
 }

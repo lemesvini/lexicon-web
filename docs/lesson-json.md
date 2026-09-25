@@ -107,6 +107,7 @@ noisy diff.
 | `minorCanDo` | string | The one thing the student can do at the end |
 | `grammarFocus` | string[] | Shown as chips in the library |
 | `classPlan` | `{stage, duration, goal}[]` | `duration` is minutes as a **string**, e.g. `"10"`. The library sums these into the lesson's total duration, so a non-numeric string counts as zero. |
+| `hideBrand` | boolean | Optional. Drops the "lexicon / English" wordmark from the top of every slide. A slide's own `hideBrand` overrides it either way. |
 | `slides` | Slide[] | The document itself |
 
 ### Slide fields
@@ -117,8 +118,11 @@ noisy diff.
 | `stage` | string | The label in the slide header, e.g. `"Vocabulary"` |
 | `duration` | string | Minutes for this slide. Display only — the total comes from `classPlan`. |
 | `goal` | string | Teacher-facing note on what the slide is for |
-| `layout` | `"column"` \| `"row"` | Optional, defaults to `"column"`. `"row"` puts the blocks side by side in equal columns — good for two tables or text next to an image. Two or three blocks maximum; four will not fit on a projector. |
-| `hideStage` | boolean | Optional. Drops the stage header. Set it on cover slides. |
+| `layout` | `"column"` \| `"row"` | Optional, defaults to `"column"`. `"row"` puts the blocks side by side in equal columns — good for two tables or text next to an image. Two or three blocks maximum; four will not fit on a projector. For a column *inside* the row, use a [container](#container). |
+| `align` | `"top"` \| `"middle"` \| `"bottom"` | Optional, defaults to `"middle"`. Where the content sits vertically on the stage. |
+| `justify` | `"left"` \| `"center"` \| `"right"` | Optional, defaults to `"center"`. Where the content column sits horizontally. `"top"` + `"left"` is the top-left corner. The stage title follows it. |
+| `hideStage` | boolean | Optional. Drops the stage title (the big green heading). Set it on cover slides. |
+| `hideBrand` | boolean | Optional. `true` drops the wordmark on this slide, `false` shows it even on a document whose `hideBrand` is on. Leave it out to follow the document. |
 | `blocks` | Block[] | See below |
 | `teacherNotes` | string[] | Optional. Shown only on the teacher's control device, never projected, and stripped from student documents. Good for drill prompts and answer lines. |
 
@@ -126,8 +130,8 @@ noisy diff.
 
 `title` blocks, `image` blocks with `"wallpaper": true` and `embed` blocks with
 `"fill": true` are lifted out of the normal flow and stacked edge to edge **in
-the order you wrote them**. Any other
-blocks on that slide are laid on top, centred.
+the order you wrote them**. Any other blocks on that slide are laid on top,
+wherever the slide's `align` / `justify` put them (the middle by default).
 
 That ordering is the mechanism behind a title over a photo:
 
@@ -276,6 +280,21 @@ below. Inline markdown in `body`.
 
 `style` and `items` required. **`style` has no default** — one of `"bullet"`,
 `"numbered"`, `"checklist"`. Empty strings in `items` are dropped on save.
+
+`"cards": true` draws each item in its own tinted box. An item with a line
+break becomes a heading over a body — the shape for a set of steps or rounds:
+
+```json
+{
+  "type": "list",
+  "style": "numbered",
+  "cards": true,
+  "items": [
+    "Round one: what you see\nPick three cards from your deck. Describe what is on each one.",
+    "Round two: what it inherited\nFor each card: what had already been there before your deck existed?"
+  ]
+}
+```
 
 ### callout
 
@@ -531,6 +550,36 @@ takes the same block markdown.
 
 ---
 
+### container
+
+```json
+{
+  "type": "container",
+  "direction": "column",
+  "blocks": [
+    { "type": "text", "label": "Today's goal", "body": "Trace where something came from." },
+    { "type": "list", "style": "numbered", "cards": true, "items": ["One", "Two"] }
+  ]
+}
+```
+
+`blocks` required. A group of blocks laid out along its own axis, for the case
+a slide's single `layout` can't express: a `"row"` slide with a column inside
+it (a heading over a list, next to an image) is a row of two blocks, one of
+which is a `"column"` container. Containers nest.
+
+| Field | Values | Notes |
+|---|---|---|
+| `direction` | `"column"` \| `"row"` | Defaults to `"column"`. |
+| `align` | `"start"` \| `"center"` | Cross-axis alignment: for a row, top-aligned or vertically centred; for a column, left-aligned or centred. Defaults to `"start"`. |
+| `gap` | `"sm"` \| `"md"` \| `"lg"` | Space between children. Defaults to `"md"`. |
+
+Not allowed inside one: `title`, a `wallpaper` image, a `fill` embed (they own
+the stage) and exercise blocks (answered by id from the top level of a
+homework). A block marked `"audience": "teacher"` inside a container is hidden
+from the room, but **it is not stripped from student documents** — the database
+trigger only looks at top-level blocks. Keep answer keys at the top level.
+
 ## Exercise blocks (homework only)
 
 These are the blocks a student answers. They do not belong in a presentation or
@@ -646,6 +695,8 @@ and a `text` block longer than three lines will not be read at all.
 - [ ] Every `title` block's `color` is `jade`, `forest`, `mist` or `clear`
 - [ ] Every `callout` block's `color` ends in `_bg`
 - [ ] Every `list` block has a `style`
+- [ ] No `title` or exercise block inside a `container`; teacher-only blocks
+      are at the top level of the slide, not inside one
 - [ ] Every `table` block's columns have equal row counts
 - [ ] Every exercise block has a unique `id`, and `answer` indexes into
       `options` (0-based, in range) — or, on `find-mistake`, into the

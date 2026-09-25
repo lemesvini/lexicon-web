@@ -21,14 +21,14 @@ function View({ block }: { block: TableBlock }) {
   return (
     <section className="space-y-2">
       {block.label && <BlockLabel>{block.label}</BlockLabel>}
-      <div className="overflow-x-auto rounded-xl border bg-card/40">
-        <table className="w-full border-collapse text-base">
+      <div className="overflow-x-auto rounded-lg">
+        <table className="w-full border-collapse text-lg">
           <thead>
-            <tr className="border-b bg-muted/50 text-left">
+            <tr className="bg-muted/60 text-left">
               {block.columns.map((col, ci) => (
                 <th
                   key={ci}
-                  className="px-4 py-3 font-semibold tracking-tight text-foreground"
+                  className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"
                 >
                   {col.title}
                 </th>
@@ -37,10 +37,7 @@ function View({ block }: { block: TableBlock }) {
           </thead>
           <tbody>
             {Array.from({ length: rows }, (_, ri) => (
-              <tr
-                key={ri}
-                className="border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/30"
-              >
+              <tr key={ri} className="border-b border-border/50 last:border-b-0">
                 {block.columns.map((col, ci) => (
                   <td
                     key={ci}
