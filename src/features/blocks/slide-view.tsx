@@ -75,6 +75,7 @@ function isFullBleed(block: LessonBlock): boolean {
   return (
     isWallpaper(block) ||
     block.type === "title" ||
+    block.type === "can-do" ||
     (block.type === "embed" && block.fill === true)
   );
 }

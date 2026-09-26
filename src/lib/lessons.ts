@@ -164,6 +164,27 @@ export type TitleBlock = BlockBase & {
   hideWordmark?: boolean;
 };
 
+/**
+ * The closing slide: the "now you CAN" badge, next to the lesson's minor can-do.
+ *
+ * Full-bleed like `TitleBlock`, and put on its own slide at the end of the
+ * lesson. `text` is a copy of `Lesson.minorCanDo` taken when the block is
+ * added, not a reference to it — a block renders without its lesson (a
+ * student's material, a studio thumbnail), and the slide may want the can-do
+ * phrased for the room rather than for the syllabus.
+ */
+export type CanDoBlock = BlockBase & {
+  type: "can-do";
+  /** Small line above "Now you can", e.g. "Lesson complete · My Daily
+   *  Routine". Prefilled from the lesson's title the same way `text` is. */
+  eyebrow?: string;
+  /** The can-do statement. Wraps by itself; line breaks are kept. */
+  text: string;
+  /** The slide's ground around the (always sand) card — the title cover's own
+   *  colours, see TITLE_COLORS. Defaults to "forest". */
+  color?: "jade" | "forest" | "mist" | "clear";
+};
+
 export type ImageBlock = BlockBase & {
   type: "image";
   label?: string;
@@ -367,6 +388,7 @@ export type LessonBlock =
   | EmailBlock
   | ImageBlock
   | TitleBlock
+  | CanDoBlock
   | EmbedBlock
   | PostBlock
   | ExerciseBlock;

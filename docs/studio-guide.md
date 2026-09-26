@@ -235,6 +235,7 @@ Available on presentations, materials and advanced contexts.
 | Block | What it is | Options |
 |---|---|---|
 | **Title** | A full-screen cover: eyebrow, headline, subtitle on a flat brand colour. Takes the whole stage. | Colour: *Jade*, *Forest*, *Mist*, *Over image* (a scrim, for use over a wallpaper). Hide the cover's own wordmark. Line breaks in the headline are where it wraps. |
+| **Now You Can** | The closing slide: a light card on a coloured ground, with "Now you can", the lesson's minor can-do and a "Thank you · See you next class" footer on the left and the *now you CAN* badge on the right. Takes the whole stage. | Colour of the ground around the card: *Jade*, *Forest* (default), *Mist*, *Over image*. The card is always light. Eyebrow and can-do are filled in from the lesson's title and minor can-do when the block is added — edit either freely. |
 | **Text** | A paragraph with an optional label above and note below. | Label (small green eyebrow), body (inline markdown: `**bold**`, `*italic*`), note (quiet italic aside). |
 | **List** | Items with a marker. | Style: *Bullet*, *Numbered*, *Checklist* — required, no default. **Cards**: each item in its own tinted box; an item with a line break becomes a heading over a body, which is the shape for a set of steps or rounds. Label, note. |
 | **Callout** | A boxed note with an icon in a circle. | Colour: *Blue*, *Green* (the brand green), *Yellow*, *Gray*, *Red*. Icon: one emoji. Title, body. |
@@ -244,7 +245,7 @@ Available on presentations, materials and advanced contexts.
 | **Post** | A social post drawn as a card. | Theme: same four. Username (with or without `@`), display name, avatar (an upload), body, photo (an upload) with alt text. |
 | **Image** | An uploaded picture with optional caption. | Alt text, caption. **Wallpaper** (from the block's hover toolbar): fill the slide; Full HD recommended. |
 | **Embed** | A live web page in a frame — a video, a map, an interactive, a tweet. | Source: a URL (share links are rewritten to their player where known), an uploaded HTML page (for sites that refuse to be framed, like a Claude artifact), or a pasted embed snippet. Aspect: *16:9*, *4:3*, *1:1*, *3:4*. **Fill**: take the whole stage. Caption. |
-| **Container** | A group of blocks laid out along its own axis. | Direction: *Column* / *Row*. Cross-axis: *Top* / *Center* (row) or *Left* / *Center* (column). Gap: *Tight* / *Normal* / *Loose*. Children are added from its own **Add to container** menu, which offers every presentation block except Title, plus a nested container. |
+| **Container** | A group of blocks laid out along its own axis. | Direction: *Column* / *Row*. Cross-axis: *Top* / *Center* (row) or *Left* / *Center* (column). Gap: *Tight* / *Normal* / *Loose*. Children are added from its own **Add to container** menu, which offers every presentation block except Title and Now You Can, plus a nested container. |
 
 ### Exercise blocks
 
@@ -319,6 +320,13 @@ A **Title** block, alone. Hide the stage title (the cover has its own
 headline). Pick a colour. Position and direction don't apply — the cover takes
 the whole stage.
 
+### The closing slide
+
+A **Now You Can** block, alone, as the last slide. Fill in the lesson's
+*minor can-do* in the document metadata **before** adding it — the block copies
+it (and the lesson title, into the eyebrow) at the moment it is added, and
+doesn't follow later edits. Pick the ground colour; *Forest* is the default.
+
 ### A title over a photo
 
 An **Image** with *Wallpaper* on, then a **Title** with colour *Over image*,
@@ -358,8 +366,8 @@ when the base lesson is refreshed, just not announced as an aside.
 
 A few things look like they should work and don't, by design:
 
-- **A title inside a container.** The cover owns the stage; it has no meaning
-  in a column. The container's menu doesn't offer it.
+- **A title or a Now You Can inside a container.** Both own the stage; they
+  have no meaning in a column. The container's menu doesn't offer them.
 - **An exercise inside a container.** Answers are keyed from the top of the
   homework. Exercise blocks aren't offered on presentations at all.
 - **Four blocks side by side.** Nothing stops you; the projector will.

@@ -30,10 +30,12 @@ import { BLOCK_ORDER, BLOCK_REGISTRY, blockMetas, createBlock } from "../registr
  * What a container may hold: every presentation block except another cover, and
  * except itself — which is allowed, but not from the palette, so that a nested
  * row of columns is a decision rather than an accident of clicking. A title
- * block owns the stage and has no meaning inside a column.
+ * or can-do block owns the stage and has no meaning inside a column.
  */
 export function containerChildTypes(): BlockType[] {
-  return BLOCK_ORDER.filter((t) => t !== "title" && t !== "container");
+  return BLOCK_ORDER.filter(
+    (t) => t !== "title" && t !== "can-do" && t !== "container",
+  );
 }
 
 const GAP: Record<NonNullable<ContainerBlock["gap"]>, string> = {

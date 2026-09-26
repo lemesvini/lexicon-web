@@ -17,7 +17,10 @@ import {
   GroupCard,
   GroupCardFooter,
 } from "@/features/groups/components/group-card";
-import type { ScheduledClass } from "@/features/groups/data/group-lessons";
+import {
+  postponeFrom,
+  type ScheduledClass,
+} from "@/features/groups/data/group-lessons";
 import {
   clearAttendance,
   listGroupMembers,
@@ -191,6 +194,14 @@ export function GroupRegisterCard({
   ).length;
   const markedCount = presentCount + absentCount;
 
+  /** Everyone is marked, and nobody came: the planned lesson didn't happen and
+   *  is still to teach. One person present is enough for the class to count —
+   *  whoever missed it catches up, the group doesn't wait. */
+  const nobodyCame =
+    planned !== null &&
+    members.length > 0 &&
+    absentCount === members.length;
+
   return (
     <GroupCard
       title="Register"
@@ -269,6 +280,30 @@ export function GroupRegisterCard({
               />
             ))}
           </ul>
+
+          {nobodyCame && (
+            <div className="mx-5 mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+              <p className="min-w-0 flex-1 text-sm">
+                Nobody came, so{" "}
+                <span className="font-medium">
+                  {planned.title || "the planned lesson"}
+                </span>{" "}
+                is still to teach. Push the plan back a class to move it — and
+                every lesson after it — to the next class.
+              </p>
+              <Button
+                size="sm"
+                disabled={busy}
+                onClick={() =>
+                  void run(() =>
+                    postponeFrom(group.id, classDate, group.meetsOn),
+                  )
+                }
+              >
+                Push back a class
+              </Button>
+            </div>
+          )}
 
           <GroupCardFooter>
             <span className="text-sm text-muted-foreground">

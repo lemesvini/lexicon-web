@@ -21,6 +21,7 @@ The traps, in short:
   name, no shared values; a callout colour on a title block **crashes**.
   `email` and `post` blocks have no `color` — their field is `theme`: `light` /
   `dark` / `mist` / `forest`.
+  `can-do` blocks take the title colours too (for the ground around the card).
 - `list` blocks require `style` — no default.
 - Exercise blocks need a stable `id`; `answer` is a 0-based index into
   `options`; homework only.

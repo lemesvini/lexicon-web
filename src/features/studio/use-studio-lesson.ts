@@ -25,6 +25,13 @@ function cloneBlock(block: LessonBlock): LessonBlock {
   return "id" in copy ? { ...copy, id: newBlockId() } : copy;
 }
 
+/** The can-do slide's eyebrow for a lesson title, minus the "[Lesson Two]"
+ *  prefix the library uses to sort by. */
+function canDoEyebrow(title: string): string {
+  const name = title.replace(/^\[[^\]]*\]\s*/, "").trim();
+  return name ? `Lesson complete · ${name}` : "Lesson complete";
+}
+
 /** Move item at `index` by `dir` (-1 up, +1 down); returns a new array. */
 function move<T>(arr: T[], index: number, dir: -1 | 1): T[] {
   const next = index + dir;
@@ -105,7 +112,18 @@ export function useStudioLesson() {
 
   const addBlock = useCallback(
     (slideKey: string, type: BlockType, afterBlockKey?: string) => {
-      const block = wrapBlock(createBlock(type));
+      const created = createBlock(type);
+      // A can-do slide starts from the lesson's own minor can-do; see
+      // `CanDoBlock` for why it is a copy.
+      const block = wrapBlock(
+        created.type === "can-do"
+          ? {
+              ...created,
+              eyebrow: canDoEyebrow(lesson.meta.title),
+              text: lesson.meta.minorCanDo,
+            }
+          : created,
+      );
       mapSlide(slideKey, (s) => {
         if (!afterBlockKey) return { ...s, blocks: [...s.blocks, block] };
         const i = s.blocks.findIndex((b) => b.key === afterBlockKey);
@@ -115,7 +133,7 @@ export function useStudioLesson() {
       });
       return block.key;
     },
-    [mapSlide],
+    [mapSlide, lesson.meta.minorCanDo, lesson.meta.title],
   );
 
   const updateBlock = useCallback(

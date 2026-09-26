@@ -128,8 +128,8 @@ noisy diff.
 
 ### Full-bleed slides
 
-`title` blocks, `image` blocks with `"wallpaper": true` and `embed` blocks with
-`"fill": true` are lifted out of the normal flow and stacked edge to edge **in
+`title` blocks, `can-do` blocks, `image` blocks with `"wallpaper": true` and
+`embed` blocks with `"fill": true` are lifted out of the normal flow and stacked edge to edge **in
 the order you wrote them**. Any other blocks on that slide are laid on top,
 wherever the slide's `align` / `justify` put them (the middle by default).
 
@@ -156,7 +156,9 @@ the Studio round-trips it, but it is not what hides the header.
 The single most common authoring error. Two different vocabularies, one field
 name, and only one of them fails loudly.
 
-### `title` blocks — `jade` · `forest` · `mist` · `clear`
+### `title` and `can-do` blocks — `jade` · `forest` · `mist` · `clear`
+
+`can-do` takes the same four, as the ground around its card.
 
 Defined in `src/features/blocks/title/index.tsx`. **Any other value throws and
 breaks the import.** There is no fallback.
@@ -165,7 +167,7 @@ breaks the import.** There is no fallback.
 |---|---|---|
 | `jade` | Brand green, light type. The default. | Lesson covers |
 | `forest` | Dark green, light type | Section breaks — Drills, Practice |
-| `mist` | Pale green, dark type | The closing "Now you CAN DO" slide |
+| `mist` | Pale green, dark type | Quiet breaks; a light ground for a `can-do` card |
 | `clear` | Gradient scrim, light type | A title laid over a wallpaper image |
 
 ### `callout` blocks — `blue_bg` · `green_bg` · `yellow_bg` · `gray_bg` · `red_bg`
@@ -262,6 +264,30 @@ screen shape instead of being cropped.
 
 Put it on its own slide. It fills the slide by itself and suppresses the stage
 header on its own.
+
+### can-do
+
+The closing slide: a light (sand) card on a coloured ground. Inside the card,
+on the left, an eyebrow, the heading "Now you can", the lesson's minor can-do
+and a fixed "Thank you · See you next class" footer; on the right, the "now
+you CAN" badge (`public/cando.png`). Full-bleed, like `title`: it takes the
+whole stage and drops the stage header by itself.
+
+"Now you can", "Thank you" and "See you next class" are part of the block, not
+fields — don't write them into `text`.
+
+```json
+{ "type": "can-do", "color": "forest", "eyebrow": "Lesson complete · My Daily Routine", "text": "Talk about your daily routine using the present simple." }
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `text` | yes | The can-do statement — normally the lesson's `minorCanDo`, which the studio copies in when the block is added. A copy, not a link: editing the lesson's `minorCanDo` later does not change the slide. Wraps by itself and shrinks to fit; one or two sentences is the most it holds comfortably. |
+| `eyebrow` | no | Small monospaced line at the top. The studio fills it with `Lesson complete · <lesson title>`. |
+| `color` | no | The slide's ground around the card — **the `title` colours**: `jade` / `forest` / `mist` / `clear`. Defaults to `forest`. The card itself is always sand. A callout colour here crashes, same as on a title. |
+
+Put it on its own slide, usually the last one. Like `title`, it is not allowed
+inside a `container`.
 
 ### text
 
@@ -574,7 +600,7 @@ which is a `"column"` container. Containers nest.
 | `align` | `"start"` \| `"center"` | Cross-axis alignment: for a row, top-aligned or vertically centred; for a column, left-aligned or centred. Defaults to `"start"`. |
 | `gap` | `"sm"` \| `"md"` \| `"lg"` | Space between children. Defaults to `"md"`. |
 
-Not allowed inside one: `title`, a `wallpaper` image, a `fill` embed (they own
+Not allowed inside one: `title`, `can-do`, a `wallpaper` image, a `fill` embed (they own
 the stage) and exercise blocks (answered by id from the top level of a
 homework). A block marked `"audience": "teacher"` inside a container is hidden
 from the room, but **it is not stripped from student documents** — the database
@@ -679,7 +705,8 @@ A presentation that works in a real class usually runs:
 5. **Examples** — a `list` of model sentences
 6. **Drills** — a `forest` `title` as a section break, with the prompts in the
    slide's `teacherNotes` where only the teacher sees them
-7. **Close** — a `mist` `title`, "Now you CAN DO"
+7. **Close** — a `can-do` block on its own slide, carrying the lesson's
+   `minorCanDo`
 
 Keep it to one idea per slide. A slide is read at projector distance by someone
 who is also listening to a teacher, so a table of six rows is near the ceiling

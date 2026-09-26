@@ -8,6 +8,7 @@ import { dialogBlock } from "./dialog";
 import { emailBlock } from "./email";
 import { imageBlock } from "./image";
 import { titleBlock } from "./title";
+import { canDoBlock } from "./can-do";
 import { embedBlock } from "./embed";
 import { postBlock } from "./post";
 import { containerBlock } from "./container";
@@ -24,6 +25,7 @@ type Registry = {
 
 export const BLOCK_REGISTRY: Registry = {
   title: titleBlock,
+  "can-do": canDoBlock,
   text: textBlock,
   list: listBlock,
   callout: calloutBlock,
@@ -53,6 +55,7 @@ export const BLOCK_ORDER: BlockType[] = [
   "embed",
   "post",
   "container",
+  "can-do",
 ];
 
 /**

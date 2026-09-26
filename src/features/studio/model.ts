@@ -178,6 +178,8 @@ function serializeBlock(block: LessonBlock): LessonBlock {
       return prune(block, ["type", "path"]);
     case "title":
       return prune(block, ["type", "title"]);
+    case "can-do":
+      return prune(block, ["type", "text"]);
     // Nothing but `type` is kept: an embed is either a URL or an uploaded page,
     // and forcing the unused one to survive as `""` would put a field in the
     // document that says the opposite of what the block does.
