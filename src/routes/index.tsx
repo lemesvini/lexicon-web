@@ -53,10 +53,12 @@ const MIST_100 = "oklch(0.9584 0.0093 62.5849)";
 const palette = {
   "--mist-100": MIST_100,
   "--mist-50": "oklch(0.9818 0.0060 62.5849)",
+  "--cream": "oklch(0.9450 0.0120 80.0000)",
   "--sand-76": "oklch(0.7621 0.0156 98.3528)",
   "--forest-800": "oklch(0.3004 0.0440 168.9151)",
   "--forest-900": "oklch(0.1841 0.0101 172.8800)",
   "--jade-400": "#61B495",
+  "--jade-500": "oklch(0.7084 0.0942 167.3388)",
   "--jade-600": "oklch(0.4761 0.0752 167.6137)",
   "--border": "oklch(0.8847 0.0100 90.0000)",
   "--muted-foreground": "oklch(0.5100 0.0300 169.0000)",
@@ -115,7 +117,7 @@ function scrollToTop(e: MouseEvent<HTMLAnchorElement>) {
 }
 
 const pillPrimary =
-  "rounded-full bg-secondary font-medium text-white transition-opacity hover:opacity-75";
+  "rounded-full bg-(--forest-800) font-medium text-white transition-opacity hover:opacity-75";
 
 // The overscroll bounce shows the canvas (html/body) background, not ours —
 // under the app's dark theme that's a black strip above the header. Paint the
@@ -222,8 +224,8 @@ function Header() {
           aria-label="Lexicon English School — voltar ao início"
           className="flex flex-col items-center gap-0.5 text-(--forest-800) hover:opacity-75"
         >
-          <span className="font-display text-2xl leading-none text-primary">lexicon</span>
-          <span className="text-[8px] font-semibold text-primary font-montserrat tracking-[0.2em]">
+          <span className="font-display text-2xl leading-none text-(--jade-500)">lexicon</span>
+          <span className="text-[8px] font-semibold text-(--jade-500) font-montserrat tracking-[0.2em]">
             English School
           </span>
         </a>
@@ -254,7 +256,7 @@ function Hero() {
       className="flex flex-col items-center overflow-hidden px-6 pt-[88px] pb-24 text-center"
     >
       {/* <img src="/flags.png" alt="Bandeiras do Brasil e dos Estados Unidos" className="w-[140px] drop-shadow-[0_2px_4px_rgb(20_50_40/25%)]" /> */}
-      <h1 className="mt-[18px] max-w-[920px] font-display text-[clamp(44px,7vw,88px)] leading-none font-thin tracking-[-0.01em] text-balance text-secondary">
+      <h1 className="mt-[18px] max-w-[920px] font-display text-[clamp(44px,7vw,88px)] leading-none font-thin tracking-[-0.01em] text-balance text-(--forest-800)">
         {HERO_LEAD.split(" ").map((word) => (
           <motion.span key={word} variants={rise} className="inline-block">
             {word}&nbsp;
@@ -322,7 +324,7 @@ function BilingualWord() {
     <motion.span
       variants={letters}
       aria-label={BILINGUAL}
-      className="relative inline-block whitespace-nowrap font-display text-primary"
+      className="relative inline-block whitespace-nowrap font-display text-(--jade-500)"
     >
       {Array.from(BILINGUAL).map((char, i) => (
         <motion.span
@@ -457,7 +459,7 @@ function Eyebrow({ children }: { children: ReactNode }) {
 }
 
 const sectionTitle =
-  "m-0 font-display text-[clamp(34px,4.5vw,56px)] leading-[1.05] font-normal text-secondary";
+  "m-0 font-display text-[clamp(34px,4.5vw,56px)] leading-[1.05] font-normal text-(--forest-800)";
 
 function HowItWorks() {
   return (
@@ -597,10 +599,10 @@ function FinalCta() {
         }}
         className="mx-auto flex max-w-[1120px] flex-col items-center gap-[22px] rounded-[32px] bg-(--jade-400) px-6 py-[clamp(48px,7vw,88px)] text-center"
       >
-        <motion.h2 variants={rise} className="text-foreground m-0 max-w-[760px] text-[clamp(34px,5vw,64px)] leading-[1.1] font-normal">
+        <motion.h2 variants={rise} className="text-(--cream) m-0 max-w-[760px] text-[clamp(34px,5vw,64px)] leading-[1.1] font-normal">
            Quer ser <span className="font-display">bilíngue</span>? Entre em contato! 
         </motion.h2>
-        <motion.p variants={rise} className="m-0 text-lg text-secondary font-semibold">
+        <motion.p variants={rise} className="m-0 text-lg text-(--forest-800) font-semibold">
           Agende seu nivelamento sem custo.
         </motion.p>
         <motion.div variants={rise} className="mt-2 flex flex-wrap justify-center gap-3.5">
