@@ -1,23 +1,31 @@
 import * as React from "react";
-import { RefreshCwIcon } from "lucide-react";
+import { PlusIcon, RefreshCwIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { FacetedFilter } from "@/components/data-table-faceted-filter";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { useAuth } from "@/hooks/use-auth";
+import { BillingDialog } from "@/features/finance/components/billing-dialog";
 import { financesColumns } from "@/features/finance/components/finances-columns";
+import { PaymentHistorySheet } from "@/features/finance/components/payment-history-sheet";
+import { RecordPaymentDialog } from "@/features/finance/components/record-payment-dialog";
 import {
   formatMoney,
+  PAYMENT_STATUS_LABEL,
   listFinances,
   summarize,
   type FinanceRow,
 } from "@/features/finance/data/finance";
 
 /**
- * The price list: every student the signed-in user can see, what they pay a
- * month, and how many classes a week that buys — with the month's total above
- * it.
+ * The finances page body: every student the signed-in user can see, what they
+ * pay a month, whether they have paid this month — with the month's figures
+ * above it, and the dialogs to record a payment, read a student's payment
+ * history and edit their billing details.
+ *
+ * The dialogs live here, once each, rather than in every row: the row menu, the
+ * history drawer and the header button all open the same ones.
  *
  * Who appears is decided in the database, not here: the roster's RLS gives a
  * teacher their own students and the admin everyone (see 0006), so a teacher's
@@ -33,7 +41,13 @@ import {
  * so counting them would overstate the month — but hiding them would make a
  * student who was deactivated by mistake impossible to find.
  */
-export function FinancesTable() {
+export function FinancesTable({
+  heading,
+}: {
+  /** The page title block. Rendered here, beside the "Record payment" button,
+   *  because that button needs the rows this component loads. */
+  heading?: React.ReactNode;
+}) {
   const { profile } = useAuth();
   const profileId = profile?.id;
   const isAdmin = profile?.role === "admin";
@@ -47,6 +61,16 @@ export function FinancesTable() {
     "loading",
   );
   const [reloadKey, setReloadKey] = React.useState(0);
+  // False until migration 0024 has run; the page then shows the price list only.
+  const [billingAvailable, setBillingAvailable] = React.useState(true);
+  const [paymentsAvailable, setPaymentsAvailable] = React.useState(true);
+
+  // The three dialogs. Each holds the student it is open for, or null.
+  const [paying, setPaying] = React.useState<{ studentId: string | null } | null>(
+    null,
+  );
+  const [historyId, setHistoryId] = React.useState<string | null>(null);
+  const [billingId, setBillingId] = React.useState<string | null>(null);
 
   // Only the first load seeds the filter; a reload after a fee is edited must
   // leave whatever the user has since chosen alone.
@@ -55,8 +79,11 @@ export function FinancesTable() {
   React.useEffect(() => {
     let cancelled = false;
     listFinances()
-      .then((next) => {
+      .then((listing) => {
         if (cancelled) return;
+        const next = listing.rows;
+        setBillingAvailable(listing.billingAvailable);
+        setPaymentsAvailable(listing.paymentsAvailable);
         if (!seeded.current) {
           seeded.current = true;
           // Matched on the id rather than on `profile.fullName`: the column
@@ -84,8 +111,16 @@ export function FinancesTable() {
   };
 
   const columns = React.useMemo(
-    () => financesColumns({ isAdmin, onChanged: reload }),
-    [isAdmin, reload],
+    () =>
+      financesColumns({
+        isAdmin,
+        handlers: {
+          onRecordPayment: (student) => setPaying({ studentId: student.id }),
+          onShowHistory: (student) => setHistoryId(student.id),
+          onEditBilling: (student) => setBillingId(student.id),
+        },
+      }),
+    [isAdmin],
   );
 
   // Everything below this line — the figures, the table, the count under it —
@@ -112,6 +147,11 @@ export function FinancesTable() {
     [rows],
   );
 
+  // Looked up by id rather than held as rows, so a reload after a save puts the
+  // fresh figures in front of the open drawer instead of a stale copy.
+  const historyStudent = rows.find((row) => row.id === historyId) ?? null;
+  const billingStudent = rows.find((row) => row.id === billingId) ?? null;
+
   if (status === "loading") return <TableSkeleton />;
 
   if (status === "error") {
@@ -128,7 +168,23 @@ export function FinancesTable() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-px overflow-hidden rounded-md border bg-border sm:grid-cols-2 lg:grid-cols-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        {heading}
+        <Button onClick={() => setPaying({ studentId: null })}>
+          <PlusIcon />
+          Record payment
+        </Button>
+      </div>
+
+      {(!paymentsAvailable || !billingAvailable) && (
+        <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+          Payments and billing details aren’t set up in the database yet — run
+          migration 0024_payments.sql. Until then this page shows the price list
+          only.
+        </p>
+      )}
+
+      <div className="grid gap-px overflow-hidden rounded-md border bg-border sm:grid-cols-2 lg:grid-cols-3">
         {/* Named, because the same figure is now one teacher's book or the
             whole school's depending on a dropdown, and a total that big should
             never leave you guessing which one you're reading. */}
@@ -144,6 +200,15 @@ export function FinancesTable() {
                   : "Across the school"
               : undefined
           }
+        />
+        <Figure
+          label="Received this month"
+          value={formatMoney(summary.receivedThisMonth)}
+        />
+        <Figure
+          label="Outstanding"
+          value={formatMoney(summary.outstanding)}
+          hint="Still owed for this month"
         />
         <Figure
           label="Paying students"
@@ -182,6 +247,12 @@ export function FinancesTable() {
         }
         facets={[
           {
+            columnId: "paymentStatus",
+            label: "Payment",
+            options: Object.values(PAYMENT_STATUS_LABEL),
+            clearLabel: "All payments",
+          },
+          {
             columnId: "status",
             label: "Status",
             options: ["Active", "Inactive"],
@@ -194,6 +265,37 @@ export function FinancesTable() {
             : "No students match."
         }
         countLabel={(count) => `${count} student${count === 1 ? "" : "s"}`}
+      />
+
+      <RecordPaymentDialog
+        open={paying !== null}
+        onOpenChange={(open) => {
+          if (!open) setPaying(null);
+        }}
+        // Inactive students aren't billed, so they aren't offered — unless the
+        // dialog was opened on one from its own row.
+        students={visible.filter(
+          (row) => row.status === "active" || row.id === paying?.studentId,
+        )}
+        studentId={paying?.studentId ?? null}
+        paymentsAvailable={paymentsAvailable}
+        onSaved={reload}
+      />
+      <PaymentHistorySheet
+        student={historyStudent}
+        onOpenChange={(open) => {
+          if (!open) setHistoryId(null);
+        }}
+        onRecord={(student) => setPaying({ studentId: student.id })}
+        onChanged={reload}
+      />
+      <BillingDialog
+        student={billingStudent}
+        onOpenChange={(open) => {
+          if (!open) setBillingId(null);
+        }}
+        billingAvailable={billingAvailable}
+        onSaved={reload}
       />
     </div>
   );

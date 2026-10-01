@@ -35,8 +35,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -49,9 +47,9 @@ import {
   listGroupLessons,
   rebaseGroupLesson,
   removeGroupLesson,
-  setGroupLessonDate,
   type GroupLessonRow,
 } from "@/features/groups/data/group-lessons";
+import { reflowPlan } from "@/features/groups/data/class-plan";
 import {
   addGroupHomework,
   addGroupMaterials,
@@ -206,7 +204,17 @@ export function GroupStudioPage({ groupId }: { groupId: string }) {
     let cancelled = false;
     Promise.all([
       fetchGroup(groupId),
-      listGroupLessons(groupId),
+      // The plan's dates brought into line with the register on the way in,
+      // as the group's page does, so the studio never shows stale ones.
+      fetchGroup(groupId)
+        .then((row) =>
+          row
+            ? reflowPlan(groupId, row.meetsOn, today()).then(
+                (plan) => plan.lessons,
+              )
+            : listGroupLessons(groupId),
+        )
+        .catch(() => listGroupLessons(groupId)),
       listGroupMaterials(groupId),
       listGroupHomework(groupId),
       listHomework(),
@@ -532,44 +540,15 @@ export function GroupStudioPage({ groupId }: { groupId: string }) {
                     }
                     menu={
                       <>
-                        {/* A plain field rather than a menu item, and the
-                            `stopPropagation` is what makes it usable: the
-                            menu's own typeahead swallows printable keys, so
-                            without it the date can be picked from the calendar
-                            but never typed. */}
-                        <div
-                          className="px-2 py-1.5"
-                          onKeyDown={(event) => event.stopPropagation()}
-                        >
-                          <Label
-                            htmlFor={`date-${row.id}`}
-                            className="mb-1.5 text-xs text-muted-foreground"
-                          >
-                            Planned date
-                          </Label>
-                          <Input
-                            id={`date-${row.id}`}
-                            type="date"
-                            className="w-full"
-                            value={row.scheduledOn ?? ""}
-                            disabled={busy}
-                            // Saved as soon as the value is a whole date. A
-                            // half-typed one ("2026-08-") is not a date the
-                            // column would take, and writing it would be a
-                            // rejected round trip per keystroke.
-                            onChange={(event) => {
-                              const next = event.target.value;
-                              if (
-                                next !== "" &&
-                                !/^\d{4}-\d{2}-\d{2}$/.test(next)
-                              ) {
-                                return;
-                              }
-                              if ((next || null) === row.scheduledOn) return;
-                              run(() => setGroupLessonDate(row.id, next || null));
-                            }}
-                          />
-                        </div>
+                        {/* Read-only: the dates follow the register now
+                            (see class-plan.ts), so a date typed here would be
+                            overwritten by the next class recorded. What moves
+                            a lesson is recording what was taught. */}
+                        <p className="max-w-56 px-2 py-1.5 text-xs text-muted-foreground">
+                          {row.scheduledOn
+                            ? `${formatPlanned(row.scheduledOn)} — dates follow the register.`
+                            : "No date yet — dates follow the register."}
+                        </p>
 
                         <DropdownMenuSeparator />
 

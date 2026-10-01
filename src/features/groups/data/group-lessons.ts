@@ -421,42 +421,6 @@ export async function regenerateDates(
   );
 }
 
-/**
- * Pushes the plan back one class, starting with whatever was planned for
- * `missedOn` — for a class that didn't happen because nobody came.
- *
- * Each lesson from the missed one onward takes the date of the lesson after it,
- * rather than every date being recomputed from `meetsOn`: a plan somebody has
- * already moved around a holiday keeps its gaps. The last lesson has no date to
- * inherit, so it goes to the next meeting day after its own.
- *
- * A group that doesn't know its meeting days can't place that last one, and it
- * is left with no date rather than guessed at.
- */
-export async function postponeFrom(
-  groupId: string,
-  missedOn: string,
-  meetsOn: readonly number[],
-): Promise<void> {
-  const rows = (await listGroupLessons(groupId))
-    .filter((row) => row.scheduledOn !== null && row.scheduledOn >= missedOn)
-    .sort(
-      (a, b) =>
-        a.scheduledOn!.localeCompare(b.scheduledOn!) || a.position - b.position,
-    );
-  if (rows.length === 0) return;
-
-  const last = fromDateKey(rows[rows.length - 1]!.scheduledOn!);
-  last.setDate(last.getDate() + 1);
-  const after = classDates(meetsOn, toDateKey(last), 1)[0] ?? null;
-
-  await Promise.all(
-    rows.map((row, i) =>
-      setGroupLessonDate(row.id, rows[i + 1]?.scheduledOn ?? after),
-    ),
-  );
-}
-
 /** Drops one copy. Deliberately per-row and confirmed in the UI: the document
  *  may carry blocks that exist nowhere else. */
 export async function removeGroupLesson(id: string): Promise<void> {

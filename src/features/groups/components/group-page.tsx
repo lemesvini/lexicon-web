@@ -1,6 +1,14 @@
 import * as React from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { MoreHorizontalIcon, RefreshCwIcon } from "lucide-react";
+import {
+  ArchiveIcon,
+  ArchiveRestoreIcon,
+  MoreHorizontalIcon,
+  PaletteIcon,
+  RefreshCwIcon,
+  Trash2Icon,
+  UserPlusIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,20 +27,29 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AddMemberDialog } from "@/features/groups/components/add-member-dialog";
 import { GroupAttendancePanel } from "@/features/groups/components/group-attendance-panel";
-import { GroupLessonCard } from "@/features/groups/components/group-lesson-card";
+import {
+  GroupLessonCard,
+  type DayLesson,
+} from "@/features/groups/components/group-lesson-card";
 import { GroupModulePrompt } from "@/features/groups/components/group-module-prompt";
 import { GroupRegisterCard } from "@/features/groups/components/group-register-card";
 import { GroupScheduleCard } from "@/features/groups/components/group-schedule-card";
 import {
-  listScheduledOn,
-  type ScheduledClass,
-} from "@/features/groups/data/group-lessons";
+  lessonForDay,
+  loadClassPlan,
+  reflowPlan,
+  setClassCancelled,
+  setClassLesson,
+  type ClassPlan,
+} from "@/features/groups/data/class-plan";
 import {
   deleteGroup,
   fetchGroup,
   formatSchedule,
   listGroupStudentIds,
+  setGroupLesson,
   setGroupStatus,
   today,
   type GroupRow,
@@ -84,7 +101,14 @@ export function GroupPage({ groupId }: { groupId: string }) {
   const [reloadKey, setReloadKey] = React.useState(0);
   const [busy, setBusy] = React.useState(false);
   const [confirmingDelete, setConfirmingDelete] = React.useState(false);
-  const [planned, setPlanned] = React.useState<ScheduledClass | null>(null);
+  const [addingStudents, setAddingStudents] = React.useState(false);
+  const [plan, setPlan] = React.useState<ClassPlan | null>(null);
+  // A lesson picked for a day whose register hasn't been taken yet. Held here
+  // until the first mark files it — picking a lesson isn't a class happening.
+  const [choice, setChoice] = React.useState<{
+    date: string;
+    lessonId: string | null;
+  } | null>(null);
 
   // The group's own studio is the advanced editor by another door, so it is the
   // same per-teacher permission — hidden here, enforced by the route guard.
@@ -120,27 +144,39 @@ export function GroupPage({ groupId }: { groupId: string }) {
     };
   }, [groupId, reloadKey]);
 
-  // What this group is planned to teach on the day being looked at (0010).
-  // Separate from the group itself because it moves with the date rather than
-  // with the group, and a failure is not fatal: without it both panels fall back
-  // to `current_lesson_id`, which is what they always used to use.
+  // The plan as the register describes it — what has been taught, what is next,
+  // which classes nobody wrote down. Recomputed, and the plan's dates rewritten
+  // to agree, every time the page reloads, which is after every register write:
+  // the dates are a projection of the register, never a thing edited on its own
+  // (see class-plan.ts). A failed rewrite still shows the plan as it stands; a
+  // failed read leaves the panels on the group's current lesson, as before.
+  const meetsKey = group?.meetsOn.join(",");
   React.useEffect(() => {
+    if (meetsKey === undefined) return;
+    const meetsOn = meetsKey ? meetsKey.split(",").map(Number) : [];
     let cancelled = false;
-    listScheduledOn([classDate])
-      .then((byDate) => {
-        if (cancelled) return;
-        setPlanned(
-          (byDate.get(classDate) ?? []).find((row) => row.groupId === groupId) ??
-            null,
-        );
+    reflowPlan(groupId, meetsOn, today())
+      .catch(() => loadClassPlan(groupId, meetsOn, today()))
+      .then((next) => {
+        if (!cancelled) setPlan(next);
       })
       .catch(() => {
-        if (!cancelled) setPlanned(null);
+        if (!cancelled) setPlan(null);
       });
     return () => {
       cancelled = true;
     };
-  }, [groupId, classDate, reloadKey]);
+  }, [groupId, meetsKey, reloadKey]);
+
+  // The group's current lesson is the next one in its plan. Kept in step here
+  // so the groups list and anything else reading the pointer agree with the
+  // register, without anybody having to move it by hand.
+  const nextLessonId = plan?.next?.lessonId;
+  const currentLessonId = group?.lessonId;
+  React.useEffect(() => {
+    if (!nextLessonId || nextLessonId === currentLessonId) return;
+    setGroupLesson(groupId, nextLessonId).catch(() => {});
+  }, [groupId, nextLessonId, currentLessonId]);
 
   const reload = React.useCallback(() => setReloadKey((k) => k + 1), []);
 
@@ -203,6 +239,45 @@ export function GroupPage({ groupId }: { groupId: string }) {
     !group.moduleId &&
     !students.some((student) => placedIds.has(student.id) && student.moduleId);
 
+  const todayKey = today();
+  const titleOf = (lessonId: string) =>
+    plan?.lessons.find((row) => row.lessonId === lessonId)?.title ||
+    lessons.find((lesson) => lesson.id === lessonId)?.title ||
+    lessonId;
+  const advancedOf = (lessonId: string | null) =>
+    plan?.lessons.find((row) => row.lessonId === lessonId)?.advancedCount ?? 0;
+
+  const recordedId = plan?.recordedLesson.get(classDate) ?? null;
+  const chosen = choice?.date === classDate ? choice : null;
+  const hasPlan = !!plan && plan.lessons.length > 0;
+  const projected = hasPlan ? lessonForDay(plan, classDate, todayKey) : null;
+
+  const day: DayLesson = recordedId
+    ? { lessonId: recordedId, title: titleOf(recordedId), source: "recorded", advancedCount: advancedOf(recordedId) }
+    : chosen
+      ? { lessonId: chosen.lessonId, title: chosen.lessonId ? titleOf(chosen.lessonId) : "", source: "chosen", advancedCount: advancedOf(chosen.lessonId) }
+      : hasPlan
+        ? {
+            lessonId: projected?.lessonId ?? null,
+            title: projected?.title ?? "",
+            source: classDate <= todayKey ? "next" : "planned",
+            advancedCount: projected?.advancedCount ?? 0,
+          }
+        : { lessonId: group.lessonId, title: group.lessonTitle, source: "current", advancedCount: 0 };
+
+  /** Says what a class is (or was) for. A register already taken is re-filed;
+   *  otherwise the pick waits for the first mark, or — for a group with no plan
+   *  of its own — moves its current lesson, as the picker always did. */
+  const chooseLesson = (lessonId: string | null) => {
+    if (plan?.recordedDays.has(classDate)) {
+      void run(() => setClassLesson(group.id, classDate, lessonId));
+    } else if (!hasPlan) {
+      void run(() => setGroupLesson(group.id, lessonId));
+    } else {
+      setChoice({ date: classDate, lessonId });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -227,15 +302,37 @@ export function GroupPage({ groupId }: { groupId: string }) {
           </p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-2">
+          {/* The studio is where the group's course is planned, so it gets a
+              real button rather than a wordmark chip — same size and shape as
+              everything else in the bar, and labelled in words. */}
+          {studioAllowed && (
+            <Button variant="outline" size="sm" asChild>
+              <Link
+                to="/studio/group/$groupId"
+                params={{ groupId }}
+                aria-label={`Open ${group.name}’s studio`}
+              >
+                <PaletteIcon />
+                Studio
+              </Link>
+            </Button>
+          )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" disabled={busy}>
+              <Button variant="outline" size="icon-sm" disabled={busy}>
                 <MoreHorizontalIcon />
                 <span className="sr-only">Actions for {group.name}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {/* Opens a dialog rendered beside the menu, not inside it — see
+                  the delete confirm below for why. */}
+              <DropdownMenuItem onSelect={() => setAddingStudents(true)}>
+                <UserPlusIcon />
+                Add students
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() =>
                   void run(() =>
@@ -246,6 +343,11 @@ export function GroupPage({ groupId }: { groupId: string }) {
                   )
                 }
               >
+                {group.status === "active" ? (
+                  <ArchiveIcon />
+                ) : (
+                  <ArchiveRestoreIcon />
+                )}
                 {group.status === "active" ? "Archive group" : "Reactivate"}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -253,26 +355,11 @@ export function GroupPage({ groupId }: { groupId: string }) {
                 variant="destructive"
                 onSelect={() => setConfirmingDelete(true)}
               >
+                <Trash2Icon />
                 Delete group
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {/* The studio, in the display face after the menu — lower case, as
-              the wordmark is, because it is a name rather than a sentence. The
-              word is cut out of the chip rather than drawn on it
-              (`text-background`), so what reads as the letters is the page
-              showing through. */}
-          {studioAllowed && (
-            <Link
-              to="/studio/group/$groupId"
-              params={{ groupId }}
-              aria-label={`Open ${group.name}’s studio`}
-              className="flex h-10 items-center rounded-lg bg-primary px-3 font-display text-2xl leading-none text-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
-            >
-              <span aria-hidden>studio</span>
-            </Link>
-          )}
         </div>
       </header>
 
@@ -317,6 +404,16 @@ export function GroupPage({ groupId }: { groupId: string }) {
         </DialogContent>
       </Dialog>
 
+      <AddMemberDialog
+        open={addingStudents}
+        onOpenChange={setAddingStudents}
+        groupId={group.id}
+        groupName={group.name}
+        students={students}
+        memberIds={placedIds}
+        onAdd={reload}
+      />
+
       {/* Only while nothing has been placed: the group is in no module and
           neither is anyone on its roster. Once either is true the module is
           the studio's, where the lessons it copies are set. */}
@@ -340,10 +437,10 @@ export function GroupPage({ groupId }: { groupId: string }) {
           <GroupLessonCard
             group={group}
             classDate={classDate}
-            planned={planned}
+            day={day}
             lessons={lessons}
             busy={busy}
-            run={run}
+            onChoose={chooseLesson}
           />
         </div>
 
@@ -354,8 +451,13 @@ export function GroupPage({ groupId }: { groupId: string }) {
             group={group}
             classDate={classDate}
             onClassDateChange={setClassDate}
-            planned={planned}
-            students={students}
+            lessonId={day.lessonId}
+            lessonTitle={day.lessonId ? day.title : ""}
+            cancelled={plan?.cancelled.has(classDate) ?? false}
+            onCancelledChange={(next) =>
+              run(() => setClassCancelled(group.id, classDate, next))
+            }
+            refreshKey={reloadKey}
             onChanged={reload}
           />
         </div>
@@ -369,6 +471,7 @@ export function GroupPage({ groupId }: { groupId: string }) {
           group={group}
           classDate={classDate}
           onPickDate={setClassDate}
+          pending={plan?.pending ?? []}
           reloadKey={reloadKey}
         />
       </div>

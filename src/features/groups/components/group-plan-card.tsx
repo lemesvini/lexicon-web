@@ -169,7 +169,7 @@ export function GroupStudioCard({
                 onClick={() => {
                   if (
                     !window.confirm(
-                      "Re-space every date from the start date? Any date you set by hand is overwritten.",
+                      "Lay the plan out from this start date? Once the first class is recorded, the dates follow the register instead.",
                     )
                   ) {
                     return;

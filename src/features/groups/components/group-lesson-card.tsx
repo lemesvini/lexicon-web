@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import {
   CalendarCheckIcon,
-  CheckIcon,
+  CheckCheckIcon,
+  ListOrderedIcon,
   PlayIcon,
   SparklesIcon,
   TabletIcon,
@@ -9,17 +10,10 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { LessonCombobox } from "@/components/lesson-combobox";
 import { GroupCard, GroupCardBody } from "@/features/groups/components/group-card";
-import type { ScheduledClass } from "@/features/groups/data/group-lessons";
 import {
   fromDateKey,
-  setGroupLesson,
   today,
   type GroupRow,
 } from "@/features/groups/data/groups";
@@ -45,6 +39,30 @@ const dayFormat = new Intl.DateTimeFormat(undefined, {
   month: "short",
 });
 
+/** The lesson a class is for, and why it is that one. */
+export type DayLesson = {
+  lessonId: string | null;
+  title: string;
+  /**
+   * recorded  the register for that day was taken for it
+   * chosen    picked here for a register not yet taken
+   * next      the first lesson in the plan nobody has been taught
+   * planned   where the plan's projection puts it (a future day)
+   * current   the group's current lesson — a group with no plan of its own
+   */
+  source: "recorded" | "chosen" | "next" | "planned" | "current";
+  /** Blocks and slides this group's copy adds. 0 without a copy. */
+  advancedCount: number;
+};
+
+const SOURCES = {
+  recorded: { label: "Recorded in the register", icon: CheckCheckIcon },
+  chosen: { label: "Picked for this class", icon: CalendarCheckIcon },
+  next: { label: "Next in the plan", icon: ListOrderedIcon },
+  planned: { label: "Expected", icon: CalendarCheckIcon },
+  current: { label: "", icon: ListOrderedIcon },
+} as const;
+
 /**
  * What this group is doing on the day being looked at, and the two ways into it.
  *
@@ -69,38 +87,37 @@ const dayFormat = new Intl.DateTimeFormat(undefined, {
  * Both links carry `groupId`, so what opens is THIS group's copy — advanced
  * context included — rather than the lesson every other group gets.
  *
- * Two answers can appear here. A lesson dated to this day in the group's studio
- * is the plan, and is read-only: it is set where the dates are set, and two
- * places to write one fact is how they end up disagreeing. Failing that, the
- * group's current lesson is the fallback, and that one is the picker — it is a
- * pointer, and this is as good a place to move it as any.
+ * The lesson comes from the register, not from a date: what that day's register
+ * was taken for, or — for a class not yet recorded — the next lesson in the
+ * plan. The name is always the picker (the group's own module only), because
+ * a class can do something other than what was expected, and saying so here is
+ * what keeps the record and the plan honest.
  */
 export function GroupLessonCard({
   group,
   classDate,
-  planned,
+  day,
   lessons,
   busy,
-  run,
+  onChoose,
 }: {
   group: GroupRow;
   /** The day the register is on — this card follows it, so looking back at last
    *  Tuesday shows what last Tuesday was, not what is on now. */
   classDate: string;
-  /** The lesson dated to `classDate` in the group's studio, if there is one. */
-  planned: ScheduledClass | null;
+  /** The lesson for that day and where the answer came from — worked out by the
+   *  page from the register, see `lessonForDay`. */
+  day: DayLesson;
   lessons: CloudLessonSummary[];
   busy: boolean;
-  /** The page's write runner: reloads and reports failures in one place. */
-  run: (action: () => Promise<void>) => Promise<void>;
+  /** Picks a different lesson for this day: re-files its register if it has
+   *  one, or sets what the register will record when it is taken. */
+  onChoose: (lessonId: string | null) => void;
 }) {
-  const lessonId = planned?.lessonId ?? group.lessonId;
-  const rawTitle = planned
-    ? planned.title || planned.lessonId
-    : group.lessonTitle;
-
-  const heading = lessonName(rawTitle);
-  const subtitle = planned ? "Planned" : group.lessonModule;
+  const { lessonId } = day;
+  const heading = lessonName(day.title);
+  const source = SOURCES[day.source];
+  const SourceIcon = source.icon;
 
   return (
     <GroupCard
@@ -113,69 +130,41 @@ export function GroupLessonCard({
     >
       <GroupCardBody className="flex flex-1 flex-col p-4">
         <section className="flex flex-1 items-center justify-between gap-3 overflow-hidden rounded-xl border border-primary/15 bg-primary/10 p-4 text-primary shadow-sm">
-          {/* The name is the control, exactly as the module tile's is — and
-              for the same reason it isn't one when the studio has dated a
-              lesson to this day: that is the plan, and it is changed where the
-              dates are. */}
-          {planned ? (
-            <div className="min-w-0 flex-1">
+          {/* The name is always the control. Classes don't run to a timetable,
+              so whatever the plan says, the teacher can say what this class is
+              actually doing — and the register files it under that. */}
+          <LessonCombobox
+            lessons={lessons}
+            value={lessonId}
+            module={group.moduleName}
+            allowNone
+            noneLabel="No lesson set"
+            disabled={busy}
+            onChange={onChoose}
+          >
+            <button
+              type="button"
+              className="min-w-0 flex-1 rounded-lg text-left transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+            >
               <h3 className="line-clamp-2 break-words font-display text-xl leading-tight tracking-tight sm:text-2xl">
-                {heading}
+                {lessonId ? heading : "Pick a lesson"}
               </h3>
-              {/* The markers ride on the subtitle now that the tile has no
-                  icon row: "planned in the studio", and whether this group's
-                  copy has anything of its own in it. */}
-              <p className="flex items-center gap-1.5 truncate text-sm opacity-80">
-                <CalendarCheckIcon className="size-3.5 shrink-0" />
-                {subtitle}
-                {planned.advancedCount > 0 && (
-                  <SparklesIcon
-                    className="size-3.5 shrink-0"
-                    aria-label="Has advanced context"
-                  />
-                )}
-              </p>
-            </div>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild disabled={busy}>
-                <button
-                  type="button"
-                  className="min-w-0 flex-1 rounded-lg text-left transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
-                >
-                  <h3 className="line-clamp-2 break-words font-display text-xl leading-tight tracking-tight sm:text-2xl">
-                    {heading}
-                  </h3>
-                  <p className="truncate text-sm opacity-80">
-                    {lessonId ? subtitle : "Pick a lesson"}
-                  </p>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="max-h-80 w-72 overflow-y-auto"
-              >
-                <DropdownMenuItem
-                  onSelect={() => run(() => setGroupLesson(group.id, null))}
-                >
-                  No lesson set
-                </DropdownMenuItem>
-                {lessons.map((lesson) => (
-                  <DropdownMenuItem
-                    key={lesson.id}
-                    onSelect={() =>
-                      run(() => setGroupLesson(group.id, lesson.id))
-                    }
-                  >
-                    {lesson.id === group.lessonId && <CheckIcon />}
-                    <span className="truncate">
-                      {lesson.title || lesson.id}
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+              {/* Where the answer came from, so "next in the plan" and "what
+                  the register says was taught" don't look like the same fact. */}
+              {lessonId && (
+                <p className="flex items-center gap-1.5 truncate text-sm opacity-80">
+                  <SourceIcon className="size-3.5 shrink-0" />
+                  {source.label || group.lessonModule}
+                  {day.advancedCount > 0 && (
+                    <SparklesIcon
+                      className="size-3.5 shrink-0"
+                      aria-label="Has advanced context"
+                    />
+                  )}
+                </p>
+              )}
+            </button>
+          </LessonCombobox>
 
           {/* Control is the teacher's tablet, Present is what goes on the
               wall. Gone entirely with no lesson set: there is nothing to put

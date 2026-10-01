@@ -1,5 +1,13 @@
 import * as React from "react";
-import { CheckIcon, RefreshCwIcon, XIcon } from "lucide-react";
+import {
+  BookmarkIcon,
+  CalendarOffIcon,
+  CheckIcon,
+  MinusIcon,
+  MoreVerticalIcon,
+  RefreshCwIcon,
+  XIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -9,18 +17,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AddMemberDialog } from "@/features/groups/components/add-member-dialog";
 import {
   GroupCard,
   GroupCardFooter,
 } from "@/features/groups/components/group-card";
-import {
-  postponeFrom,
-  type ScheduledClass,
-} from "@/features/groups/data/group-lessons";
 import {
   clearAttendance,
   listGroupMembers,
@@ -30,7 +40,6 @@ import {
   type GroupMember,
   type GroupRow,
 } from "@/features/groups/data/groups";
-import type { StudentRow } from "@/features/students/data/students";
 import { cn } from "@/lib/utils";
 
 /** Stands in for the members of a register that hasn't loaded. A shared constant
@@ -59,8 +68,11 @@ export function GroupRegisterCard({
   group,
   classDate,
   onClassDateChange,
-  planned,
-  students,
+  lessonId,
+  lessonTitle,
+  cancelled,
+  onCancelledChange,
+  refreshKey,
   onChanged,
 }: {
   group: GroupRow;
@@ -69,13 +81,16 @@ export function GroupRegisterCard({
    *  neither of them owns it. */
   classDate: string;
   onClassDateChange: (classDate: string) => void;
-  /** What the group is planned to teach that day, fetched by the page. The
-   *  register snapshots a lesson id, and the honest answer to "what did they do
-   *  that day?" is what the calendar says — not `current_lesson_id`, which is a
-   *  pointer somebody has to remember to move and is stale as often as not. */
-  planned: ScheduledClass | null;
-  /** Every student the caller can see, for the add dialog. */
-  students: StudentRow[];
+  /** The lesson this day's register is for, worked out by the page from the
+   *  register itself (see `lessonForDay`). Snapshotted onto every mark. */
+  lessonId: string | null;
+  lessonTitle: string;
+  /** The day is marked as having no class (0025). */
+  cancelled: boolean;
+  onCancelledChange: (cancelled: boolean) => Promise<void>;
+  /** The page's reload counter. Students are added from the page's actions
+   *  menu now, so the register has to hear about it from outside. */
+  refreshKey: number;
   /** Called when something changes that the page around this also shows. */
   onChanged: () => void;
 }) {
@@ -105,7 +120,7 @@ export function GroupRegisterCard({
     return () => {
       cancelled = true;
     };
-  }, [group.id, classDate, reloadKey]);
+  }, [group.id, classDate, reloadKey, refreshKey]);
 
   const members = loaded?.members ?? NO_MEMBERS;
 
@@ -133,10 +148,6 @@ export function GroupRegisterCard({
     }
   };
 
-  /** What the register writes against. The plan for the day wins; the group's
-   *  current lesson is the fallback for a date nothing is planned for. */
-  const recordedLessonId = planned?.lessonId ?? group.lessonId;
-
   /**
    * One click round the register: not marked → present → absent → not marked.
    *
@@ -149,6 +160,16 @@ export function GroupRegisterCard({
    */
   const cycle = (member: GroupMember) => {
     const next = member.present === null ? true : member.present ? false : null;
+    return mark(member, next);
+  };
+
+  /** Sets one student's mark for the day: in, out (with or without a reason),
+   *  or — null — not marked at all. */
+  const mark = (
+    member: GroupMember,
+    next: boolean | null,
+    excused = false,
+  ) => {
 
     return run(() =>
       next === null
@@ -162,7 +183,8 @@ export function GroupRegisterCard({
             studentId: member.studentId,
             classDate,
             present: next,
-            lessonId: recordedLessonId,
+            excused,
+            lessonId,
           }),
     );
   };
@@ -178,15 +200,10 @@ export function GroupRegisterCard({
           studentId: member.studentId,
           classDate,
           present: true,
-          lessonId: recordedLessonId,
+          lessonId,
         });
       }
     });
-
-  const memberIds = React.useMemo(
-    () => new Set(members.map((member) => member.studentId)),
-    [members],
-  );
 
   const presentCount = members.filter((member) => member.present).length;
   const absentCount = members.filter(
@@ -194,13 +211,10 @@ export function GroupRegisterCard({
   ).length;
   const markedCount = presentCount + absentCount;
 
-  /** Everyone is marked, and nobody came: the planned lesson didn't happen and
-   *  is still to teach. One person present is enough for the class to count —
-   *  whoever missed it catches up, the group doesn't wait. */
-  const nobodyCame =
-    planned !== null &&
-    members.length > 0 &&
-    absentCount === members.length;
+  /** Everyone is marked, and nobody came. The class didn't happen, so its
+   *  lesson is still the next one — the plan works that out from the register
+   *  on its own, and this only says so. */
+  const nobodyCame = members.length > 0 && absentCount === members.length;
 
   return (
     <GroupCard
@@ -221,16 +235,6 @@ export function GroupRegisterCard({
             onChange={(event) =>
               onClassDateChange(event.target.value || today())
             }
-          />
-          <AddMemberDialog
-            groupId={group.id}
-            groupName={group.name}
-            students={students}
-            memberIds={memberIds}
-            onAdd={() => {
-              reload();
-              onChanged();
-            }}
           />
         </div>
       }
@@ -258,9 +262,25 @@ export function GroupRegisterCard({
             <Skeleton key={index} className="h-10 w-full" />
           ))}
         </div>
+      ) : cancelled ? (
+        <div className="flex flex-col items-center gap-3 p-8 text-center">
+          <CalendarOffIcon className="size-6 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            No class on this day. It doesn’t count towards anyone’s attendance,
+            and the plan skips it.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={() => void run(() => onCancelledChange(false))}
+          >
+            There was a class
+          </Button>
+        </div>
       ) : members.length === 0 ? (
         <p className="p-8 text-center text-sm text-muted-foreground">
-          Nobody in this group yet. Add a student to start taking the register.
+          Nobody in this group yet. Add students from the ⋯ menu at the top of the page to start taking the register.
         </p>
       ) : (
         <>
@@ -276,33 +296,28 @@ export function GroupRegisterCard({
                 groupName={group.name}
                 busy={busy}
                 onCycle={() => void cycle(member)}
+                onExcuse={() => void mark(member, false, true)}
+                onClear={() => void mark(member, null)}
                 onRemove={() => setRemoving(member)}
               />
             ))}
           </ul>
 
           {nobodyCame && (
-            <div className="mx-5 mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
-              <p className="min-w-0 flex-1 text-sm">
-                Nobody came, so{" "}
-                <span className="font-medium">
-                  {planned.title || "the planned lesson"}
-                </span>{" "}
-                is still to teach. Push the plan back a class to move it — and
-                every lesson after it — to the next class.
-              </p>
-              <Button
-                size="sm"
-                disabled={busy}
-                onClick={() =>
-                  void run(() =>
-                    postponeFrom(group.id, classDate, group.meetsOn),
-                  )
-                }
-              >
-                Push back a class
-              </Button>
-            </div>
+            <p className="mx-5 mb-5 rounded-lg border bg-muted/50 p-3 text-sm text-muted-foreground">
+              Nobody came, so this class didn’t count.{" "}
+              {lessonTitle ? (
+                <>
+                  <span className="font-medium text-foreground">
+                    {lessonTitle}
+                  </span>{" "}
+                  stays the next lesson
+                </>
+              ) : (
+                "The next lesson stays the same"
+              )}{" "}
+              and the plan’s dates move on by themselves.
+            </p>
           )}
 
           <GroupCardFooter>
@@ -312,14 +327,29 @@ export function GroupRegisterCard({
               {markedCount < members.length &&
                 ` · ${members.length - markedCount} not marked`}
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={busy || presentCount === members.length}
-              onClick={() => void markAllPresent()}
-            >
-              Mark all present
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Only on a day nobody has been marked for: once somebody is,
+                  the day had a class, or at least the register says so. */}
+              {markedCount === 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void run(() => onCancelledChange(true))}
+                >
+                  <CalendarOffIcon />
+                  No class this day
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy || presentCount === members.length}
+                onClick={() => void markAllPresent()}
+              >
+                Mark all present
+              </Button>
+            </div>
           </GroupCardFooter>
         </>
       )}
@@ -370,10 +400,10 @@ export function GroupRegisterCard({
   );
 }
 
-/** What each of the three states looks like, and what the click that leaves it
- *  is going to do. One table rather than three ternaries down the tile — the
- *  states differ in six things, and reading them in a column is the only way to
- *  see that each one is dressed consistently. */
+/** What each state looks like, and what the click that leaves it is going to
+ *  do. One table rather than ternaries down the tile — the states differ in
+ *  several things, and reading them in a column is the only way to see that
+ *  each one is dressed consistently. */
 const STATES = {
   present: {
     label: "Present",
@@ -387,6 +417,12 @@ const STATES = {
     tile: "border-destructive/50 bg-destructive/25 hover:bg-destructive/35",
     badge: "bg-destructive text-white",
   },
+  excused: {
+    label: "Excused absence",
+    next: "Tap to clear",
+    tile: "border-dashed border-muted-foreground/40 bg-muted/60 hover:bg-muted",
+    badge: "bg-muted-foreground/70 text-background",
+  },
   unmarked: {
     label: "Not marked",
     next: "Tap to mark present",
@@ -395,25 +431,40 @@ const STATES = {
   },
 } as const;
 
+/** "[Lesson Four] Comparing Trips" → "Lesson Four", which is what fits on a
+ *  tile. */
+function shortLesson(title: string): string {
+  const match = /^\s*\[([^\]]+)\]/.exec(title);
+  return match?.[1]?.trim() || title;
+}
+
 /**
  * One student, as a target.
  *
- * The whole tile is the button, so there is nothing to aim at. Removing them is
- * a second control, which is why it sits *over* the tile rather than inside it —
- * a button nested in a button is invalid, and every browser resolves it its own
- * way.
+ * The whole tile is the button, so there is nothing to aim at: a tap goes round
+ * not marked → present → absent → not marked, which is the register taken at
+ * speed. The rarer marks — an absence with a reason, clearing, taking them off
+ * the group — are in a menu that sits *over* the tile rather than inside it,
+ * since a button nested in a button is invalid HTML.
+ *
+ * Under the name, what they have to catch up on: lessons the group was taught
+ * while they were away, that no register has had them at since.
  */
 function MemberTile({
   member,
   groupName,
   busy,
   onCycle,
+  onExcuse,
+  onClear,
   onRemove,
 }: {
   member: GroupMember;
   groupName: string;
   busy: boolean;
   onCycle: () => void;
+  onExcuse: () => void;
+  onClear: () => void;
   onRemove: () => void;
 }) {
   const state =
@@ -421,9 +472,12 @@ function MemberTile({
       ? STATES.unmarked
       : member.present
         ? STATES.present
-        : STATES.absent;
+        : member.excused
+          ? STATES.excused
+          : STATES.absent;
 
   const name = member.name || member.email;
+  const missed = member.missed;
 
   return (
     <li className="relative">
@@ -455,6 +509,8 @@ function MemberTile({
               </span>
             ) : member.present ? (
               <CheckIcon className="size-4" />
+            ) : member.excused ? (
+              <MinusIcon className="size-4" />
             ) : (
               <XIcon className="size-4" />
             )}
@@ -474,22 +530,55 @@ function MemberTile({
               {member.attendanceRate !== null &&
                 ` · ${formatRate(member.attendanceRate)}`}
             </span>
+            {missed.length > 0 && (
+              <span
+                className="mt-1 flex items-center gap-1 truncate text-xs text-amber-700 dark:text-amber-400"
+                title={missed
+                  .map((entry) => entry.title || entry.lessonId)
+                  .join("\n")}
+              >
+                <BookmarkIcon className="size-3 shrink-0" />
+                To catch up:{" "}
+                {missed.map((entry) => shortLesson(entry.title)).join(", ")}
+              </span>
+            )}
           </span>
         </span>
       </button>
 
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        disabled={busy}
-        onClick={onRemove}
-        className="absolute top-2 right-2 text-muted-foreground"
-      >
-        <XIcon />
-        <span className="sr-only">
-          Remove {name} from {groupName}
-        </span>
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            disabled={busy}
+            className="absolute top-2 right-2 text-muted-foreground"
+          >
+            <MoreVerticalIcon />
+            <span className="sr-only">More for {name}</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            disabled={member.present === false && member.excused}
+            onSelect={onExcuse}
+          >
+            <MinusIcon />
+            Excused absence
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={member.present === null}
+            onSelect={onClear}
+          >
+            <XIcon />
+            Clear mark
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onSelect={onRemove}>
+            Remove from {groupName}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </li>
   );
 }

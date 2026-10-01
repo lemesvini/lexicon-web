@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { LessonCombobox } from "@/components/lesson-combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,10 +24,6 @@ import { WeekdayPicker } from "@/features/groups/components/weekday-picker";
 import { createGroup, formatDays } from "@/features/groups/data/groups";
 import type { TeacherOption } from "@/features/students/data/students";
 import type { CloudLessonSummary } from "@/lib/lessons-cloud";
-
-// Radix's Select has no concept of an empty value, so "no lesson yet" needs a
-// sentinel of its own.
-const NO_LESSON_VALUE = "none";
 
 /**
  * Starts a group. Only the name is required — a group with nobody in it and no
@@ -55,7 +52,7 @@ export function AddGroupDialog({
   const [meetsOn, setMeetsOn] = React.useState<number[]>([]);
   const [startsAt, setStartsAt] = React.useState("");
   const [teacherId, setTeacherId] = React.useState(currentTeacherId);
-  const [lessonId, setLessonId] = React.useState(NO_LESSON_VALUE);
+  const [lessonId, setLessonId] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -68,7 +65,7 @@ export function AddGroupDialog({
     setMeetsOn([]);
     setStartsAt("");
     setTeacherId(currentTeacherId);
-    setLessonId(NO_LESSON_VALUE);
+    setLessonId(null);
     setError(null);
   };
 
@@ -89,7 +86,7 @@ export function AddGroupDialog({
         teacherId: canPickTeacher ? teacherId : currentTeacherId,
         meetsOn,
         startsAt,
-        lessonId: lessonId === NO_LESSON_VALUE ? null : lessonId,
+        lessonId: lessonId,
       });
       onCreated(groupId);
       handleOpenChange(false);
@@ -179,20 +176,13 @@ export function AddGroupDialog({
 
           <div className="space-y-2">
             <Label>Current lesson (optional)</Label>
-            <Select value={lessonId} onValueChange={setLessonId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Pick a lesson" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NO_LESSON_VALUE}>No lesson yet</SelectItem>
-                {lessons.map((lesson) => (
-                  <SelectItem key={lesson.id} value={lesson.id}>
-                    {lesson.module ? `${lesson.module} · ` : ""}
-                    {lesson.title || lesson.id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <LessonCombobox
+              lessons={lessons}
+              value={lessonId}
+              onChange={setLessonId}
+              allowNone
+              noneLabel="No lesson yet"
+            />
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}

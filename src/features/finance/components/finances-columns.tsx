@@ -3,21 +3,42 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { DataTableSortableHeader as SortableHeader } from "@/components/data-table-sortable-header";
 import { multiSelectFilter } from "@/lib/data-table";
-import { EditFeeDialog } from "@/features/finance/components/edit-fee-dialog";
-import { formatMoney, type FinanceRow } from "@/features/finance/data/finance";
+import {
+  FinancesRowActions,
+  type FinanceRowHandlers,
+} from "@/features/finance/components/finances-row-actions";
+import {
+  formatMoney,
+  PAYMENT_STATUS_LABEL,
+  paymentStatus,
+  type FinanceRow,
+  type PaymentStatus,
+} from "@/features/finance/data/finance";
+import { methodLabel } from "@/features/finance/data/payments";
+
+const STATUS_VARIANT: Record<
+  PaymentStatus,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
+  paid: "default",
+  partial: "secondary",
+  due: "outline",
+  overdue: "destructive",
+  unpriced: "outline",
+};
 
 /**
  * A factory rather than a constant, for the same two reasons as
- * `studentsColumns`: the row action needs a way to tell the page to reload, and
+ * `studentsColumns`: the row actions need to reach the page's dialogs, and
  * the teacher column is admin-only — on a teacher's own list every row would
  * name them.
  */
 export function financesColumns({
   isAdmin,
-  onChanged,
+  handlers,
 }: {
   isAdmin: boolean;
-  onChanged: () => void;
+  handlers: FinanceRowHandlers;
 }): ColumnDef<FinanceRow>[] {
   return [
     {
@@ -77,6 +98,52 @@ export function financesColumns({
       },
     },
     {
+      id: "paymentStatus",
+      // Display label as the accessor, for the same reason as `status` below.
+      accessorFn: (row) => PAYMENT_STATUS_LABEL[paymentStatus(row)],
+      header: ({ column }) => (
+        <SortableHeader column={column} label="Payment" />
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => {
+        const status = paymentStatus(row.original);
+        return (
+          <Badge variant={STATUS_VARIANT[status]}>
+            {PAYMENT_STATUS_LABEL[status]}
+          </Badge>
+        );
+      },
+    },
+    {
+      id: "paidThisMonth",
+      accessorFn: (row) => row.paidThisMonth,
+      header: ({ column }) => (
+        <SortableHeader column={column} label="Paid this month" />
+      ),
+      cell: ({ row }) =>
+        row.original.paidThisMonth > 0 ? (
+          <span className="tabular-nums">
+            {formatMoney(row.original.paidThisMonth)}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
+      id: "preferredMethod",
+      accessorFn: (row) => row.preferredMethod ?? undefined,
+      header: () => <span>Usually pays by</span>,
+      enableSorting: false,
+      cell: ({ row }) =>
+        row.original.preferredMethod ? (
+          <span className="text-muted-foreground">
+            {methodLabel(row.original.preferredMethod)}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
       id: "status",
       // The accessor is the display label, not the raw value: the faceted filter
       // renders whatever the column holds, and "active" in a dropdown reads as a
@@ -98,7 +165,7 @@ export function financesColumns({
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex justify-end">
-          <EditFeeDialog student={row.original} onSaved={onChanged} />
+          <FinancesRowActions student={row.original} handlers={handlers} />
         </div>
       ),
     },

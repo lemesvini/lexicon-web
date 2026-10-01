@@ -1,14 +1,11 @@
 import * as React from "react";
-import { PlusIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { addGroupStudent } from "@/features/groups/data/groups";
@@ -23,14 +20,22 @@ import type { StudentRow } from "@/features/students/data/students";
  * Only students already on the register are excluded. An inactive student is
  * still offered — they're inactive on the roster, not necessarily out of the
  * class you're building.
+ *
+ * Controlled, with no trigger of its own: it is opened from the group's actions
+ * menu, and a dialog rendered inside a DropdownMenuItem is unmounted the moment
+ * the menu closes — so the page holds `open` and renders this beside the menu.
  */
 export function AddMemberDialog({
+  open,
+  onOpenChange,
   groupId,
   groupName,
   students,
   memberIds,
   onAdd,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   groupId: string;
   groupName: string;
   /** Every student the caller can see — already scoped by the roster's RLS. */
@@ -40,7 +45,6 @@ export function AddMemberDialog({
   /** Called after each successful add, so the register can reload. */
   onAdd: () => void;
 }) {
-  const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -63,7 +67,7 @@ export function AddMemberDialog({
   }, [addable, query]);
 
   const handleOpenChange = (next: boolean) => {
-    setOpen(next);
+    onOpenChange(next);
     if (next) return;
     setQuery("");
     setError(null);
@@ -84,13 +88,6 @@ export function AddMemberDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <PlusIcon />
-          Add student
-        </Button>
-      </DialogTrigger>
-
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add to {groupName}</DialogTitle>

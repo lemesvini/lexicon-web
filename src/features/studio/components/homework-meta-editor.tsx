@@ -1,15 +1,6 @@
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { LessonCombobox } from "@/components/lesson-combobox";
 import { AutoTextarea } from "@/features/blocks";
 import type { CloudLessonSummary } from "@/lib/lessons-cloud";
-
-/** Select needs a non-empty string for every item, so "not attached" gets one. */
-const UNATTACHED = "__none__";
 
 const inputClass =
   "w-full rounded-md border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring/30";
@@ -18,8 +9,8 @@ const inputClass =
  * The header of a homework: what it's called, what it's filed under, and the
  * instructions the student reads first.
  *
- * The lesson picker offers every lesson in the library rather than only those in
- * some current module — homework is written when it is written, and filed when
+ * The lesson picker is searchable and offers every lesson in the library, grouped
+ * by module, rather than only those in some current module — homework is written when it is written, and filed when
  * the lesson it belongs to is ready. Leaving it unattached is a first-class
  * choice, not an omission: the student view joins through `lesson_id`, so an
  * unattached homework is simply not published to anyone yet.
@@ -80,31 +71,13 @@ export function HomeworkMetaEditor({
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Attached to
           </span>
-          <Select
-            value={lessonId ?? UNATTACHED}
-            onValueChange={(value) =>
-              onChange({ lessonId: value === UNATTACHED ? null : value })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Pick a lesson" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={UNATTACHED}>
-                Not attached — file it later
-              </SelectItem>
-              {lessons.map((lesson) => (
-                <SelectItem key={lesson.id} value={lesson.id}>
-                  {lesson.title || lesson.id}
-                  {lesson.module && (
-                    <span className="text-muted-foreground">
-                      · {lesson.module}
-                    </span>
-                  )}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <LessonCombobox
+            lessons={lessons}
+            value={lessonId}
+            onChange={(id) => onChange({ lessonId: id })}
+            allowNone
+            noneLabel="Not attached — file it later"
+          />
         </label>
       </div>
 
