@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/_student/practice/$reading
   component: ReadingPage,
   notFoundComponent: () => (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <SiteNav backTo="/practice" backLabel="Back to practice" align="mid" />
+      <SiteNav back align="mid" />
       <main className="mx-auto w-full max-w-3xl px-4 py-10">
         <p className="rounded-xl border bg-card p-6 font-montserrat text-sm text-muted-foreground">
           Esse texto não existe. Volte para a lista e escolha outro.
@@ -52,7 +52,7 @@ function ReadingPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <SiteNav backTo="/practice" backLabel="Back to practice" align="narrow" />
+      <SiteNav back align="narrow" />
       <main className="mx-auto w-full max-w-3xl space-y-8 px-4 py-10">
         <Header reading={reading} />
         <Passage reading={reading} />

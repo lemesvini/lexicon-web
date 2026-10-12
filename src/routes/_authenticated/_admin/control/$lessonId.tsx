@@ -141,7 +141,7 @@ function ControlPage() {
   return (
     <div className="flex h-svh flex-col bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border px-6 py-3">
-        <BackButton to="/lessons" label="Back to lessons" />
+        <BackButton />
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">{lesson.title}</span>
           <ConnectionBadge status={status} />

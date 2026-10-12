@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import {
   BookOpenIcon,
   CalendarDaysIcon,
-  CheckIcon,
   EyeIcon,
   EyeOffIcon,
   MonitorPlayIcon,
@@ -68,7 +67,6 @@ import {
   fetchGroup,
   fromDateKey,
   listGroupContexts,
-  setGroupLesson,
   today,
   type GroupRow,
   type GroupStudentContext,
@@ -553,20 +551,6 @@ export function GroupStudioPage({ groupId }: { groupId: string }) {
                         <DropdownMenuSeparator />
 
                         <DropdownMenuItem
-                          disabled={busy || isCurrent}
-                          onSelect={() =>
-                            run(() => setGroupLesson(groupId, row.lessonId))
-                          }
-                        >
-                          <CheckIcon />
-                          {isCurrent
-                            ? "This is the current lesson"
-                            : "Set as current"}
-                        </DropdownMenuItem>
-
-                        <DropdownMenuSeparator />
-
-                        <DropdownMenuItem
                           variant="destructive"
                           onSelect={() =>
                             setRemoving({
@@ -857,8 +841,7 @@ function Shell({
   return (
     <div className="min-h-[100dvh] bg-background">
       <SiteNav
-        backTo="/groups"
-        backLabel="Back to groups"
+        back
         title={groupName ? "Studio" : undefined}
         titlePrefix="Group"
       />

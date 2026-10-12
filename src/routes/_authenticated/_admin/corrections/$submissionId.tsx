@@ -121,7 +121,7 @@ function Correction({ submissionId }: { submissionId: string }) {
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <SiteNav backTo="/corrections" backLabel="Back to corrections" align="narrow" />
+      <SiteNav back align="narrow" />
       <main className="mx-auto w-full max-w-3xl space-y-8 px-4 pb-24 pt-4">
         {phase === "loading" ? (
           <div className="space-y-4">

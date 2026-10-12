@@ -17,7 +17,7 @@ function GroupDetailRoute() {
   // confirm — follows you from one group to the next.
   return (
     <div className="min-h-[100dvh] bg-background">
-      <SiteNav backTo="/groups" backLabel="Back to groups" />
+      <SiteNav back />
       <main className="mx-auto w-full max-w-6xl px-4 py-10">
         <GroupPage key={groupId} groupId={groupId} />
       </main>

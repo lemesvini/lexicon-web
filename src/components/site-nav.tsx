@@ -3,10 +3,8 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { MenuIcon } from "lucide-react";
 import { BackButton } from "@/components/back-button";
 import { SLIDE_MS, WORDMARK } from "@/components/nav-sidebar";
-import { useAuth } from "@/hooks/use-auth";
+import { useHome } from "@/hooks/use-home";
 import { useSidebar } from "@/hooks/use-sidebar";
-import type { LinkTo } from "@/lib/nav";
-import { isStaff } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 
 /** The content columns pages lay themselves out in. Spelled out rather than
@@ -52,19 +50,17 @@ const FOCUS_RING =
  * seam; there is no space, and none is added.
  */
 export function SiteNav({
-  backTo,
-  backLabel = "Back",
+  back = false,
   align = "wide",
   title,
   titlePrefix,
   titleSuffix,
   actions,
 }: {
-  /** Where the back arrow goes. Omitted on the home page, which is where the
-   *  rest of the app already points. */
-  backTo?: LinkTo;
-  /** Its accessible name — it has no visible text. */
-  backLabel?: string;
+  /** Whether the bar has a back arrow — to the page the reader came from, or
+   *  home when there is none. Off on the home page, which is where the rest of
+   *  the app already points. */
+  back?: boolean;
   /**
    * Which content column the back arrow lines up with — the page's own
    * `max-w-*`, so the arrow sits directly above the heading beneath it rather
@@ -92,13 +88,10 @@ export function SiteNav({
   actions?: React.ReactNode;
 } = {}) {
   const { toggle, open, flying, registerWordmark } = useSidebar();
-  const { profile, isLoading } = useAuth();
-
-  // Which app this reader is in, and so what "home" means. Unknown for the
-  // moment before the profile lands — staff is the harmless guess, because the
-  // only thing it decides in that window is which page `atHome` compares
-  // against, and `linksHome` keeps the mark a menu button until it is sure.
-  const home: LinkTo = profile && !isStaff(profile) ? "/learn" : "/lessons";
+  // Before the profile lands `home` is a guess, but the only thing it decides
+  // in that window is which page `atHome` compares against, and `linksHome`
+  // keeps the mark a menu button until it is sure.
+  const { home, isLoading } = useHome();
   const atHome = useRouterState({
     select: (state) => state.location.pathname === home,
   });
@@ -169,13 +162,7 @@ export function SiteNav({
             <MenuIcon className="size-5" />
           </button>
 
-          {backTo && (
-            <BackButton
-              to={backTo}
-              label={backLabel}
-              className="pointer-events-auto"
-            />
-          )}
+          {back && <BackButton className="pointer-events-auto" />}
 
           {/* Pushed to the far edge of the same column the menu and the back
               arrow start at, so the bar reads as "where you came from" on the

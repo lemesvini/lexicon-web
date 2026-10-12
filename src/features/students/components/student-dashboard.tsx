@@ -156,7 +156,7 @@ export function StudentDashboard({ studentId }: { studentId: string }) {
           rail && RAIL_PADDING,
         )}
       >
-        <SiteNav backTo="/students" backLabel="Back to the roster" />
+        <SiteNav back />
 
         <main className="@container mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-hidden px-3 pt-2 pb-20 sm:px-4 sm:pt-4">
           {phase === "loading" && (

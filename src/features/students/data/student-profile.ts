@@ -201,10 +201,14 @@ type MembershipRecord = {
 
 type ClassRecord = {
   id: string;
-  class_date: string;
   present: boolean | null;
   group: Embedded<{ name?: string | null }>;
-  lesson: Embedded<{ title?: string | null }>;
+  /** The class the mark belongs to (0028) — the date and the lesson live there. */
+  class: Embedded<{
+    class_date?: string | null;
+    starts_at?: string | null;
+    lesson: Embedded<{ title?: string | null }>;
+  }>;
 };
 
 function toSubmissionStatus(raw: unknown): SubmissionStatus {
@@ -247,12 +251,13 @@ export async function fetchStudentDossier(
         .select("group_id, group:groups (name, starts_at, meets_on, status)")
         .eq("student_id", studentId),
       supabase
+        // Ordered below rather than here: the date is on the embedded class,
+        // and PostgREST only orders the parent by its own columns.
         .from("group_attendance")
         .select(
-          "id, class_date, present, group:groups (name), lesson:lessons (title)",
+          "id, present, group:groups (name), class:group_classes (class_date, starts_at, lesson:lessons (title))",
         )
-        .eq("student_id", studentId)
-        .order("class_date", { ascending: false }),
+        .eq("student_id", studentId),
     ]);
 
   if (profile.error) throw new Error(profile.error.message);
@@ -328,13 +333,21 @@ export async function fetchStudentDossier(
       })
       .sort((a, b) => a.name.localeCompare(b.name)),
 
-    classes: ((classes.data ?? []) as ClassRecord[]).map((row) => ({
-      id: row.id,
-      classDate: row.class_date,
-      present: !!row.present,
-      groupName: one(row.group)?.name ?? "",
-      lessonTitle: one(row.lesson)?.title ?? "",
-    })),
+    classes: ((classes.data ?? []) as unknown as ClassRecord[])
+      .map((row) => ({ row, session: one(row.class) }))
+      // Newest first; "YYYY-MM-DD" and "HH:MM:SS" both sort as text.
+      .sort((a, b) =>
+        `${b.session?.class_date ?? ""} ${b.session?.starts_at ?? ""}`.localeCompare(
+          `${a.session?.class_date ?? ""} ${a.session?.starts_at ?? ""}`,
+        ),
+      )
+      .map(({ row, session }) => ({
+        id: row.id,
+        classDate: session?.class_date ?? "",
+        present: !!row.present,
+        groupName: one(row.group)?.name ?? "",
+        lessonTitle: one(session?.lesson ?? null)?.title ?? "",
+      })),
   };
 }
 
@@ -420,7 +433,9 @@ export async function setClassAttendance(
 ): Promise<void> {
   const { error } = await supabase
     .from("group_attendance")
-    .update({ present })
+    // A flip is a plain yes or no: whatever reason an absence had doesn't
+    // survive the student being marked in, nor a re-marking as absent.
+    .update({ present, excused: false })
     .eq("id", attendanceId);
 
   if (error) throw new Error(error.message);

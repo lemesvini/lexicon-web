@@ -15,11 +15,13 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   formatTime,
   listGroups,
-  listRegistersTakenOn,
   toDateKey,
   type GroupRow,
-  type TakenRegister,
 } from "@/features/groups/data/groups";
+import {
+  listRegistersTakenOn,
+  type TakenRegister,
+} from "@/features/groups/data/group-classes";
 import {
   listScheduledOn,
   type ScheduledClass,

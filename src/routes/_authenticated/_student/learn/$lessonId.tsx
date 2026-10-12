@@ -77,8 +77,7 @@ function LessonPage() {
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
       <SiteNav
-        backTo="/my-lessons"
-        backLabel="Back to my lessons"
+        back
         align="mid"
         actions={
           // Only once the lesson is on the screen: an action in the bar over a

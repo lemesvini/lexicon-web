@@ -1,35 +1,36 @@
 // What a group has been taught, what comes next, and when the rest is expected.
 //
-// The register is the source of truth and the plan's dates follow it — see the
-// header of supabase/migrations/0025_flexible_class_plan.sql for the whole model.
-// In short:
+// The classes are the source of truth and the plan's dates follow them — see
+// supabase/migrations/0028_group_classes.sql. In short:
 //
 //   * the plan is a sequence (`group_lessons.position`);
-//   * a lesson is taught on the first day a register records it with somebody
+//   * a lesson is taught on the first day a class records it with somebody
 //     present — a class nobody came to taught nothing, and needs no undoing;
-//   * the next lesson is the first one in the sequence not yet taught;
+//   * the next lesson is the one after the lesson of the most recent class with
+//     somebody present (`suggestNextLesson`) — not "the first one never taught",
+//     so a lesson skipped on purpose stays skipped;
 //   * `scheduled_on` is a projection, rewritten by `reflowPlan` after every
-//     register write: taught lessons carry the day they were taught, the rest
-//     are laid on the coming meeting days, skipping cancelled ones.
+//     class saved: taught lessons carry the day they were taught, the next one
+//     and those after it are laid on the coming meeting days, skipping cancelled
+//     ones.
 //
 // Nothing here is a one-off operation on the dates. Every write recomputes them
-// from the register, so a mistake in the dates is fixed by fixing the register,
-// and pressing something twice can't push the plan twice.
+// from the classes, so a mistake in the dates is fixed by fixing the classes.
 
+import type { CloudLessonSummary } from "@/lib/lessons-cloud";
 import { supabase } from "@/lib/supabase";
 
+import {
+  listGroupClasses,
+  suggestNextLesson,
+  type GroupClass,
+} from "./group-classes";
 import {
   listGroupLessons,
   setGroupLessonDate,
   type GroupLessonRow,
 } from "./group-lessons";
-import {
-  fromDateKey,
-  isMissingSchema,
-  listRegisterMarks,
-  toDateKey,
-  type RegisterMark,
-} from "./groups";
+import { fromDateKey, isMissingSchema, toDateKey } from "./groups";
 
 /** How far back an unrecorded meeting day is still worth asking about. Older
  *  than this and it is history nobody is going to reconstruct. */
@@ -76,40 +77,61 @@ export async function setClassCancelled(
   if (error) throw new Error(error.message);
 }
 
-/** Re-files one day's register under a different lesson — for "that day we
- *  actually did lesson 6". Every mark of the day moves together. */
-export async function setClassLesson(
-  groupId: string,
-  classDate: string,
-  lessonId: string | null,
-): Promise<void> {
-  const { error } = await supabase
-    .from("group_attendance")
-    .update({ lesson_id: lessonId })
-    .eq("group_id", groupId)
-    .eq("class_date", classDate);
-
-  if (error) throw new Error(error.message);
-}
-
 export type ClassPlan = {
   /** The group's copies, in teaching order. */
   lessons: GroupLessonRow[];
+  /** Every class, newest first. */
+  classes: GroupClass[];
   /** lessonId → the first day it was taught. */
   taughtOn: Map<string, string>;
-  /** classDate → the lesson its register was taken for. */
-  recordedLesson: Map<string, string | null>;
-  /** Days with any mark at all. */
+  /** Days with a class recorded. */
   recordedDays: Set<string>;
-  /** Days somebody was present on — the classes that happened. */
+  /** Days a class had somebody present — the classes that happened. */
   heldDays: Set<string>;
   cancelled: Set<string>;
-  /** The first lesson in the sequence nobody has been taught yet. */
+  /** The suggested next lesson — see `suggestNextLesson`. */
   next: GroupLessonRow | null;
-  /** Past meeting days with no register and no "no class", oldest first. */
+  /** Past meeting days with no class and no "no class", oldest first. */
   pending: string[];
-  marks: RegisterMark[];
 };
+
+/** One lesson of the course a group is working through, in teaching order. */
+export type CourseLesson = {
+  lessonId: string;
+  title: string;
+  unit: string;
+  module: string;
+};
+
+/**
+ * The lessons a class can be for, in the order they are taught.
+ *
+ * The group's own copies when it has them — that is its plan. A group never
+ * given copies falls back on the shared lessons of its module, in curriculum
+ * order, and a group with no module on every lesson there is: a class can
+ * always be recorded against something.
+ */
+export function courseLessons(
+  planLessons: readonly GroupLessonRow[],
+  cloud: readonly CloudLessonSummary[],
+  moduleName: string,
+): CourseLesson[] {
+  if (planLessons.length > 0) {
+    return planLessons.map((row) => ({
+      lessonId: row.lessonId,
+      title: row.title,
+      unit: row.unit,
+      module: row.module,
+    }));
+  }
+  const inModule = cloud.filter((lesson) => lesson.module === moduleName);
+  return (inModule.length > 0 ? inModule : cloud).map((lesson) => ({
+    lessonId: lesson.id,
+    title: lesson.title,
+    unit: lesson.unit,
+    module: lesson.module,
+  }));
+}
 
 function addDays(key: string, days: number): string {
   const date = fromDateKey(key);
@@ -117,44 +139,40 @@ function addDays(key: string, days: number): string {
   return toDateKey(date);
 }
 
-/** The plan as the register describes it. Pure, so it can be reasoned about
- *  (and recomputed) without a round trip. */
+/** The plan as the classes describe it. Pure, so it can be reasoned about (and
+ *  recomputed) without a round trip. */
 export function buildPlan(
   lessons: GroupLessonRow[],
-  marks: RegisterMark[],
+  classes: GroupClass[],
   cancelled: Set<string>,
   meetsOn: readonly number[],
   todayKey: string,
 ): ClassPlan {
   const ordered = [...lessons].sort((a, b) => a.position - b.position);
 
-  const recordedLesson = new Map<string, string | null>();
   const recordedDays = new Set<string>();
   const heldDays = new Set<string>();
   const taughtOn = new Map<string, string>();
 
-  // Marks arrive oldest first, so the first day a lesson is seen held is the
-  // day it was taught.
-  for (const mark of marks) {
-    recordedDays.add(mark.classDate);
-    if (!recordedLesson.has(mark.classDate) || mark.lessonId) {
-      recordedLesson.set(
-        mark.classDate,
-        mark.lessonId ?? recordedLesson.get(mark.classDate) ?? null,
-      );
-    }
-    if (mark.present) {
-      heldDays.add(mark.classDate);
-      if (mark.lessonId && !taughtOn.has(mark.lessonId)) {
-        taughtOn.set(mark.lessonId, mark.classDate);
-      }
+  // Oldest first, so the first day a lesson is seen held is the day it was
+  // taught.
+  for (const entry of [...classes].reverse()) {
+    recordedDays.add(entry.classDate);
+    if (entry.present === 0) continue;
+    heldDays.add(entry.classDate);
+    if (entry.lessonId && !taughtOn.has(entry.lessonId)) {
+      taughtOn.set(entry.lessonId, entry.classDate);
     }
   }
 
-  const next = ordered.find((row) => !taughtOn.has(row.lessonId)) ?? null;
+  const nextId = suggestNextLesson(
+    ordered.map((row) => row.lessonId),
+    classes,
+  );
+  const next = ordered.find((row) => row.lessonId === nextId) ?? null;
 
-  // A meeting day the register says nothing about. Only from the first
-  // register on — before it the group hadn't started — and only recently.
+  // A meeting day nothing was recorded for. Only from the first class on —
+  // before it the group hadn't started — and only recently.
   const pending: string[] = [];
   const first = [...recordedDays].sort()[0];
   if (first && meetsOn.length > 0) {
@@ -174,14 +192,13 @@ export function buildPlan(
 
   return {
     lessons: ordered,
+    classes,
     taughtOn,
-    recordedLesson,
     recordedDays,
     heldDays,
     cancelled,
     next,
     pending,
-    marks,
   };
 }
 
@@ -190,48 +207,28 @@ export async function loadClassPlan(
   meetsOn: readonly number[],
   todayKey: string,
 ): Promise<ClassPlan> {
-  const [lessons, marks, cancelled] = await Promise.all([
+  const [lessons, classes, cancelled] = await Promise.all([
     listGroupLessons(groupId),
-    listRegisterMarks(groupId),
+    listGroupClasses(groupId),
     listCancelledClasses(groupId),
   ]);
-  return buildPlan(lessons, marks, cancelled, meetsOn, todayKey);
+  return buildPlan(lessons, classes, cancelled, meetsOn, todayKey);
 }
 
 /**
- * Which lesson a register on `classDate` is for.
+ * The dates every copy should carry, given the classes.
  *
- * What was recorded wins — that is history. A day with no register yet, up to
- * today, is for the next lesson: whatever the dates used to say, the class
- * that happens (or happened and wasn't written down) teaches what comes next.
- * Later days read the projection.
- */
-export function lessonForDay(
-  plan: ClassPlan,
-  classDate: string,
-  todayKey: string,
-): GroupLessonRow | null {
-  const recorded = plan.recordedLesson.get(classDate);
-  if (recorded) {
-    return plan.lessons.find((row) => row.lessonId === recorded) ?? null;
-  }
-  if (classDate <= todayKey) return plan.next;
-  return plan.lessons.find((row) => row.scheduledOn === classDate) ?? null;
-}
-
-/**
- * The dates every copy should carry, given the register.
- *
- * Taught lessons keep the day they were taught. The rest go, in order, onto the
- * meeting days from today on — skipping any day already recorded (a class
- * nobody came to still used up that day) or marked as no class, and never
- * before the last class that happened.
+ * Taught lessons keep the day they were taught. The next lesson and every
+ * untaught one after it go, in order, onto the meeting days from today on —
+ * skipping any day already recorded or marked as no class, and never before the
+ * last class that happened. Untaught lessons *before* the next one were skipped,
+ * and lose their date: a skipped lesson isn't expected on any day.
  *
  * A group that hasn't started yet keeps the start its plan was laid out from:
  * with nothing taught, a first date still in the future is a decision somebody
  * made in the studio, not a stale guess.
  *
- * Without meeting days there is nowhere to lay the untaught lessons, and their
+ * Without meeting days there is nowhere to lay the coming lessons, and their
  * dates are left as they are rather than guessed at.
  */
 export function projectDates(
@@ -240,22 +237,24 @@ export function projectDates(
   todayKey: string,
 ): Map<string, string | null> {
   const dates = new Map<string, string | null>();
-  const untaught: GroupLessonRow[] = [];
+  const coming: GroupLessonRow[] = [];
+  const nextIndex = plan.next ? plan.lessons.indexOf(plan.next) : -1;
 
-  for (const row of plan.lessons) {
+  plan.lessons.forEach((row, index) => {
     const taught = plan.taughtOn.get(row.lessonId);
     if (taught) dates.set(row.id, taught);
-    else untaught.push(row);
-  }
+    else if (nextIndex !== -1 && index >= nextIndex) coming.push(row);
+    else dates.set(row.id, null);
+  });
 
-  if (untaught.length === 0 || meetsOn.length === 0) return dates;
+  if (coming.length === 0 || meetsOn.length === 0) return dates;
 
   let start = todayKey;
   const lastHeld = [...plan.heldDays].sort().at(-1);
   if (lastHeld && lastHeld >= start) start = addDays(lastHeld, 1);
 
   if (plan.heldDays.size === 0) {
-    const planned = untaught
+    const planned = coming
       .map((row) => row.scheduledOn)
       .filter((date): date is string => !!date)
       .sort()[0];
@@ -265,13 +264,13 @@ export function projectDates(
   let cursor = start;
   let placed = 0;
   // Guard, not a limit: a few years of days, so a bad `meetsOn` can't spin.
-  for (let i = 0; i < 1500 && placed < untaught.length; i += 1) {
+  for (let i = 0; i < 1500 && placed < coming.length; i += 1) {
     if (
       meetsOn.includes(fromDateKey(cursor).getDay()) &&
       !plan.cancelled.has(cursor) &&
       !plan.recordedDays.has(cursor)
     ) {
-      dates.set(untaught[placed]!.id, cursor);
+      dates.set(coming[placed]!.id, cursor);
       placed += 1;
     }
     cursor = addDays(cursor, 1);
@@ -281,10 +280,9 @@ export function projectDates(
 }
 
 /**
- * Rewrites the plan's dates to agree with the register. Only rows whose date
- * actually changes are written, so it is cheap to call after every mark and on
- * opening a group — which is also what puts a plan an old "push back" left in a
- * mess right again.
+ * Rewrites the plan's dates to agree with the classes. Only rows whose date
+ * actually changes are written, so it is cheap to call after every save and on
+ * opening a group.
  */
 export async function reflowPlan(
   groupId: string,

@@ -1,7 +1,6 @@
 import * as React from "react";
-import { XIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { SideSheet } from "@/components/side-sheet";
 import { ModuleCard } from "@/features/homepage/components/module-card";
 import { LessonRowCard } from "@/features/homepage/components/lesson-row-card";
 import type { ClassRow } from "@/features/homepage/data/classes";
@@ -29,11 +28,7 @@ function groupByModule(rows: ClassRow[]): ModuleGroup[] {
 
 /**
  * The class library as a gallery of modules: click one and its lessons list
- * out in a panel beside the grid, rather than navigating away to see them.
- *
- * The panel sits in the grid's own row instead of over it — a module's cards
- * don't come close to filling the width on anything but a phone, so the space
- * a sidebar would otherwise cover is already going spare.
+ * out in a side sheet, rather than navigating away to see them.
  */
 export function ModulesGallery({
   rows,
@@ -101,48 +96,18 @@ export function ModulesGallery({
         ))}
       </div>
 
-      {active && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px]"
-            onClick={() => setSelected(null)}
-            aria-hidden="true"
-          />
-          <aside
-            className="fixed right-2 top-2 bottom-2 z-50 w-[min(28rem,calc(100vw-1rem))] overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none"
-            style={{
-              transform: "translateX(0)",
-              opacity: 1,
-            }}
-          >
-            <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
-              <div className="min-w-0">
-                <h2 className="truncate text-sm font-semibold tracking-tight">
-                  {active.name}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  {active.rows.length} class
-                  {active.rows.length === 1 ? "" : "es"}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setSelected(null)}
-                aria-label="Close"
-              >
-                <XIcon />
-              </Button>
-            </div>
-
-            <div className="max-h-[calc(100vh-5rem)] space-y-2 overflow-y-auto p-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              {active.rows.map((row) => (
-                <LessonRowCard key={row.id} row={row} />
-              ))}
-            </div>
-          </aside>
-        </>
-      )}
+      <SideSheet
+        open={active !== null}
+        onOpenChange={(open) => !open && setSelected(null)}
+        title={active?.name}
+        description={
+          active &&
+          `${active.rows.length} class${active.rows.length === 1 ? "" : "es"}`
+        }
+        bodyClassName="space-y-2"
+      >
+        {active?.rows.map((row) => <LessonRowCard key={row.id} row={row} />)}
+      </SideSheet>
     </div>
   );
 }

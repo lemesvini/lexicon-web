@@ -18,8 +18,7 @@ function SchedulePage() {
       {/* The page's name is the bar, in the mark's place — "TeacherSchedule" as
           one lockup. A heading below it would be the same word twice. */}
       <SiteNav
-        backTo="/lessons"
-        backLabel="Back to lessons"
+        back
         // titlePrefix="Teacher"
         title="schedule"
       />

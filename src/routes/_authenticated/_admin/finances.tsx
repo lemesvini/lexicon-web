@@ -10,7 +10,7 @@ export const Route = createFileRoute("/_authenticated/_admin/finances")({
 function FinancesPage() {
   return (
     <div className="min-h-[100dvh] bg-background">
-      <SiteNav backTo="/lessons" backLabel="Back to lessons" />
+      <SiteNav back />
       <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-10">
         <FinancesTable
           heading={

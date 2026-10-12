@@ -196,7 +196,7 @@ function StudioLibraryPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
-      <SiteNav backTo="/lessons" backLabel="Back to lessons" />
+      <SiteNav back />
       <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-10">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="space-y-1">

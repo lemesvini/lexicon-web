@@ -5,9 +5,8 @@
 // the school side — the same call returns a different list depending on who is
 // asking, and there is no filtering to do here.
 //
-// Attendance is one row per student per class date, upserted on that triple. So
-// ticking a box twice is the same as ticking it once, and re-opening an old date
-// shows what was recorded rather than a blank register.
+// The classes themselves — lesson, date, time, register — are in
+// ./group-classes; this file only reads attendance for the group-wide tallies.
 
 import { supabase } from "@/lib/supabase";
 
@@ -109,26 +108,12 @@ export type GroupRow = {
   attendanceRate: number | null;
 };
 
-/** One student on a group's register. */
+/** One student on a group's roster. Their attendance is worked out from the
+ *  group's classes — see `attendanceByStudent` in ./group-classes. */
 export type GroupMember = {
   studentId: string;
   name: string;
   email: string;
-  /** Whether they were marked in or out on the date being viewed. Null when the
-   *  register wasn't taken for them that day — which is not the same as absent,
-   *  and is why the checkbox starts empty rather than unticked. */
-  present: boolean | null;
-  /** Absent with a reason that day (0025). Only ever true when `present` is
-   *  false. */
-  excused: boolean;
-  /** Their own share across every date, 0–1, or null before any is recorded.
-   *  Excused absences are left out of it — they are recorded, not held
-   *  against the student. */
-  attendanceRate: number | null;
-  /** How many classes that rate is out of. */
-  sessions: number;
-  /** Lessons taught while they were away that they haven't been to since. */
-  missed: MissedLesson[];
 };
 
 const NO_TEACHER = "—";
@@ -294,14 +279,31 @@ type MemberRecord = {
   student: Embedded<{ full_name?: string | null; email?: string | null }>;
 };
 
-/**
- * Just who is in the group, with no attendance behind it.
- *
- * Separate from `listGroupMembers` because the page asks this question before
- * the register has any bearing on it — "is this group placed in a module yet?"
- * is about the roster, not about a date — and that one drags a whole attendance
- * table through to answer it.
- */
+/** Who is in the group, by name, for the register. */
+export async function listGroupMembers(
+  groupId: string,
+): Promise<GroupMember[]> {
+  const { data, error } = await supabase
+    .from("group_students")
+    .select("student_id, student:students (full_name, email)")
+    .eq("group_id", groupId);
+
+  if (error) throw new Error(error.message);
+
+  return ((data ?? []) as MemberRecord[])
+    .map((record) => {
+      const student = one(record.student);
+      return {
+        studentId: record.student_id,
+        name: student?.full_name ?? "",
+        email: student?.email ?? "",
+      };
+    })
+    .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+}
+
+/** Just the ids of who is in the group — for callers that only need to know
+ *  whether somebody is on the roster. */
 export async function listGroupStudentIds(
   groupId: string,
 ): Promise<string[]> {
@@ -321,166 +323,6 @@ export async function listGroupStudentIds(
  */
 export function isMissingSchema(error: { code?: string } | null): boolean {
   return ["42703", "42P01", "PGRST204", "PGRST205"].includes(error?.code ?? "");
-}
-
-/** One student's mark on one day, as the plan reads it. */
-export type RegisterMark = {
-  studentId: string;
-  classDate: string;
-  present: boolean;
-  /** An absence with a reason (0025). Always false where `present` is true. */
-  excused: boolean;
-  lessonId: string | null;
-  lessonTitle: string;
-};
-
-type MarkRecord = {
-  student_id: string;
-  class_date: string;
-  present: boolean | null;
-  excused?: boolean | null;
-  lesson_id: string | null;
-  lesson: { title?: string | null } | { title?: string | null }[] | null;
-};
-
-/** Every mark ever made in this group's register, oldest first. */
-export async function listRegisterMarks(
-  groupId: string,
-): Promise<RegisterMark[]> {
-  const query = (columns: string) =>
-    supabase
-      .from("group_attendance")
-      .select(columns)
-      .eq("group_id", groupId)
-      .order("class_date", { ascending: true });
-
-  let result = await query(
-    "student_id, class_date, present, excused, lesson_id, lesson:lessons (title)",
-  );
-  if (isMissingSchema(result.error)) {
-    result = await query(
-      "student_id, class_date, present, lesson_id, lesson:lessons (title)",
-    );
-  }
-  if (result.error) throw new Error(result.error.message);
-
-  return ((result.data ?? []) as unknown as MarkRecord[]).map((record) => {
-    const lesson = Array.isArray(record.lesson)
-      ? record.lesson[0]
-      : record.lesson;
-    return {
-      studentId: record.student_id,
-      classDate: record.class_date,
-      present: !!record.present,
-      excused: !record.present && !!record.excused,
-      lessonId: record.lesson_id,
-      lessonTitle: lesson?.title ?? "",
-    };
-  });
-}
-
-/** A class a student was absent from, and hasn't been to since. */
-export type MissedLesson = {
-  classDate: string;
-  lessonId: string;
-  title: string;
-  excused: boolean;
-};
-
-/**
- * What each student has to catch up on: lessons taught on a day they were
- * marked absent, which no later register has them present for.
- *
- * Only an explicit absence counts — a student added to the group last week
- * wasn't absent from the classes before they joined.
- */
-export function missedLessons(
-  marks: RegisterMark[],
-): Map<string, MissedLesson[]> {
-  const heldDays = new Set(
-    marks.filter((mark) => mark.present).map((mark) => mark.classDate),
-  );
-  const attended = new Set(
-    marks
-      .filter((mark) => mark.present && mark.lessonId)
-      .map((mark) => `${mark.studentId}:${mark.lessonId}`),
-  );
-
-  const missed = new Map<string, MissedLesson[]>();
-  for (const mark of marks) {
-    if (mark.present || !mark.lessonId || !heldDays.has(mark.classDate)) {
-      continue;
-    }
-    if (attended.has(`${mark.studentId}:${mark.lessonId}`)) continue;
-
-    const list = missed.get(mark.studentId) ?? [];
-    if (list.some((entry) => entry.lessonId === mark.lessonId)) continue;
-    list.push({
-      classDate: mark.classDate,
-      lessonId: mark.lessonId,
-      title: mark.lessonTitle,
-      excused: mark.excused,
-    });
-    missed.set(mark.studentId, list);
-  }
-  return missed;
-}
-
-/**
- * The register for one group on one date: who is in it, whether they were marked
- * in that day, and how they've done overall.
- *
- * The whole group's attendance history is fetched, not just the day's — the
- * per-student rate is the column that makes the register worth reading, and it
- * is a small table.
- */
-export async function listGroupMembers(
-  groupId: string,
-  classDate: string,
-): Promise<GroupMember[]> {
-  const [members, marks] = await Promise.all([
-    supabase
-      .from("group_students")
-      .select("student_id, student:students (full_name, email)")
-      .eq("group_id", groupId),
-    listRegisterMarks(groupId),
-  ]);
-
-  if (members.error) throw new Error(members.error.message);
-
-  const onTheDay = new Map<string, RegisterMark>();
-  const tallies = new Map<string, { present: number; total: number }>();
-
-  for (const mark of marks) {
-    if (mark.classDate === classDate) onTheDay.set(mark.studentId, mark);
-    if (mark.excused) continue;
-
-    const tally = tallies.get(mark.studentId) ?? { present: 0, total: 0 };
-    tally.total += 1;
-    if (mark.present) tally.present += 1;
-    tallies.set(mark.studentId, tally);
-  }
-
-  const missed = missedLessons(marks);
-
-  return ((members.data ?? []) as MemberRecord[])
-    .map((record) => {
-      const student = one(record.student);
-      const tally = tallies.get(record.student_id);
-      const mark = onTheDay.get(record.student_id);
-
-      return {
-        studentId: record.student_id,
-        name: student?.full_name ?? "",
-        email: student?.email ?? "",
-        present: mark ? mark.present : null,
-        excused: mark?.excused ?? false,
-        attendanceRate: tally?.total ? tally.present / tally.total : null,
-        sessions: tally?.total ?? 0,
-        missed: missed.get(record.student_id) ?? [],
-      };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** One student in the group, with the note the teacher keeps on them. */
@@ -526,121 +368,6 @@ export async function listGroupContexts(
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
-}
-
-/** One class the group has a register for, as the attendance panel lists it. */
-export type AttendanceDay = {
-  /** The Postgres `date`, e.g. "2026-08-14". Also the key the register opens on. */
-  classDate: string;
-  /** What was taught, as recorded at the time. "" when the group had no lesson
-   *  set that day, or the lesson has since been deleted. */
-  lessonTitle: string;
-  present: number;
-  /** How many students were marked either way — the register as it was taken,
-   *  not the group as it stands now. Someone since removed still counts here. */
-  total: number;
-};
-
-type AttendanceRecord = {
-  class_date: string;
-  present: boolean | null;
-  lesson: Embedded<{ title?: string | null }>;
-};
-
-/**
- * Every class this group has a register for, newest first.
- *
- * Rolled up by date here rather than in SQL: PostgREST exposes no GROUP BY, and
- * a group's history is tens of rows, not thousands. The lesson comes from the
- * first row of each day — every row of one class is written with the same
- * `lesson_id`, and on the rare day it changed mid-class the earlier one is the
- * honest answer.
- */
-export async function listGroupAttendance(
-  groupId: string,
-): Promise<AttendanceDay[]> {
-  const { data, error } = await supabase
-    .from("group_attendance")
-    .select("class_date, present, lesson:lessons (title)")
-    .eq("group_id", groupId)
-    .order("class_date", { ascending: false });
-
-  if (error) throw new Error(error.message);
-
-  // Insertion order follows the query's ordering, so the Map comes out newest
-  // first without a second sort.
-  const days = new Map<string, AttendanceDay>();
-
-  for (const row of (data ?? []) as AttendanceRecord[]) {
-    const day = days.get(row.class_date) ?? {
-      classDate: row.class_date,
-      lessonTitle: one(row.lesson)?.title ?? "",
-      present: 0,
-      total: 0,
-    };
-    day.total += 1;
-    if (row.present) day.present += 1;
-    days.set(row.class_date, day);
-  }
-
-  return [...days.values()];
-}
-
-/** A register that has already been taken: the class happened. */
-export type TakenRegister = {
-  groupId: string;
-  /** How many of the marked students turned up. */
-  present: number;
-  /** How many were marked either way. Always > 0 — an untaken register has no
-   *  rows at all (see {@link clearAttendance}). */
-  total: number;
-};
-
-/**
- * Which classes already have a register, for each of the given dates.
- *
- * The dashboard's second question, after "what am I teaching today?": "and which
- * of it have I already taught?". A row exists for a student only once somebody
- * marked them in or out, so the presence of any row for a group on a date is the
- * class having happened — there is no third state to check for.
- *
- * Rolled up in JS for the same reason as {@link listGroupAttendance}: PostgREST
- * has no GROUP BY, and this is a day or two of classes, not a term of them.
- * Every requested date gets an entry so the caller can tell "nothing taken" from
- * "not asked for".
- */
-export async function listRegistersTakenOn(
-  dateKeys: readonly string[],
-): Promise<Map<string, Map<string, TakenRegister>>> {
-  const byDate = new Map<string, Map<string, TakenRegister>>();
-  for (const key of dateKeys) byDate.set(key, new Map());
-  if (dateKeys.length === 0) return byDate;
-
-  const { data, error } = await supabase
-    .from("group_attendance")
-    .select("group_id, class_date, present")
-    .in("class_date", dateKeys as string[]);
-
-  if (error) throw new Error(error.message);
-
-  for (const row of (data ?? []) as {
-    group_id: string;
-    class_date: string;
-    present: boolean | null;
-  }[]) {
-    const forDay = byDate.get(row.class_date);
-    if (!forDay) continue;
-    const tally = forDay.get(row.group_id) ?? {
-      groupId: row.group_id,
-      present: 0,
-      total: 0,
-    };
-    tally.total += 1;
-    if (row.present) tally.present += 1;
-    forDay.set(row.group_id, tally);
-  }
-
-  return byDate;
 }
 
 export type NewGroup = {
@@ -825,71 +552,6 @@ export async function removeGroupStudent(
     .delete()
     .eq("group_id", groupId)
     .eq("student_id", studentId);
-
-  if (error) throw new Error(error.message);
-}
-
-/**
- * Marks one student in or out for one class date. Upserted on the unique triple
- * from 0007, so changing your mind updates the record rather than adding a
- * second one for the same day.
- */
-export async function setAttendance(input: {
-  groupId: string;
-  studentId: string;
-  classDate: string;
-  present: boolean;
-  /** An absence with a reason. Ignored (written false) when `present`. */
-  excused?: boolean;
-  /** What was taught. Snapshotted so the record survives the group moving on. */
-  lessonId: string | null;
-}): Promise<void> {
-  const row = {
-    group_id: input.groupId,
-    student_id: input.studentId,
-    class_date: input.classDate,
-    present: input.present,
-    lesson_id: input.lessonId,
-  };
-  const upsert = (values: typeof row & { excused?: boolean }) =>
-    supabase
-      .from("group_attendance")
-      .upsert(values, { onConflict: "group_id,student_id,class_date" });
-
-  let { error } = await upsert({
-    ...row,
-    excused: !input.present && !!input.excused,
-  });
-  // Before 0025 there is no `excused` column; a plain mark still works.
-  if (isMissingSchema(error) && !input.excused) ({ error } = await upsert(row));
-  if (isMissingSchema(error)) {
-    throw new Error(
-      "Run migration 0025_flexible_class_plan.sql to record excused absences.",
-    );
-  }
-  if (error) throw new Error(error.message);
-}
-
-/**
- * Un-records one student for one day — the third click of the register's cycle.
- *
- * A real delete rather than a third state in the column, because "not marked" is
- * the absence of a row, not a value: that is what makes an untaken register
- * empty rather than a set of absences, and re-adding the row as null would make
- * the two indistinguishable. Deleting is also what the rate is counted out of,
- * so a mis-click taken back doesn't quietly drag a student's percentage with it.
- */
-export async function clearAttendance(input: {
-  groupId: string;
-  studentId: string;
-  classDate: string;
-}): Promise<void> {
-  const { error } = await supabase
-    .from("group_attendance")
-    .delete()
-    .eq("group_id", input.groupId)
-    .eq("student_id", input.studentId)
-    .eq("class_date", input.classDate);
 
   if (error) throw new Error(error.message);
 }

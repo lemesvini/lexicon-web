@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/_admin/teachers")({
 function TeachersPage() {
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <SiteNav backTo="/lessons" backLabel="Back to lessons" />
+      <SiteNav back />
       <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-10">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Teachers</h1>

@@ -1,5 +1,4 @@
 import * as React from "react";
-import { Link } from "@tanstack/react-router";
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -11,6 +10,7 @@ import {
 import type { Lesson } from "@/lib/lessons";
 import { Button } from "@/components/ui/button";
 import { ClaudeMark } from "@/components/claude-logo";
+import { useGoBack } from "@/hooks/use-go-back";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -49,7 +49,6 @@ export function StudioToolbar({
   brandOn = true,
   onToggleBrand,
   portable = true,
-  back,
   menuItems,
 }: {
   document: Lesson;
@@ -82,16 +81,10 @@ export function StudioToolbar({
    * another copy from the group's studio.
    */
   portable?: boolean;
-  /**
-   * Overrides the top-left button, for an editor the library isn't the way back
-   * from. A group's copy of a lesson is opened from that group far more often
-   * than from the library, and sending them to the library is sending them
-   * somewhere they weren't.
-   */
-  back?: { label: string; onClick: () => void };
   /** The kind-specific actions, as `DropdownMenuItem`s for the menu. */
   menuItems?: React.ReactNode;
 }) {
+  const goBack = useGoBack();
   const [copied, setCopied] = React.useState(false);
   const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">(
     "idle",
@@ -118,22 +111,15 @@ export function StudioToolbar({
 
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b bg-background/90 px-4 py-2.5 backdrop-blur">
-      {back ? (
-        <Button variant="ghost" size="sm" onClick={back.onClick}>
-          <ArrowLeftIcon />
-          {back.label}
-        </Button>
-      ) : (
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/studio">
-            <ArrowLeftIcon />
-            Library
-          </Link>
-        </Button>
-      )}
+      {/* Back to wherever the editor was opened from — the library, a group's
+          studio — rather than to a fixed page; see useGoBack. */}
+      <Button variant="ghost" size="sm" onClick={goBack}>
+        <ArrowLeftIcon />
+        Back
+      </Button>
 
       {/* Anchored to the header box, not to its own static position: laid out
-          after the Library button, a `w-full` overlay starts at that button's
+          after the Back button, a `w-full` overlay starts at that button's
           right edge and hangs off the page. */}
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
         <span className="font-display text-2xl leading-none text-primary">

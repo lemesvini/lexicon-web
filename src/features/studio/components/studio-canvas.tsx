@@ -56,7 +56,6 @@ export function StudioCanvas({
   drawerWidth = "lg:w-[26rem] xl:w-[30rem]",
   drawerPadding = "lg:pr-[26rem] xl:pr-[30rem]",
   portable = true,
-  back,
   menuItems,
 }: {
   studio: StudioController;
@@ -83,8 +82,6 @@ export function StudioCanvas({
   drawerPadding?: string;
   /** False hides Copy and Export — see `portable` on StudioToolbar. */
   portable?: boolean;
-  /** Overrides the top-left button — see `back` on StudioToolbar. */
-  back?: { label: string; onClick: () => void };
   /** `DropdownMenuItem`s for the toolbar's menu — see `menuItems` on
    *  StudioToolbar. */
   menuItems?: React.ReactNode;
@@ -160,7 +157,6 @@ export function StudioCanvas({
             studio.updateMeta({ hideBrand: lesson.meta.hideBrand ? undefined : true })
           }
           portable={portable}
-          back={back}
           menuItems={menuItems}
         />
 

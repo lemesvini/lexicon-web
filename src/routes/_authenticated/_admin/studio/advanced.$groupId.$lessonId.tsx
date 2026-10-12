@@ -1,10 +1,5 @@
 import * as React from "react";
-import {
-  Link,
-  createFileRoute,
-  useNavigate,
-  useRouter,
-} from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { requireAdvancedStudio } from "@/lib/route-guards";
 import type { Lesson } from "@/lib/lessons";
 import { Button } from "@/components/ui/button";
@@ -82,25 +77,6 @@ function AdvancedEditor({
 }) {
   const studio = useAdvancedStudio();
   const { load } = studio;
-  const router = useRouter();
-  const navigate = useNavigate();
-
-  /**
-   * Back to wherever this was opened from.
-   *
-   * A copy is reached from two places — the group's studio and the main Studio
-   * library — so there is no one right destination, and history is the only thing
-   * that knows which it was. The fallback is not optional: on a pasted link or a
-   * refresh there is nothing to go back to, and `history.back()` would either sit
-   * there doing nothing or walk the user out of the app.
-   */
-  const goBack = () => {
-    if (router.history.canGoBack()) {
-      router.history.back();
-      return;
-    }
-    void navigate({ to: "/studio/group/$groupId", params: { groupId } });
-  };
 
   const [state, setState] = React.useState<State>({
     phase: "loading",
@@ -211,7 +187,6 @@ function AdvancedEditor({
       studio={studio}
       label={studioKind("advanced").singular}
       portable={false}
-      back={{ label: "Back", onClick: goBack }}
       slideLocked={(slide) => isBase(slide.meta)}
       drawerLabel="LexStudio Agent"
       drawer={

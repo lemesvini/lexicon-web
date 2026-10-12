@@ -65,7 +65,7 @@ function MyContextPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <SiteNav backTo="/learn" backLabel="Back to home" align="mid" />
+      <SiteNav back align="mid" />
       <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-10">
         <BookCard
           icon={SparklesIcon}

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 
 import type { Lesson } from "@/lib/lessons";
 import { EXERCISE_BLOCK_ORDER } from "@/features/blocks";
@@ -112,8 +112,6 @@ export function GroupCopyEditor({
 }) {
   const studio = useAdvancedStudio();
   const { load } = studio;
-  const router = useRouter();
-  const navigate = useNavigate();
 
   const [group, setGroup] = React.useState<GroupRow | null>(null);
   /**
@@ -166,16 +164,6 @@ export function GroupCopyEditor({
       cancelled = true;
     };
   }, [kind, groupId, documentId, load]);
-
-  /** Back to wherever this was opened from — the group's studio on a pasted
-   *  link or a refresh, where history has nothing to go back to. */
-  const goBack = () => {
-    if (router.history.canGoBack()) {
-      router.history.back();
-      return;
-    }
-    void navigate({ to: "/studio/group/$groupId", params: { groupId } });
-  };
 
   const save = async () => {
     // `baseSyncedAt` goes back untouched, and `status` is not in the payload at
@@ -263,7 +251,6 @@ export function GroupCopyEditor({
       teacherContent={false}
       blockTypes={kind === "homework" ? EXERCISE_BLOCK_ORDER : undefined}
       portable={false}
-      back={{ label: "Back", onClick: goBack }}
       slideLocked={(slide) => isBase(slide.meta)}
       drawerLabel="LexStudio Agent"
       drawer={
