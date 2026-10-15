@@ -10,6 +10,7 @@ import { imageBlock } from "./image";
 import { titleBlock } from "./title";
 import { canDoBlock } from "./can-do";
 import { embedBlock } from "./embed";
+import { minigameBlock } from "./minigame";
 import { postBlock } from "./post";
 import { containerBlock } from "./container";
 import { finishSentenceBlock } from "./finish-sentence";
@@ -34,6 +35,7 @@ export const BLOCK_REGISTRY: Registry = {
   email: emailBlock,
   image: imageBlock,
   embed: embedBlock,
+  minigame: minigameBlock,
   post: postBlock,
   container: containerBlock,
   "finish-sentence": finishSentenceBlock,
@@ -53,6 +55,7 @@ export const BLOCK_ORDER: BlockType[] = [
   "email",
   "image",
   "embed",
+  "minigame",
   "post",
   "container",
   "can-do",

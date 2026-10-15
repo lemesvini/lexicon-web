@@ -185,6 +185,8 @@ function serializeBlock(block: LessonBlock): LessonBlock {
     // document that says the opposite of what the block does.
     case "embed":
       return prune(block, ["type"]);
+    case "minigame":
+      return prune(block, ["type", "game"]);
     case "post":
       return prune(block, ["type", "username", "body"]);
     // Exercise blocks. Two things are deliberate here:

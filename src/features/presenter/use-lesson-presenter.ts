@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   EVENTS,
+  gamePayload,
   lessonChannel,
+  statePayload,
   type ConnectionStatus,
 } from "@/features/presenter/realtime";
 import { useArrowKeyNav } from "@/features/presenter/use-arrow-key-nav";
+import { MinigameSync } from "@/features/minigames/sync";
 
 const BOARD_THROTTLE_MS = 80;
 
@@ -19,15 +22,26 @@ type LessonPresenter = {
   broadcastBoard: (elements: unknown[]) => void;
   /** Open/close the whiteboard on the display; sent immediately. */
   setWhiteboardActive: (active: boolean, elements: unknown[]) => void;
+  /** The session's minigames, shared with the display. Null until the
+   *  presentation is known. */
+  minigames: MinigameSync | null;
 };
 
 /**
  * Control-side (iPad) presenter state. Owns the current slide index, broadcasts
  * navigation and whiteboard state, and answers a display's sync-request with
  * the full current state so late joiners catch up.
+ *
+ * It is a late joiner itself, too: on (re)joining it asks the display where the
+ * lesson is and takes on its slide and its games' rounds — so reloading the iPad
+ * mid-lesson picks up from the projector rather than throwing the room back to
+ * slide one.
+ *
+ * `key` is the presentation (see `presentationKey`); nothing connects until it
+ * is known.
  */
 export function useLessonPresenter(
-  lessonId: string,
+  key: string | null,
   slideCount: number,
 ): LessonPresenter {
   const [slideIndex, setSlideIndex] = useState(0);
@@ -44,6 +58,8 @@ export function useLessonPresenter(
     lastSent: number;
   }>({ timer: null, lastSent: 0 });
 
+  const minigames = useMemo(() => (key ? new MinigameSync(key) : null), [key]);
+
   const clearThrottle = () => {
     const t = throttleRef.current.timer;
     if (t) {
@@ -53,8 +69,12 @@ export function useLessonPresenter(
   };
 
   useEffect(() => {
-    const channel = lessonChannel(lessonId);
+    if (!key || !minigames) return;
+    const channel = lessonChannel(key);
     channelRef.current = channel;
+    const detach = minigames.attach((payload) =>
+      channel.send({ type: "broadcast", event: EVENTS.game, payload }),
+    );
 
     channel.on("broadcast", { event: EVENTS.syncRequest }, () => {
       channel.send({
@@ -64,20 +84,42 @@ export function useLessonPresenter(
           slide: slideRef.current,
           active: activeRef.current,
           elements: elementsRef.current,
+          games: minigames.snapshot(),
         },
       });
     });
 
+    channel.on("broadcast", { event: EVENTS.state }, ({ payload }) => {
+      const parsed = statePayload.safeParse(payload);
+      if (!parsed.success) return;
+      slideRef.current = parsed.data.slide;
+      setSlideIndex(parsed.data.slide);
+      minigames.adopt(parsed.data.games);
+    });
+
+    channel.on("broadcast", { event: EVENTS.game }, ({ payload }) => {
+      const parsed = gamePayload.safeParse(payload);
+      if (parsed.success) minigames.receive(parsed.data);
+    });
+
     channel.subscribe((s) => {
-      setStatus(s === "SUBSCRIBED" ? "connected" : "disconnected");
+      const connected = s === "SUBSCRIBED";
+      setStatus(connected ? "connected" : "disconnected");
+      if (connected)
+        channel.send({
+          type: "broadcast",
+          event: EVENTS.stateRequest,
+          payload: {},
+        });
     });
 
     return () => {
       clearThrottle();
+      detach();
       channelRef.current = null;
       void channel.unsubscribe();
     };
-  }, [lessonId]);
+  }, [key, minigames]);
 
   const goTo = useCallback(
     (next: number) => {
@@ -146,5 +188,6 @@ export function useLessonPresenter(
     goNext,
     broadcastBoard,
     setWhiteboardActive,
+    minigames,
   };
 }

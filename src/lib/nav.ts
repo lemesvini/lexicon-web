@@ -8,6 +8,7 @@ import {
   CalendarDaysIcon,
   ClipboardCheckIcon,
   DumbbellIcon,
+  Gamepad2Icon,
   GraduationCapIcon,
   HandshakeIcon,
   HouseIcon,
@@ -37,6 +38,7 @@ export type LinkTo =
   | "/partners"
   | "/finances"
   | "/corrections"
+  | "/minigames"
   | "/learn"
   | "/my-lessons"
   | "/my-homework"
@@ -52,7 +54,8 @@ export type NavLink = { label: string; to: LinkTo; icon: LucideIcon };
 export type NavSection = { label?: string; links: readonly NavLink[] };
 
 // Running a class, in the order the work happens: see when it is, pick the
-// lesson, write one, file it, mark what came back. "/lessons" is the presenter's launcher, so it is
+// lesson, write one, file it, mark what came back — and the games played in
+// the room. "/lessons" is the presenter's launcher, so it is
 // Lessons here rather than a dashboard — nothing about it is a summary.
 // Studio and Modules are the admin's: both edit the library the whole school
 // shares. A teacher shapes a lesson for their own group through the advanced
@@ -68,6 +71,7 @@ function classes(role: Role): readonly NavLink[] {
         ] as const)
       : []),
     { label: "Corrections", to: "/corrections", icon: ClipboardCheckIcon },
+    { label: "Minigames", to: "/minigames", icon: Gamepad2Icon },
   ];
 }
 

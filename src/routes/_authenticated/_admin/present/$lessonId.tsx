@@ -8,6 +8,9 @@ import { Whiteboard } from '@/features/presenter/components/whiteboard'
 import { ConnectionBadge } from '@/features/presenter/components/connection-status'
 import { useLessonDisplay } from '@/features/presenter/use-lesson-display'
 import { useResolvedLesson } from '@/features/presenter/use-resolved-lesson'
+import { presentationKey } from '@/features/presenter/realtime'
+import { MinigameSyncContext } from '@/features/minigames/sync'
+import { useAuth } from '@/hooks/use-auth'
 
 type PresentSearch = { groupId?: string }
 
@@ -62,8 +65,12 @@ function PresentPage() {
   const { lessonId } = Route.useParams()
   const { groupId } = Route.useSearch()
   const { lesson, loading } = useResolvedLesson(lessonId, groupId)
-  const { slideIndex, whiteboardActive, elements, status } =
-    useLessonDisplay(lessonId, lesson?.slides.length ?? 0)
+  const { session } = useAuth()
+  // This group's showing of this lesson — or this teacher's, outside a group.
+  // The iPad opened from the same group and lesson lands on the same channel.
+  const key = presentationKey(lessonId, groupId, session?.user.id)
+  const { slideIndex, whiteboardActive, elements, status, minigames } =
+    useLessonDisplay(key, lesson?.slides.length ?? 0)
 
   if (loading) {
     return (
@@ -99,7 +106,10 @@ function PresentPage() {
       {/* Slide — the only thing the presenter ever shows on its own. Positioned
           so SlideView's stage layer (and any wallpaper) fills the screen. */}
       <div className="relative min-h-svh">
-        <SlideView slide={slide} audience="student" />
+        {/* A minigame on the slide plays the session's shared round. */}
+        <MinigameSyncContext value={minigames}>
+          <SlideView slide={slide} audience="student" />
+        </MinigameSyncContext>
       </div>
 
       {/* Whiteboard — white panel that drops from the top (flush) with a 3%

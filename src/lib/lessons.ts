@@ -263,6 +263,33 @@ export type EmbedBlock = BlockBase & {
   note?: string;
 };
 
+/** The classroom games in @/features/minigames, by id. */
+export type MinigameId =
+  | "who-am-i"
+  | "two-truths"
+  | "word-cards"
+  | "crossings";
+
+/**
+ * One of our own classroom games, played live on the slide.
+ *
+ * The sibling of `EmbedBlock` for the games that used to be Claude artifacts:
+ * rather than uploading a page and framing it, the game is part of the app and
+ * the block only says which one. That is what lets it keep its state (players,
+ * score, hints) between slides and lessons, which a sandboxed page cannot.
+ *
+ * A game is a whole screen of controls, so the block takes the slide by default
+ * (`fill`). Without it, it sits in the flow at 16:9 and scrolls inside.
+ */
+export type MinigameBlock = BlockBase & {
+  type: "minigame";
+  game: MinigameId;
+  label?: string;
+  /** Take the whole slide, edge to edge — see `EmbedBlock.fill`. */
+  fill?: true;
+  note?: string;
+};
+
 // ── Exercise blocks ─────────────────────────────────────────────────────────
 // Blocks a student answers rather than reads. Only homework uses them.
 //
@@ -390,6 +417,7 @@ export type LessonBlock =
   | TitleBlock
   | CanDoBlock
   | EmbedBlock
+  | MinigameBlock
   | PostBlock
   | ExerciseBlock;
 

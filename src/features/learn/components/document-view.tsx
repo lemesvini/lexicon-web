@@ -25,6 +25,8 @@ function inFlow(block: LessonBlock): LessonBlock {
     return { ...block, wallpaper: false };
   if (block.type === "embed" && block.fill)
     return { ...block, fill: undefined };
+  if (block.type === "minigame" && block.fill)
+    return { ...block, fill: undefined };
   return block;
 }
 

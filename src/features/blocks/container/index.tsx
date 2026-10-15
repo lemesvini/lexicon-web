@@ -34,7 +34,11 @@ import { BLOCK_ORDER, BLOCK_REGISTRY, blockMetas, createBlock } from "../registr
  */
 export function containerChildTypes(): BlockType[] {
   return BLOCK_ORDER.filter(
-    (t) => t !== "title" && t !== "can-do" && t !== "container",
+    (t) =>
+      t !== "title" &&
+      t !== "can-do" &&
+      t !== "container" &&
+      t !== "minigame",
   );
 }
 

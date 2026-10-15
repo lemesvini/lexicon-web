@@ -34,6 +34,7 @@ export {
   SLIDE_JUSTIFY,
 } from "./slide-view";
 export { containerChildTypes } from "./container";
+export { slideMinigame } from "./minigame";
 export {
   BrandMark,
   StagePreview,

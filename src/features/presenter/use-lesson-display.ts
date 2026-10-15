@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   boardPayload,
   EVENTS,
+  gamePayload,
   lessonChannel,
   navPayload,
   syncPayload,
   type ConnectionStatus,
 } from "@/features/presenter/realtime";
 import { useArrowKeyNav } from "@/features/presenter/use-arrow-key-nav";
+import { MinigameSync } from "@/features/minigames/sync";
 
 type LessonDisplay = {
   slideIndex: number;
@@ -15,16 +17,26 @@ type LessonDisplay = {
   whiteboardActive: boolean;
   elements: unknown[];
   status: ConnectionStatus;
+  /** The session's minigames, shared with the control. Null until the
+   *  presentation is known. */
+  minigames: MinigameSync | null;
 };
 
 /**
- * Display-side (Mac) mirror. Subscribes to the lesson channel, follows the
- * control's navigation and whiteboard, and on every (re)connect asks the
+ * Display-side (Mac) mirror. Subscribes to the presentation's channel, follows
+ * the control's navigation and whiteboard, and on every (re)connect asks the
  * control for the full current state so a reload or dropped connection never
  * leaves a blank screen — it just keeps the last slide until fresh state lands.
+ *
+ * Minigames go both ways: changes made at the projector are sent to the
+ * control, and when the control is the one (re)joining, the display tells it
+ * which slide is up and where every game's round is.
+ *
+ * `key` is the presentation (see `presentationKey`); nothing connects until it
+ * is known.
  */
 export function useLessonDisplay(
-  lessonId: string,
+  key: string | null,
   slideCount: number,
 ): LessonDisplay {
   const [slideIndex, setSlideIndex] = useState(0);
@@ -32,8 +44,22 @@ export function useLessonDisplay(
   const [elements, setElements] = useState<unknown[]>([]);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
 
+  const channelRef = useRef<ReturnType<typeof lessonChannel> | null>(null);
+  // Read by the state-request handler, which outlives any one render.
+  const slideRef = useRef(0);
   useEffect(() => {
-    const channel = lessonChannel(lessonId);
+    slideRef.current = slideIndex;
+  }, [slideIndex]);
+
+  const minigames = useMemo(() => (key ? new MinigameSync(key) : null), [key]);
+
+  useEffect(() => {
+    if (!key || !minigames) return;
+    const channel = lessonChannel(key);
+    channelRef.current = channel;
+    const detach = minigames.attach((payload) =>
+      channel.send({ type: "broadcast", event: EVENTS.game, payload }),
+    );
 
     channel.on("broadcast", { event: EVENTS.nav }, ({ payload }) => {
       const parsed = navPayload.safeParse(payload);
@@ -54,7 +80,21 @@ export function useLessonDisplay(
         setSlideIndex(parsed.data.slide);
         setWhiteboardActive(parsed.data.active);
         setElements(parsed.data.elements);
+        minigames.adopt(parsed.data.games);
       }
+    });
+
+    channel.on("broadcast", { event: EVENTS.stateRequest }, () => {
+      channel.send({
+        type: "broadcast",
+        event: EVENTS.state,
+        payload: { slide: slideRef.current, games: minigames.snapshot() },
+      });
+    });
+
+    channel.on("broadcast", { event: EVENTS.game }, ({ payload }) => {
+      const parsed = gamePayload.safeParse(payload);
+      if (parsed.success) minigames.receive(parsed.data);
     });
 
     channel.subscribe((s) => {
@@ -72,9 +112,11 @@ export function useLessonDisplay(
     });
 
     return () => {
+      detach();
+      channelRef.current = null;
       void channel.unsubscribe();
     };
-  }, [lessonId]);
+  }, [key, minigames]);
 
   // Standalone keyboard nav for when no control page is driving the deck. If a
   // control connects, its nav/sync broadcasts override this local index.
@@ -86,5 +128,5 @@ export function useLessonDisplay(
   }, [slideCount]);
   useArrowKeyNav(goPrev, goNext);
 
-  return { slideIndex, whiteboardActive, elements, status };
+  return { slideIndex, whiteboardActive, elements, status, minigames };
 }

@@ -31,6 +31,7 @@ import { Route as AuthenticatedStudentPracticeIndexRouteImport } from './routes/
 import { Route as AuthenticatedStudentLearnIndexRouteImport } from './routes/_authenticated/_student/learn/index'
 import { Route as AuthenticatedAdminStudioIndexRouteImport } from './routes/_authenticated/_admin/studio/index'
 import { Route as AuthenticatedAdminStudentsIndexRouteImport } from './routes/_authenticated/_admin/students/index'
+import { Route as AuthenticatedAdminMinigamesIndexRouteImport } from './routes/_authenticated/_admin/minigames/index'
 import { Route as AuthenticatedAdminGroupsIndexRouteImport } from './routes/_authenticated/_admin/groups/index'
 import { Route as AuthenticatedAdminCorrectionsIndexRouteImport } from './routes/_authenticated/_admin/corrections/index'
 import { Route as AuthenticatedStudentPracticeReadingIdRouteImport } from './routes/_authenticated/_student/practice/$readingId'
@@ -38,6 +39,7 @@ import { Route as AuthenticatedStudentLearnLessonIdRouteImport } from './routes/
 import { Route as AuthenticatedStudentHomeworkHomeworkIdRouteImport } from './routes/_authenticated/_student/homework/$homeworkId'
 import { Route as AuthenticatedAdminStudentsStudentIdRouteImport } from './routes/_authenticated/_admin/students/$studentId'
 import { Route as AuthenticatedAdminPresentLessonIdRouteImport } from './routes/_authenticated/_admin/present/$lessonId'
+import { Route as AuthenticatedAdminMinigamesGameIdRouteImport } from './routes/_authenticated/_admin/minigames/$gameId'
 import { Route as AuthenticatedAdminGroupsGroupIdRouteImport } from './routes/_authenticated/_admin/groups/$groupId'
 import { Route as AuthenticatedAdminCorrectionsSubmissionIdRouteImport } from './routes/_authenticated/_admin/corrections/$submissionId'
 import { Route as AuthenticatedAdminControlLessonIdRouteImport } from './routes/_authenticated/_admin/control/$lessonId'
@@ -173,6 +175,12 @@ const AuthenticatedAdminStudentsIndexRoute =
     path: '/students/',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminMinigamesIndexRoute =
+  AuthenticatedAdminMinigamesIndexRouteImport.update({
+    id: '/minigames/',
+    path: '/minigames/',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const AuthenticatedAdminGroupsIndexRoute =
   AuthenticatedAdminGroupsIndexRouteImport.update({
     id: '/groups/',
@@ -213,6 +221,12 @@ const AuthenticatedAdminPresentLessonIdRoute =
   AuthenticatedAdminPresentLessonIdRouteImport.update({
     id: '/present/$lessonId',
     path: '/present/$lessonId',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
+const AuthenticatedAdminMinigamesGameIdRoute =
+  AuthenticatedAdminMinigamesGameIdRouteImport.update({
+    id: '/minigames/$gameId',
+    path: '/minigames/$gameId',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
 const AuthenticatedAdminGroupsGroupIdRoute =
@@ -295,6 +309,7 @@ export interface FileRoutesByFullPath {
   '/control/$lessonId': typeof AuthenticatedAdminControlLessonIdRoute
   '/corrections/$submissionId': typeof AuthenticatedAdminCorrectionsSubmissionIdRoute
   '/groups/$groupId': typeof AuthenticatedAdminGroupsGroupIdRoute
+  '/minigames/$gameId': typeof AuthenticatedAdminMinigamesGameIdRoute
   '/present/$lessonId': typeof AuthenticatedAdminPresentLessonIdRoute
   '/students/$studentId': typeof AuthenticatedAdminStudentsStudentIdRoute
   '/homework/$homeworkId': typeof AuthenticatedStudentHomeworkHomeworkIdRoute
@@ -302,6 +317,7 @@ export interface FileRoutesByFullPath {
   '/practice/$readingId': typeof AuthenticatedStudentPracticeReadingIdRoute
   '/corrections/': typeof AuthenticatedAdminCorrectionsIndexRoute
   '/groups/': typeof AuthenticatedAdminGroupsIndexRoute
+  '/minigames/': typeof AuthenticatedAdminMinigamesIndexRoute
   '/students/': typeof AuthenticatedAdminStudentsIndexRoute
   '/studio/': typeof AuthenticatedAdminStudioIndexRoute
   '/learn/': typeof AuthenticatedStudentLearnIndexRoute
@@ -333,6 +349,7 @@ export interface FileRoutesByTo {
   '/control/$lessonId': typeof AuthenticatedAdminControlLessonIdRoute
   '/corrections/$submissionId': typeof AuthenticatedAdminCorrectionsSubmissionIdRoute
   '/groups/$groupId': typeof AuthenticatedAdminGroupsGroupIdRoute
+  '/minigames/$gameId': typeof AuthenticatedAdminMinigamesGameIdRoute
   '/present/$lessonId': typeof AuthenticatedAdminPresentLessonIdRoute
   '/students/$studentId': typeof AuthenticatedAdminStudentsStudentIdRoute
   '/homework/$homeworkId': typeof AuthenticatedStudentHomeworkHomeworkIdRoute
@@ -340,6 +357,7 @@ export interface FileRoutesByTo {
   '/practice/$readingId': typeof AuthenticatedStudentPracticeReadingIdRoute
   '/corrections': typeof AuthenticatedAdminCorrectionsIndexRoute
   '/groups': typeof AuthenticatedAdminGroupsIndexRoute
+  '/minigames': typeof AuthenticatedAdminMinigamesIndexRoute
   '/students': typeof AuthenticatedAdminStudentsIndexRoute
   '/studio': typeof AuthenticatedAdminStudioIndexRoute
   '/learn': typeof AuthenticatedStudentLearnIndexRoute
@@ -375,6 +393,7 @@ export interface FileRoutesById {
   '/_authenticated/_admin/control/$lessonId': typeof AuthenticatedAdminControlLessonIdRoute
   '/_authenticated/_admin/corrections/$submissionId': typeof AuthenticatedAdminCorrectionsSubmissionIdRoute
   '/_authenticated/_admin/groups/$groupId': typeof AuthenticatedAdminGroupsGroupIdRoute
+  '/_authenticated/_admin/minigames/$gameId': typeof AuthenticatedAdminMinigamesGameIdRoute
   '/_authenticated/_admin/present/$lessonId': typeof AuthenticatedAdminPresentLessonIdRoute
   '/_authenticated/_admin/students/$studentId': typeof AuthenticatedAdminStudentsStudentIdRoute
   '/_authenticated/_student/homework/$homeworkId': typeof AuthenticatedStudentHomeworkHomeworkIdRoute
@@ -382,6 +401,7 @@ export interface FileRoutesById {
   '/_authenticated/_student/practice/$readingId': typeof AuthenticatedStudentPracticeReadingIdRoute
   '/_authenticated/_admin/corrections/': typeof AuthenticatedAdminCorrectionsIndexRoute
   '/_authenticated/_admin/groups/': typeof AuthenticatedAdminGroupsIndexRoute
+  '/_authenticated/_admin/minigames/': typeof AuthenticatedAdminMinigamesIndexRoute
   '/_authenticated/_admin/students/': typeof AuthenticatedAdminStudentsIndexRoute
   '/_authenticated/_admin/studio/': typeof AuthenticatedAdminStudioIndexRoute
   '/_authenticated/_student/learn/': typeof AuthenticatedStudentLearnIndexRoute
@@ -415,6 +435,7 @@ export interface FileRouteTypes {
     | '/control/$lessonId'
     | '/corrections/$submissionId'
     | '/groups/$groupId'
+    | '/minigames/$gameId'
     | '/present/$lessonId'
     | '/students/$studentId'
     | '/homework/$homeworkId'
@@ -422,6 +443,7 @@ export interface FileRouteTypes {
     | '/practice/$readingId'
     | '/corrections/'
     | '/groups/'
+    | '/minigames/'
     | '/students/'
     | '/studio/'
     | '/learn/'
@@ -453,6 +475,7 @@ export interface FileRouteTypes {
     | '/control/$lessonId'
     | '/corrections/$submissionId'
     | '/groups/$groupId'
+    | '/minigames/$gameId'
     | '/present/$lessonId'
     | '/students/$studentId'
     | '/homework/$homeworkId'
@@ -460,6 +483,7 @@ export interface FileRouteTypes {
     | '/practice/$readingId'
     | '/corrections'
     | '/groups'
+    | '/minigames'
     | '/students'
     | '/studio'
     | '/learn'
@@ -494,6 +518,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/control/$lessonId'
     | '/_authenticated/_admin/corrections/$submissionId'
     | '/_authenticated/_admin/groups/$groupId'
+    | '/_authenticated/_admin/minigames/$gameId'
     | '/_authenticated/_admin/present/$lessonId'
     | '/_authenticated/_admin/students/$studentId'
     | '/_authenticated/_student/homework/$homeworkId'
@@ -501,6 +526,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_student/practice/$readingId'
     | '/_authenticated/_admin/corrections/'
     | '/_authenticated/_admin/groups/'
+    | '/_authenticated/_admin/minigames/'
     | '/_authenticated/_admin/students/'
     | '/_authenticated/_admin/studio/'
     | '/_authenticated/_student/learn/'
@@ -677,6 +703,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminStudentsIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/_admin/minigames/': {
+      id: '/_authenticated/_admin/minigames/'
+      path: '/minigames'
+      fullPath: '/minigames/'
+      preLoaderRoute: typeof AuthenticatedAdminMinigamesIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/_admin/groups/': {
       id: '/_authenticated/_admin/groups/'
       path: '/groups'
@@ -724,6 +757,13 @@ declare module '@tanstack/react-router' {
       path: '/present/$lessonId'
       fullPath: '/present/$lessonId'
       preLoaderRoute: typeof AuthenticatedAdminPresentLessonIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
+    '/_authenticated/_admin/minigames/$gameId': {
+      id: '/_authenticated/_admin/minigames/$gameId'
+      path: '/minigames/$gameId'
+      fullPath: '/minigames/$gameId'
+      preLoaderRoute: typeof AuthenticatedAdminMinigamesGameIdRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
     '/_authenticated/_admin/groups/$groupId': {
@@ -809,10 +849,12 @@ interface AuthenticatedAdminRouteRouteChildren {
   AuthenticatedAdminControlLessonIdRoute: typeof AuthenticatedAdminControlLessonIdRoute
   AuthenticatedAdminCorrectionsSubmissionIdRoute: typeof AuthenticatedAdminCorrectionsSubmissionIdRoute
   AuthenticatedAdminGroupsGroupIdRoute: typeof AuthenticatedAdminGroupsGroupIdRoute
+  AuthenticatedAdminMinigamesGameIdRoute: typeof AuthenticatedAdminMinigamesGameIdRoute
   AuthenticatedAdminPresentLessonIdRoute: typeof AuthenticatedAdminPresentLessonIdRoute
   AuthenticatedAdminStudentsStudentIdRoute: typeof AuthenticatedAdminStudentsStudentIdRoute
   AuthenticatedAdminCorrectionsIndexRoute: typeof AuthenticatedAdminCorrectionsIndexRoute
   AuthenticatedAdminGroupsIndexRoute: typeof AuthenticatedAdminGroupsIndexRoute
+  AuthenticatedAdminMinigamesIndexRoute: typeof AuthenticatedAdminMinigamesIndexRoute
   AuthenticatedAdminStudentsIndexRoute: typeof AuthenticatedAdminStudentsIndexRoute
   AuthenticatedAdminStudioIndexRoute: typeof AuthenticatedAdminStudioIndexRoute
   AuthenticatedAdminStudioHomeworkHomeworkIdRoute: typeof AuthenticatedAdminStudioHomeworkHomeworkIdRoute
@@ -837,6 +879,8 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
     AuthenticatedAdminCorrectionsSubmissionIdRoute:
       AuthenticatedAdminCorrectionsSubmissionIdRoute,
     AuthenticatedAdminGroupsGroupIdRoute: AuthenticatedAdminGroupsGroupIdRoute,
+    AuthenticatedAdminMinigamesGameIdRoute:
+      AuthenticatedAdminMinigamesGameIdRoute,
     AuthenticatedAdminPresentLessonIdRoute:
       AuthenticatedAdminPresentLessonIdRoute,
     AuthenticatedAdminStudentsStudentIdRoute:
@@ -844,6 +888,8 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
     AuthenticatedAdminCorrectionsIndexRoute:
       AuthenticatedAdminCorrectionsIndexRoute,
     AuthenticatedAdminGroupsIndexRoute: AuthenticatedAdminGroupsIndexRoute,
+    AuthenticatedAdminMinigamesIndexRoute:
+      AuthenticatedAdminMinigamesIndexRoute,
     AuthenticatedAdminStudentsIndexRoute: AuthenticatedAdminStudentsIndexRoute,
     AuthenticatedAdminStudioIndexRoute: AuthenticatedAdminStudioIndexRoute,
     AuthenticatedAdminStudioHomeworkHomeworkIdRoute:

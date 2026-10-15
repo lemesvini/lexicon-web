@@ -535,6 +535,32 @@ Two things behave differently for `html` than for the other two:
 
 ---
 
+### minigame
+
+One of the app's own classroom games, played live on the slide.
+
+```json
+{ "type": "minigame", "game": "crossings", "fill": true }
+```
+
+`game` required: `"who-am-i"`, `"two-truths"`, `"word-cards"` or `"crossings"` (see
+`src/features/minigames/registry.ts`). An unknown id draws a placeholder
+rather than crashing. `"fill": true` (what the Studio creates) gives the game the
+whole slide, like a filling embed; without it the game sits in the column in a
+16:9 box and scrolls inside. Optional `label` and `note`.
+
+In a presentation the projector and the control device play **one round**,
+kept in step over the presentation's realtime channel: a click on either is
+seen on both, Undo included. On the control device a minigame slide shows the
+game itself at full size (with a full-screen toggle) in place of the slide
+preview, so the teacher can run it from the iPad — typing a Who Am I character
+the room can't see, dealing Crossings squares. The channel is per presentation:
+a lesson opened from a group is that group's, so other teachers presenting the
+same lesson elsewhere are not affected. Rounds are also kept per browser, so a
+reload of either device picks the round back up. Not allowed inside a `container`.
+
+---
+
 ### post
 
 A social post — a tweet, an Instagram post — drawn as the card it would be seen

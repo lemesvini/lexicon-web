@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { BackButton } from '@/components/back-button'
 import { Button } from '@/components/ui/button'
-import { StagePreview } from '@/features/blocks'
+import { StagePreview, slideMinigame } from '@/features/blocks'
 import { Whiteboard } from '@/features/presenter/components/whiteboard'
 import { ConnectionBadge } from '@/features/presenter/components/connection-status'
 import {
@@ -19,6 +19,10 @@ import {
 } from '@/features/presenter/components/board-strip'
 import { useLessonPresenter } from '@/features/presenter/use-lesson-presenter'
 import { useResolvedLesson } from '@/features/presenter/use-resolved-lesson'
+import { presentationKey } from '@/features/presenter/realtime'
+import { MinigamePanel } from '@/features/presenter/components/minigame-panel'
+import { MinigameSyncContext } from '@/features/minigames/sync'
+import { useAuth } from '@/hooks/use-auth'
 
 type ControlSearch = { groupId?: string }
 
@@ -36,6 +40,10 @@ function ControlPage() {
   const { groupId } = Route.useSearch()
   const { lesson, loading } = useResolvedLesson(lessonId, groupId)
   const slideCount = lesson?.slides.length ?? 0
+  const { session } = useAuth()
+  // The same key the display computes: opening this from a group's lesson
+  // drives that group's projector and nobody else's.
+  const key = presentationKey(lessonId, groupId, session?.user.id)
   const {
     slideIndex,
     status,
@@ -45,7 +53,8 @@ function ControlPage() {
     goNext,
     broadcastBoard,
     setWhiteboardActive,
-  } = useLessonPresenter(lessonId, slideCount)
+    minigames,
+  } = useLessonPresenter(key, slideCount)
 
   const [boards, setBoards] = useState<Board[]>([
     { id: 'board-1', name: 'Board 1' },
@@ -100,7 +109,13 @@ function ControlPage() {
     )
   }
 
-  const slide = lesson.slides[slideIndex]
+  // Clamped: the index can arrive from the display (a rejoin) before this
+  // lesson has finished loading, or from a longer copy of it.
+  const slide = lesson.slides[Math.min(slideIndex, lesson.slides.length - 1)]
+  // A slide built around a minigame is played here at full size rather than
+  // previewed: scaled into this column its buttons are too small to press. It
+  // is the same round as the projector's — see MinigamePanel.
+  const minigame = slideMinigame(slide)
 
   function closeBoard() {
     if (activeBoardId) void regeneratePreview(activeBoardId)
@@ -171,14 +186,20 @@ function ControlPage() {
             </>
           ) : (
             <div className="flex h-full flex-col gap-6 overflow-auto p-8">
-              {/* The stage at its real proportions, so what the teacher sees
-                  here is laid out the way the room sees it. */}
-              <StagePreview
-                slide={slide}
-                lesson={lesson}
-                audience="teacher"
-                className="shrink-0"
-              />
+              {minigame ? (
+                <MinigameSyncContext value={minigames}>
+                  <MinigamePanel game={minigame} />
+                </MinigameSyncContext>
+              ) : (
+                // The stage at its real proportions, so what the teacher sees
+                // here is laid out the way the room sees it.
+                <StagePreview
+                  slide={slide}
+                  lesson={lesson}
+                  audience="teacher"
+                  className="shrink-0"
+                />
+              )}
               {slide.teacherNotes && slide.teacherNotes.length > 0 && (
                 <section className="shrink-0 space-y-2 rounded-lg border border-border bg-muted p-4">
                   <h2 className="text-sm font-semibold text-muted-foreground">
