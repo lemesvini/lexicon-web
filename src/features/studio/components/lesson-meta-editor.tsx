@@ -1,6 +1,6 @@
 import * as React from "react";
 import { XIcon } from "lucide-react";
-import type { Lesson } from "@/lib/lessons";
+import { LESSON_TYPES, type Lesson, type LessonType } from "@/lib/lessons";
 import { AddRowButton, AutoTextarea, DeleteRowButton } from "@/features/blocks";
 import {
   Select,
@@ -122,6 +122,40 @@ function ModuleSelect({
   );
 }
 
+const LESSON_TYPE_LABELS: Record<LessonType, string> = {
+  lesson: "Lesson",
+  conversation: "Conversation",
+  checkpoint: "Checkpoint",
+};
+
+/** What kind of class this is. Unset shows as "Lesson", which is what the
+ *  database takes it for until somebody picks. */
+function LessonTypeSelect({
+  value,
+  onChange,
+}: {
+  value: LessonType | undefined;
+  onChange: (lessonType: LessonType) => void;
+}) {
+  return (
+    <Select
+      value={value ?? "lesson"}
+      onValueChange={(next) => onChange(next as LessonType)}
+    >
+      <SelectTrigger className={triggerClass}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {LESSON_TYPES.map((type) => (
+          <SelectItem key={type} value={type}>
+            {LESSON_TYPE_LABELS[type]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 function GrammarTags({
   tags,
   onChange,
@@ -235,7 +269,7 @@ export function LessonMetaEditor({
         className="w-full bg-transparent text-2xl font-bold tracking-tight outline-none placeholder:text-muted-foreground/50 focus:rounded-sm focus:ring-2 focus:ring-ring/30"
       />
 
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Lesson id">
           <input
             value={meta.id}
@@ -256,6 +290,12 @@ export function LessonMetaEditor({
             onChange={(e) => onChange({ unit: e.target.value })}
             placeholder="Unit One - Introductions"
             className={inputClass}
+          />
+        </Field>
+        <Field label="Type">
+          <LessonTypeSelect
+            value={meta.lessonType}
+            onChange={(lessonType) => onChange({ lessonType })}
           />
         </Field>
       </div>

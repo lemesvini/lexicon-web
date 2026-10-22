@@ -464,11 +464,22 @@ export type LessonSlide = {
   teacherNotes?: string[];
 };
 
+/** The values `lessons.lesson_type` accepts (0029), in the order the Studio
+ *  offers them. */
+export const LESSON_TYPES = ["lesson", "conversation", "checkpoint"] as const;
+
+/** What kind of class a lesson is. The student's path draws each differently. */
+export type LessonType = (typeof LESSON_TYPES)[number];
+
 export type Lesson = {
   id: string;
   unit: string;
   module: string;
   title: string;
+  /** Only on a base lesson — material and homework share this document shape
+   *  but are not classes. Unset reads as "lesson". Denormalized into
+   *  `lessons.lesson_type` on save. */
+  lessonType?: LessonType;
   context: string;
   minorCanDo: string;
   grammarFocus: string[];

@@ -7,7 +7,12 @@
 // block in an editor node that carries a client-only `key`. `toLesson` strips
 // them back out on export; `fromLesson` assigns fresh ones on load.
 
-import type { Lesson, LessonBlock, LessonSlide } from "@/lib/lessons";
+import {
+  LESSON_TYPES,
+  type Lesson,
+  type LessonBlock,
+  type LessonSlide,
+} from "@/lib/lessons";
 
 export type EditorBlock = { key: string; data: LessonBlock };
 
@@ -82,6 +87,7 @@ export function fromLesson(lesson: Lesson): EditorLesson {
       unit: lesson.unit ?? "",
       module: lesson.module ?? "",
       title: lesson.title ?? "",
+      lessonType: lesson.lessonType,
       context: lesson.context ?? "",
       minorCanDo: lesson.minorCanDo ?? "",
       grammarFocus: lesson.grammarFocus ?? [],
@@ -219,6 +225,9 @@ export function toLesson(editor: EditorLesson): Lesson {
     unit: m.unit,
     module: m.module,
     title: m.title,
+    // Only once set: material and homework go through here too, and are not
+    // classes of any type.
+    ...(m.lessonType ? { lessonType: m.lessonType } : {}),
     context: m.context,
     minorCanDo: m.minorCanDo,
     grammarFocus: m.grammarFocus.filter((g) => g.trim() !== ""),
@@ -285,6 +294,9 @@ export function parseLesson(json: string): Lesson {
     unit: raw.unit ?? "",
     module: raw.module ?? "",
     title: raw.title ?? "",
+    // Checked, unlike the rest: an unknown type would pass the editor and then
+    // fail the column's check constraint on save.
+    lessonType: LESSON_TYPES.find((type) => type === raw.lessonType),
     context: raw.context ?? "",
     minorCanDo: raw.minorCanDo ?? "",
     grammarFocus: raw.grammarFocus ?? [],

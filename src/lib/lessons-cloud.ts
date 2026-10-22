@@ -7,7 +7,7 @@
 // creating a duplicate.
 
 import { supabase } from "@/lib/supabase";
-import type { Lesson } from "@/lib/lessons";
+import type { Lesson, LessonType } from "@/lib/lessons";
 
 /** Shape of a row in the `lessons` table (excluding server-managed columns). */
 type LessonRow = {
@@ -15,6 +15,7 @@ type LessonRow = {
   title: string;
   unit: string;
   module: string;
+  lesson_type?: LessonType;
   document: Lesson;
 };
 
@@ -30,6 +31,10 @@ type LessonRow = {
  * So is `order`, for the same mechanism to the opposite end: an upsert only
  * writes the columns it names, so a lesson keeps the place in the curriculum it
  * was given in the database however many times it is edited here.
+ *
+ * `lesson_type` is written only when the document has one, by the same rule: a
+ * document that never had a type set — or was opened before 0029 filled them
+ * in — leaves the column as it is rather than resetting it to "lesson".
  */
 export async function saveLessonToCloud(lesson: Lesson): Promise<void> {
   const id = lesson.id.trim();
@@ -44,6 +49,7 @@ export async function saveLessonToCloud(lesson: Lesson): Promise<void> {
     title: lesson.title ?? "",
     unit: lesson.unit ?? "",
     module: lesson.module ?? "",
+    ...(lesson.lessonType ? { lesson_type: lesson.lessonType } : {}),
     document: lesson,
   };
 
