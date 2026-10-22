@@ -14,6 +14,12 @@ import {
 } from "@/features/groups/data/group-lessons";
 import { listHomework } from "./homework";
 import { listMaterials } from "./materials";
+import {
+  listPracticeActivities,
+  listPracticeModules,
+  PRACTICE_SKILLS,
+  type PracticeSkill,
+} from "./practice";
 import type { PublishStatus } from "./publishing";
 
 export type LibraryLessonRow = {
@@ -62,6 +68,17 @@ export type LibraryHomeworkRow = {
   unreachable: boolean;
 };
 
+export type LibraryPracticeRow = {
+  id: string;
+  title: string;
+  /** The module's name — what the library's module filter goes by. */
+  module: string;
+  skill: PracticeSkill;
+  cardCount: number;
+  status: PublishStatus;
+  updatedAt: string;
+};
+
 export type StudioLibrary = {
   lessons: LibraryLessonRow[];
   materials: LibraryMaterialRow[];
@@ -70,6 +87,8 @@ export type StudioLibrary = {
    *  listed here so a copy can be found without remembering which group it
    *  belongs to. */
   advanced: LibraryAdvancedRow[];
+  /** Practice activities, by module, then skill, then their place. */
+  practice: LibraryPracticeRow[];
   /** Distinct module names in the library, for the tables' module filter. */
   modules: string[];
 };
@@ -104,12 +123,15 @@ function byCurriculum(
 }
 
 export async function listStudioLibrary(): Promise<StudioLibrary> {
-  const [lessons, materials, homework, advanced] = await Promise.all([
-    listCloudLessons(),
-    listMaterials(),
-    listHomework(),
-    listAllGroupLessons(),
-  ]);
+  const [lessons, materials, homework, advanced, practice, practiceModules] =
+    await Promise.all([
+      listCloudLessons(),
+      listMaterials(),
+      listHomework(),
+      listAllGroupLessons(),
+      listPracticeActivities(),
+      listPracticeModules(),
+    ]);
 
   const materialByLesson = new Map(materials.map((m) => [m.lessonId, m]));
   const lessonById = new Map(lessons.map((l) => [l.id, l]));
@@ -123,12 +145,43 @@ export async function listStudioLibrary(): Promise<StudioLibrary> {
     );
   }
 
+  // Practice is filed by module id; the modules table's order is the course's.
+  const moduleById = new Map(
+    practiceModules.map((m, index) => [m.id, { name: m.name, index }]),
+  );
+  const skillRank = (skill: PracticeSkill) =>
+    PRACTICE_SKILLS.findIndex((s) => s.value === skill);
+
   const modules = [
-    ...new Set(lessons.map((l) => l.module.trim()).filter(Boolean)),
+    ...new Set(
+      [
+        ...lessons.map((l) => l.module.trim()),
+        ...practice.map((a) => moduleById.get(a.moduleId)?.name.trim() ?? ""),
+      ].filter(Boolean),
+    ),
   ].sort((a, b) => a.localeCompare(b));
 
   return {
     modules,
+
+    practice: [...practice]
+      .sort(
+        (a, b) =>
+          (moduleById.get(a.moduleId)?.index ?? Number.MAX_SAFE_INTEGER) -
+            (moduleById.get(b.moduleId)?.index ?? Number.MAX_SAFE_INTEGER) ||
+          skillRank(a.skill) - skillRank(b.skill) ||
+          a.position - b.position ||
+          a.title.localeCompare(b.title),
+      )
+      .map((activity) => ({
+        id: activity.id,
+        title: activity.title || activity.id,
+        module: moduleById.get(activity.moduleId)?.name ?? "",
+        skill: activity.skill,
+        cardCount: activity.cardCount,
+        status: activity.status,
+        updatedAt: activity.updatedAt,
+      })),
 
     // A copy has no `order` of its own — it is a copy of a lesson that has one.
     advanced: [...advanced].sort((a, b) =>

@@ -12,10 +12,16 @@ import {
 import type { LibraryAdvancedRow } from "@/features/groups/data/group-lessons";
 import { deleteHomework, setHomeworkStatus } from "../data/homework";
 import { deleteMaterial, setMaterialStatus } from "../data/materials";
+import {
+  deletePracticeActivity,
+  practiceSkillLabel,
+  setPracticeStatus,
+} from "../data/practice";
 import type {
   LibraryHomeworkRow,
   LibraryLessonRow,
   LibraryMaterialRow,
+  LibraryPracticeRow,
 } from "../data/library";
 import type { PublishStatus } from "../data/publishing";
 import { LibraryRowActions } from "./library-row-actions";
@@ -441,6 +447,63 @@ export function HomeworkGallery({
               )}
             </>
           }
+        />
+      )}
+    />
+  );
+}
+
+// ── Practice ─────────────────────────────────────────────────────────────────
+
+export function PracticeGallery({
+  rows,
+  onChanged,
+}: {
+  rows: LibraryPracticeRow[];
+  onChanged: () => void;
+}) {
+  return (
+    <Gallery
+      rows={rows}
+      moduleOf={(row) => row.module}
+      keyOf={(row) => row.id}
+      emptyMessage="No practice activities yet."
+      renderCard={(row) => (
+        <LibraryCard
+          title={row.title}
+          meta={`${practiceSkillLabel(row.skill)} · ${row.cardCount} card${row.cardCount === 1 ? "" : "s"}`}
+          editLink={(children) => (
+            <Link
+              to="/studio/practice/$activityId"
+              params={{ activityId: row.id }}
+              aria-label={`Edit ${row.title}`}
+              className="focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            >
+              {children}
+            </Link>
+          )}
+          actions={
+            <>
+              <EditButton>
+                <Link
+                  to="/studio/practice/$activityId"
+                  params={{ activityId: row.id }}
+                  aria-label={`Edit ${row.title}`}
+                >
+                  <PencilIcon />
+                </Link>
+              </EditButton>
+              <LibraryRowActions
+                status={row.status}
+                onSetStatus={(status) => setPracticeStatus(row.id, status)}
+                onDelete={() => deletePracticeActivity(row.id)}
+                deleteTitle={`Delete “${row.title}”?`}
+                deleteBody="Every student's progress on its cards goes with it. This can't be undone."
+                onChanged={onChanged}
+              />
+            </>
+          }
+          badges={<StatusBadge status={row.status} />}
         />
       )}
     />

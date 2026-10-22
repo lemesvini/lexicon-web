@@ -7,7 +7,7 @@ the two describe the same things from opposite sides.
 
 ---
 
-## 1. The three things the Studio edits
+## 1. What the Studio edits
 
 Everything in the Studio is the same shape underneath — a document with some
 metadata and a list of slides made of blocks — but each kind is read by someone
@@ -19,8 +19,10 @@ different, and that changes what it can hold.
 | **Student material** | The student, on their own device, as a page and as a deck | `Learn` | Every presentation block. Teacher content is stripped on save — you can't accidentally publish an answer key. |
 | **Homework** | The student, answered and handed in | `Homework` | Exercise blocks, plus prose blocks around them. |
 | **Advanced context** | One group | The group's page | A group's own copy of a presentation. Base slides are locked; the group's additions are editable. |
+| **Practice** | The student, on their own, in the mobile app's Practice tab | `Practice` (app) | Not slides: a list of cards (speaking). See [§9](#9-practice). |
 
-The first three are created from the Library's **Create** button. Advanced
+Presentations, student material, homework and practice are created from the
+Library's **Create** button. Advanced
 context is never created there — a copy exists because a group was given a
 module, and you open it from that group.
 
@@ -390,3 +392,100 @@ A few things look like they should work and don't, by design:
   documented in [lesson-json.md](lesson-json.md); the same import accepts a
   file written by hand or by an LLM, and nothing validates it on the way in,
   so read that document before writing one.
+
+---
+
+## 9. Practice
+
+A practice activity is what a student does on their own, between classes, in
+the mobile app's Practice tab. It is filed under a **module** and a **skill**
+— listening, speaking, reading or writing — and listed the way the course is:
+*Book One › Speaking › Practice 01*. **Position** orders the module's
+activities of the same skill.
+
+It has its own editor, not the slide canvas, one for each of the four skills. The skill is fixed
+once the activity is saved.
+
+### Speaking cards
+
+Each card has two sides and two extras:
+
+| Field | What it is |
+|---|---|
+| **Como se diz** | The front, in Portuguese: *Sala de reunião*. |
+| **In English** | The back, and what the student has to say: *Meeting room*. |
+| **Example** | The answer in a sentence, shown on the back. Optional. |
+| **From lesson** | The lesson it comes from. A student only gets the card once their group has had that class (somebody was marked present). No lesson means it's always available. |
+
+The student reads the Portuguese, taps the microphone and says it in English;
+speech recognition on their phone decides whether they remembered it, almost
+did, or didn't. That rating decides when the card comes back — the same day,
+tomorrow, or a few days to a month later as it keeps being remembered.
+
+- The 🔊 button reads the English the way a phone's voice will, roughly.
+- A card missing either side is saved but never shown to students.
+- Cards keep their identity when reordered or edited, so neither resets
+  anybody's progress. **Deleting a card takes it out of every student's
+  practice; deleting the activity deletes their progress on it.**
+- **Publish** from the ⋯ menu, as for homework. Save first.
+
+### Listening sentences
+
+The student hears a sentence and rebuilds it by tapping its words in order —
+no typing. Each sentence has:
+
+| Field | What it is |
+|---|---|
+| **Sentence** | The English, as it is spoken and rebuilt. Punctuation and capitals don't count when checking. |
+| **Tradução** | The Portuguese, shown after they answer. Optional. |
+| **From lesson** | As for speaking cards. |
+| **Extra words** | Words that aren't in the sentence, mixed into the word bank. Optional — without them the app borrows a few from the other sentences. |
+
+The audio is made with ElevenLabs, from the Studio:
+
+1. Give the activity an id and a module (the audio is saved with it).
+2. Pick a **voice**. Changing it later marks every sentence's audio out of date.
+3. **Paste sentences** — one per line, `English | Português` — or add them one
+   by one.
+4. **Make missing audio**. Every sentence without audio, or whose text has
+   changed since its audio was made, is spoken and stored, and the activity is
+   saved. ▶ plays a sentence back; ✦ makes one again.
+
+A sentence without audio is saved but never shown to students. ElevenLabs
+charges by character, so a sentence is only spoken again when it has changed.
+
+Setting it up, once: `supabase secrets set ELEVENLABS_API_KEY=…` and
+`supabase functions deploy practice-audio` (migration 0032 creates the bucket).
+
+### Writing sentences
+
+Listening without the audio: the student reads a sentence in Portuguese and
+builds it in English by tapping its words in order. Each sentence has the
+**Portuguese** (what they see), the **English** (what they build), the lesson
+it comes from and, optionally, **extra words** for the bank.
+
+**Paste sentences** takes the same `English | Português` lines as listening,
+so one list can feed both decks. A sentence missing either language is saved
+but never shown to students.
+
+### Reading texts
+
+The web practice's reading library, by module: a short text and its
+multiple-choice questions. In the app the student reads the text on one card,
+then answers its questions one card at a time — each marked with the text's
+title, and with the text a tap away. Each question is marked as it is
+answered.
+
+Each text has a **title** (English), an optional **level** (A1–C1) and a
+one-line **summary in Portuguese**, the lesson it comes from, the **text**
+itself (a blank line between paragraphs) and its **questions**: a prompt, two
+to five options, and ◉ on the right one.
+
+**Import the web's reading texts** adds the eight texts the students' web
+practice has today, A1 to B2, to the deck — to file under a module, edit, or
+trim.
+
+The text is one card to the spaced repetition: all its questions right, it
+comes back in a few days; most of them, tomorrow; fewer, the same day. A
+question without a prompt or two options is kept as a draft and skipped by
+the app; a text with no complete question isn't shown at all.

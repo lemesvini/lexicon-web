@@ -23,9 +23,15 @@ import { cn } from "@/lib/utils";
 export function LessonSlides({
   lessonId,
   onClose,
+  fetchDeck = fetchStudentPresentation,
 }: {
   lessonId: string;
   onClose: () => void;
+  /** Where the deck comes from. The signed-in student's own by default; the
+   *  mobile app's embed passes one that reads with the app's token instead
+   *  (@/routes/embed/slides.$lessonId). Keep it stable — it re-fetches when it
+   *  changes. */
+  fetchDeck?: (lessonId: string) => Promise<Lesson | null>;
 }) {
   const [state, setState] = React.useState<{
     status: "loading" | "ready" | "empty" | "error";
@@ -35,7 +41,7 @@ export function LessonSlides({
   React.useEffect(() => {
     let cancelled = false;
 
-    fetchStudentPresentation(lessonId)
+    fetchDeck(lessonId)
       .then((doc) => {
         if (cancelled) return;
         setState({
@@ -50,7 +56,7 @@ export function LessonSlides({
     return () => {
       cancelled = true;
     };
-  }, [lessonId]);
+  }, [lessonId, fetchDeck]);
 
   if (state.status === "ready" && state.document) {
     return <SlidesViewer document={state.document} onClose={onClose} />;

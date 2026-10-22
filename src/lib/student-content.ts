@@ -10,6 +10,7 @@
 //
 // Sibling to @/lib/lessons-cloud, which is the admin's view of the same library.
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { AnswerValue, Lesson } from "@/lib/lessons";
 
@@ -187,8 +188,11 @@ export async function fetchStudentLesson(
  */
 export async function fetchStudentPresentation(
   lessonId: string,
+  /** Whose eyes to read with. The signed-in session by default; the mobile
+   *  app's embed reads with the app's own token (@/routes/embed/slides.$lessonId). */
+  client: SupabaseClient = supabase,
 ): Promise<Lesson | null> {
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from("student_presentations")
     .select("document")
     .eq("id", lessonId)

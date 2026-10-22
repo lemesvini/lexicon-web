@@ -8,11 +8,17 @@ import { DataTableSortableHeader as SortableHeader } from "@/components/data-tab
 import { multiSelectFilter } from "@/lib/data-table";
 import { deleteHomework, setHomeworkStatus } from "../data/homework";
 import { deleteMaterial, setMaterialStatus } from "../data/materials";
+import {
+  deletePracticeActivity,
+  practiceSkillLabel,
+  setPracticeStatus,
+} from "../data/practice";
 import type { LibraryAdvancedRow } from "@/features/groups/data/group-lessons";
 import type {
   LibraryHomeworkRow,
   LibraryLessonRow,
   LibraryMaterialRow,
+  LibraryPracticeRow,
 } from "../data/library";
 import type { PublishStatus } from "../data/publishing";
 import { LibraryRowActions } from "./library-row-actions";
@@ -333,6 +339,81 @@ export function homeworkColumns({
             onDelete={() => deleteHomework(row.original.id)}
             deleteTitle={`Delete “${row.original.title}”?`}
             deleteBody="This can't be undone."
+            onChanged={onChanged}
+          />
+        </div>
+      ),
+    },
+  ];
+}
+
+// ── Practice ─────────────────────────────────────────────────────────────────
+
+export function practiceColumns({
+  onChanged,
+}: {
+  onChanged: () => void;
+}): ColumnDef<LibraryPracticeRow>[] {
+  return [
+    {
+      accessorKey: "title",
+      header: ({ column }) => <SortableHeader column={column} label="Title" />,
+      cell: ({ row }) => (
+        <span className="font-medium">{row.getValue("title")}</span>
+      ),
+    },
+    {
+      accessorKey: "skill",
+      header: ({ column }) => <SortableHeader column={column} label="Skill" />,
+      cell: ({ row }) => practiceSkillLabel(row.original.skill),
+    },
+    {
+      accessorKey: "module",
+      header: ({ column }) => <SortableHeader column={column} label="Module" />,
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => row.getValue("module") || "—",
+    },
+    {
+      accessorKey: "cardCount",
+      header: ({ column }) => <SortableHeader column={column} label="Cards" />,
+      cell: ({ row }) =>
+        row.original.cardCount === 0 ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          <span className="tabular-nums">{row.original.cardCount}</span>
+        ),
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => <SortableHeader column={column} label="Status" />,
+      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+    },
+    {
+      accessorKey: "updatedAt",
+      header: ({ column }) => <SortableHeader column={column} label="Updated" />,
+      cell: ({ row }) => <Updated iso={row.getValue("updatedAt")} />,
+    },
+    {
+      id: "actions",
+      header: () => <span className="sr-only">Actions</span>,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" asChild>
+            <Link
+              to="/studio/practice/$activityId"
+              params={{ activityId: row.original.id }}
+            >
+              <PencilIcon />
+              Edit
+            </Link>
+          </Button>
+          <LibraryRowActions
+            status={row.original.status}
+            onSetStatus={(status) => setPracticeStatus(row.original.id, status)}
+            onDelete={() => deletePracticeActivity(row.original.id)}
+            deleteTitle={`Delete “${row.original.title}”?`}
+            deleteBody="Every student's progress on its cards goes with it. This can't be undone."
             onChanged={onChanged}
           />
         </div>

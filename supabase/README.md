@@ -100,6 +100,41 @@ supabase functions deploy admin-reset-teacher-password
 No secrets to configure: `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are
 injected into every Edge Function by the platform.
 
+## Push notifications
+
+`0036_notifications.sql` and `functions/send-push` send the mobile app's push
+notifications: a corrected homework, a unit report, and a reminder an hour
+before class. Once:
+
+1. Dashboard → Database → Extensions: enable `pg_cron` and `pg_net`.
+2. Run `0036_notifications.sql`.
+3. Pick a long random string (`openssl rand -hex 32`) and store it twice —
+   in the Vault, with the project URL, so the database can call the function:
+
+   ```sql
+   select vault.create_secret('https://<project-ref>.supabase.co', 'project_url');
+   select vault.create_secret('<the random string>', 'push_dispatch_secret');
+   ```
+
+   and as the function's secrets, with the Expo access token (expo.dev →
+   Account settings → Access tokens):
+
+   ```sh
+   supabase secrets set PUSH_DISPATCH_SECRET=<the random string> EXPO_ACCESS_TOKEN=<token>
+   ```
+
+4. `supabase functions deploy send-push` — `config.toml` already turns off its
+   JWT check; the secret header stands in for it.
+
+Nothing is lost while a step is missing: notifications queue up in
+`notifications` and go out once the function can be reached (for up to a day).
+To see what happened to them:
+
+```sql
+select kind, title, created_at, sent_at, attempts, last_error
+from public.notifications order by created_at desc limit 20;
+```
+
 ## Why there are no invite emails
 
 Supabase's built-in email service only delivers to addresses that are members of

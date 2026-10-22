@@ -34,8 +34,7 @@ export function CreateArtifactDialog({
         <DialogHeader>
           <DialogTitle>What are you making?</DialogTitle>
           <DialogDescription className="mb-4 text-sm text-muted-foreground">
-            All three are built from the same blocks — they differ in who reads
-            them.
+            Each one is read by somebody different, in a different place.
           </DialogDescription>
         </DialogHeader>
 

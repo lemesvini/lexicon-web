@@ -17,12 +17,14 @@ import {
   homeworkColumns,
   lessonColumns,
   materialColumns,
+  practiceColumns,
 } from "@/features/studio/components/library-columns";
 import {
   AdvancedGallery,
   HomeworkGallery,
   LessonGallery,
   MaterialGallery,
+  PracticeGallery,
 } from "@/features/studio/components/library-gallery";
 import {
   LibraryViewToggle,
@@ -59,7 +61,7 @@ function readViewPreference(): LibraryView {
 }
 
 /** Editors that exist. The create dialog shows anything missing here as "Soon". */
-const CREATABLE: readonly StudioKind[] = ["lesson", "material", "homework"];
+const CREATABLE: readonly StudioKind[] = ["lesson", "material", "homework", "practice"];
 
 export const Route = createFileRoute("/_authenticated/_admin/studio/")({
   validateSearch: (search: Record<string, unknown>): StudioSearch => ({
@@ -85,6 +87,7 @@ const EMPTY: StudioLibrary = {
   materials: [],
   homework: [],
   advanced: [],
+  practice: [],
   modules: [],
 };
 
@@ -145,6 +148,11 @@ function StudioLibraryPage() {
         to: "/studio/lesson/$lessonId",
         params: { lessonId: NEW_DOCUMENT_ID },
       });
+    } else if (kind === "practice") {
+      void navigate({
+        to: "/studio/practice/$activityId",
+        params: { activityId: NEW_DOCUMENT_ID },
+      });
     } else if (kind === "homework") {
       void navigate({
         to: "/studio/homework/$homeworkId",
@@ -178,6 +186,7 @@ function StudioLibraryPage() {
   const lessons = filter(library.lessons, (row) => row.title);
   const materials = filter(library.materials, (row) => row.title);
   const homework = filter(library.homework, (row) => row.title);
+  const practice = filter(library.practice, (row) => row.title);
   const advanced = filter(
     library.advanced,
     (row) => `${row.groupName} ${row.title}`,
@@ -191,6 +200,7 @@ function StudioLibraryPage() {
     lesson: library.lessons.length,
     material: library.materials.length,
     homework: library.homework.length,
+    practice: library.practice.length,
     advanced: library.advanced.length,
   };
 
@@ -304,6 +314,19 @@ function StudioLibraryPage() {
                   data={advanced}
                   emptyMessage="No group has its own copy of a lesson yet. Assign a module in a group's studio."
                   countLabel={(n) => `${n} cop${n === 1 ? "y" : "ies"}`}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="practice">
+              {view === "gallery" ? (
+                <PracticeGallery rows={practice} onChanged={refresh} />
+              ) : (
+                <DataTable
+                  columns={practiceColumns({ onChanged: refresh })}
+                  data={practice}
+                  emptyMessage="No practice activities yet."
+                  countLabel={(n) => `${n} activit${n === 1 ? "y" : "ies"}`}
                 />
               )}
             </TabsContent>

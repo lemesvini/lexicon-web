@@ -9,11 +9,12 @@ import {
   MonitorPlayIcon,
   NotebookPenIcon,
   BookOpenIcon,
+  MicIcon,
   SparklesIcon,
   type LucideIcon,
 } from "lucide-react";
 
-export type StudioKind = "lesson" | "material" | "homework" | "advanced";
+export type StudioKind = "lesson" | "material" | "homework" | "practice" | "advanced";
 
 /**
  * The id standing in for "one that doesn't exist yet", as in
@@ -59,6 +60,13 @@ export const STUDIO_KINDS: readonly StudioKindMeta[] = [
     singular: "Homework",
     hint: "Exercises to attach to a lesson, now or later.",
     icon: NotebookPenIcon,
+  },
+  {
+    kind: "practice",
+    label: "Practice",
+    singular: "Practice activity",
+    hint: "Cards and exercises students practise on their own, by module and skill.",
+    icon: MicIcon,
   },
 ];
 
