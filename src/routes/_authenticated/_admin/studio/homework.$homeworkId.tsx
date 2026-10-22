@@ -16,6 +16,7 @@ import {
   fetchHomework,
   saveHomework,
   setHomeworkStatus,
+  type HomeworkType,
 } from "@/features/studio/data/homework";
 import type { PublishStatus } from "@/features/studio/data/publishing";
 import { NEW_DOCUMENT_ID as NEW, studioKind } from "@/features/studio/kinds";
@@ -72,6 +73,9 @@ function HomeworkEditor({ homeworkId }: { homeworkId: string }) {
   // it is a foreign key, and a document that named its own parent would be one
   // more pair of things to keep in step.
   const [lessonId, setLessonId] = React.useState<string | null>(null);
+  // Its type is the same kind of field: where the homework sits in the lesson
+  // (activities, or the "now you can"), kept on the row, not in the document.
+  const [homeworkType, setHomeworkType] = React.useState<HomeworkType>("activities");
 
   const [state, setState] = React.useState<State>({
     phase: "loading",
@@ -101,6 +105,7 @@ function HomeworkEditor({ homeworkId }: { homeworkId: string }) {
             title: homework.title,
           });
           setLessonId(homework.lessonId);
+          setHomeworkType(homework.homeworkType);
         } else {
           load({ ...blankHomework(), id: isNew ? "" : homeworkId });
         }
@@ -139,6 +144,7 @@ function HomeworkEditor({ homeworkId }: { homeworkId: string }) {
       id: slug,
       title,
       lessonId,
+      homeworkType,
       document: { ...studio.document, id: slug, title },
     });
 
@@ -202,11 +208,13 @@ function HomeworkEditor({ homeworkId }: { homeworkId: string }) {
           id={studio.lesson.meta.id}
           title={studio.lesson.meta.title}
           lessonId={lessonId}
+          homeworkType={homeworkType}
           instructions={studio.lesson.meta.context}
           lessons={state.lessons}
           idLocked={state.saved}
           onChange={(patch) => {
             if (patch.lessonId !== undefined) setLessonId(patch.lessonId);
+            if (patch.homeworkType !== undefined) setHomeworkType(patch.homeworkType);
             if (patch.id !== undefined) studio.updateMeta({ id: patch.id });
             if (patch.title !== undefined) {
               studio.updateMeta({ title: patch.title });

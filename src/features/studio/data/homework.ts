@@ -10,6 +10,15 @@ import { supabase } from "@/lib/supabase";
 import type { Lesson } from "@/lib/lessons";
 import { toPublishStatus, type PublishStatus } from "./publishing";
 
+/** `homework.homework_type` (0030), with the name the step goes by — on the
+ *  student's lesson page, and in the picker here. */
+export const HOMEWORK_TYPES = [
+  { value: "activities", label: "Activities" },
+  { value: "now-you-can", label: "Now you can" },
+] as const;
+
+export type HomeworkType = (typeof HOMEWORK_TYPES)[number]["value"];
+
 export type HomeworkSummary = {
   id: string;
   title: string;
@@ -36,12 +45,15 @@ export async function listHomework(): Promise<HomeworkSummary[]> {
   }));
 }
 
-export type Homework = HomeworkSummary & { document: Lesson };
+export type Homework = HomeworkSummary & {
+  homeworkType: HomeworkType;
+  document: Lesson;
+};
 
 export async function fetchHomework(id: string): Promise<Homework | null> {
   const { data, error } = await supabase
     .from("homework")
-    .select("id, title, lesson_id, document, status, updated_at")
+    .select("id, title, lesson_id, homework_type, document, status, updated_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -52,6 +64,10 @@ export async function fetchHomework(id: string): Promise<Homework | null> {
     id: data.id as string,
     title: (data.title as string | null) ?? "",
     lessonId: (data.lesson_id as string | null) ?? null,
+    // Anything the check constraint would refuse reads as the default.
+    homeworkType: HOMEWORK_TYPES.some((type) => type.value === data.homework_type)
+      ? (data.homework_type as HomeworkType)
+      : "activities",
     document: data.document as Lesson,
     status: toPublishStatus(data.status),
     updatedAt: (data.updated_at as string | null) ?? "",
@@ -70,6 +86,7 @@ export async function saveHomework(input: {
   id: string;
   title: string;
   lessonId: string | null;
+  homeworkType: HomeworkType;
   document: Lesson;
 }): Promise<void> {
   const { error } = await supabase.from("homework").upsert(
@@ -77,6 +94,7 @@ export async function saveHomework(input: {
       id: input.id,
       title: input.title,
       lesson_id: input.lessonId,
+      homework_type: input.homeworkType,
       document: input.document,
     },
     { onConflict: "id" },

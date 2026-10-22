@@ -1,9 +1,22 @@
 import { LessonCombobox } from "@/components/lesson-combobox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AutoTextarea } from "@/features/blocks";
+import { HOMEWORK_TYPES, type HomeworkType } from "@/features/studio/data/homework";
 import type { CloudLessonSummary } from "@/lib/lessons-cloud";
 
 const inputClass =
   "w-full rounded-md border bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring/30";
+
+// Level with the inputs beside it — the lesson editor's own trigger treatment:
+// same box, no shadow, the fixed height overridden under the same variant.
+const triggerClass =
+  "w-full rounded-md border bg-background px-3 py-1.5 text-sm data-[size=default]:h-auto shadow-none dark:bg-background dark:hover:bg-background";
 
 /**
  * The header of a homework: what it's called, what it's filed under, and the
@@ -19,6 +32,7 @@ export function HomeworkMetaEditor({
   id,
   title,
   lessonId,
+  homeworkType,
   instructions,
   lessons,
   idLocked,
@@ -27,6 +41,9 @@ export function HomeworkMetaEditor({
   id: string;
   title: string;
   lessonId: string | null;
+  /** The step it stands for in its lesson — what the student's lesson page
+   *  calls it. */
+  homeworkType: HomeworkType;
   instructions: string;
   lessons: CloudLessonSummary[];
   /** True once it has been saved: the id keys the row, so editing it here would
@@ -36,6 +53,7 @@ export function HomeworkMetaEditor({
     id?: string;
     title?: string;
     lessonId?: string | null;
+    homeworkType?: HomeworkType;
     instructions?: string;
   }) => void;
 }) {
@@ -48,7 +66,7 @@ export function HomeworkMetaEditor({
         className="w-full bg-transparent text-2xl font-bold tracking-tight outline-none placeholder:text-muted-foreground/50 focus:rounded-sm focus:ring-2 focus:ring-ring/30"
       />
 
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Homework id
@@ -78,6 +96,27 @@ export function HomeworkMetaEditor({
             allowNone
             noneLabel="Not attached — file it later"
           />
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Type
+          </span>
+          <Select
+            value={homeworkType}
+            onValueChange={(value) => onChange({ homeworkType: value as HomeworkType })}
+          >
+            <SelectTrigger className={triggerClass}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {HOMEWORK_TYPES.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
       </div>
 
